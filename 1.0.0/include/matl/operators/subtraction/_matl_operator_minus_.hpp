@@ -18,6 +18,12 @@ namespace matl
     operator- (_EXPRESSION_<EXPR> const& expr, _MATRIX_<MAT> const& mat)
     {return _MATRIX_MINUS_MATRIX_<EXPR, MAT>(expr,mat);}
 
+    // Expression - Expression
+    template<typename EXPR1, typename EXPR2>
+    _MATRIX_MINUS_MATRIX_<EXPR1, EXPR2>
+    operator- (_EXPRESSION_<EXPR1> const& expr1, _EXPRESSION_<EXPR2> const& expr2)
+    {return _MATRIX_MINUS_MATRIX_<EXPR1, EXPR2>(expr1, expr2);}
+
     // Matrix - Scalar
     template<typename MAT, class T, enable_if_scalar<T> = true>
     _MATRIX_MINUS_SCALAR_<MAT, T> operator- (_MATRIX_<MAT> const& mat, T scalar)
