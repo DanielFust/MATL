@@ -21,10 +21,10 @@ namespace matl
     *     RowMajorMatrix      Row major matrix object with zero rows and zero columns
     ***********************************************************************************************/ 
     template<class T>
-    RowMajorMatrix<T>::RowMajorMatrix() : rows_(0), 
+    RowMajorMatrix<T>::RowMajorMatrix() : ScratchMemoryBorrower(),
+                                          rows_(0), 
                                           cols_(0), 
-                                          data_(nullptr),
-                                          ScratchMemoryBorrower()
+                                          data_(nullptr)
 
     {
         this->set_scratch_container(nullptr);
@@ -49,10 +49,10 @@ namespace matl
     *     RowMajorMatrix      Row major matrix object with specified rows and columns
     ***********************************************************************************************/ 
     template<class T>
-    RowMajorMatrix<T>::RowMajorMatrix(index_t rows, index_t cols) : rows_(rows), 
+    RowMajorMatrix<T>::RowMajorMatrix(index_t rows, index_t cols) : ScratchMemoryBorrower(),
+                                                                    rows_(rows), 
                                                                     cols_(cols),
-                                                                    data_(nullptr),
-                                                                    ScratchMemoryBorrower()
+                                                                    data_(nullptr)
     {
         this->set_external_mem(false);
 
@@ -83,10 +83,10 @@ namespace matl
     * the RowMajorMatrix destructor.
     ***********************************************************************************************/
     template<class T>   
-    RowMajorMatrix<T>::RowMajorMatrix(index_t rows, index_t cols, T* data) : rows_(rows), 
+    RowMajorMatrix<T>::RowMajorMatrix(index_t rows, index_t cols, T* data) : ScratchMemoryBorrower(true),
+                                                                             rows_(rows), 
                                                                              cols_(cols), 
-                                                                             data_(data),
-                                                                             ScratchMemoryBorrower(true)
+                                                                             data_(data)
     {
         this->set_external_mem(true);
         this->set_scratch_container(nullptr);
@@ -103,10 +103,10 @@ namespace matl
     **************************************************************************************************/
     template<class T>
     template<typename MAT>
-    RowMajorMatrix<T>::RowMajorMatrix(_MATRIX_<MAT> const& other) : rows_(other.rows()), 
+    RowMajorMatrix<T>::RowMajorMatrix(_MATRIX_<MAT> const& other) : ScratchMemoryBorrower(),
+                                                                    rows_(other.rows()), 
                                                                     cols_(other.cols()),
-                                                                    data_(nullptr),
-                                                                    ScratchMemoryBorrower()
+                                                                    data_(nullptr)
     {
         const index_t M = this->rows_;
         const index_t N = this->cols_;
@@ -117,8 +117,8 @@ namespace matl
         allocate(*this, M, N);
 
         // Copy data from the original matrix
-        for (index_t i = 1; i <= N; ++i)
-            for (index_t j = 1; j <= M; ++j)
+        for (index_t i = 1; i <= M; ++i)
+            for (index_t j = 1; j <= N; ++j)
                 (*this)(i,j) = other(i,j);
     } 
 
@@ -132,10 +132,10 @@ namespace matl
     *     other          RowMajorMatrix object to copy
     ***********************************************************************************************/ 
     template<class T>
-    RowMajorMatrix<T>::RowMajorMatrix(const RowMajorMatrix<T>& other) : rows_(other.rows_), 
+    RowMajorMatrix<T>::RowMajorMatrix(const RowMajorMatrix<T>& other) : ScratchMemoryBorrower(),
+                                                                        rows_(other.rows_), 
                                                                         cols_(other.cols_),
-                                                                        data_(nullptr),
-                                                                        ScratchMemoryBorrower()
+                                                                        data_(nullptr)
     {
         this->set_external_mem(false);
 
@@ -146,6 +146,34 @@ namespace matl
         const index_t N = this->rows_ * this->cols_;
         for (index_t i = 0; i < N; ++i)
             this->data_[i] = other.data_[i];
+    } 
+
+   /***********************************************************************************************
+    * RowMajorMatrix(RowMajorMatrix<T>&&)
+    * 
+    * Move constructor. Takes ownership of the other matrix's data without copying. If the data is
+    * borrowed from the MemoryManager, the ScratchContainer pairing is transferred to this matrix.
+    * The other matrix is left empty (0x0).
+    * 
+    * Parameters:
+    *     other          RowMajorMatrix object to move
+    ***********************************************************************************************/ 
+    template<class T>
+    RowMajorMatrix<T>::RowMajorMatrix(RowMajorMatrix<T>&& other) : ScratchMemoryBorrower(other.external_mem()),
+                                                                   rows_(other.rows_), 
+                                                                   cols_(other.cols_),
+                                                                   data_(other.data_)
+    {
+        // Transfer the ScratchContainer pairing if the memory is managed by the MemoryManager
+        if (other.get_scratch_container() != nullptr)
+            ScratchMemoryBorrower::operator=(static_cast<ScratchMemoryBorrower&&>(other));
+
+        // Nullify other matrix so the data is not deleted
+        other.data_   = nullptr;
+        other.rows_   = 0;
+        other.cols_   = 0;
+        other.scratch_ = nullptr;
+        other.set_external_mem(false);
     } 
 
 
@@ -195,12 +223,14 @@ namespace matl
     template<typename EXPR>
     RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (_EXPRESSION_<EXPR> const& expression)
     {
+        #ifdef MATL_DEBUG
         std::cout << "RowMajorMatrix<T>& operator= (_EXPRESSION_ const&)" << std::endl;
+        #endif
 
         // Dimension check debug flag:
         // Only allow dynamic allocation if the RowMajorMatrix has a size of 0. This is intended
         // to discourage repeated hidden reallocations 
-        #ifdef MATL_DIM_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if (  ((this->rows_ != expression.rows()) || (this->cols_ != expression.cols()))
             && (this->size() != 0) ) 
         {
@@ -316,7 +346,7 @@ namespace matl
         std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&&)" 
                     << std::endl;
         #endif
-        #ifdef MATL_DIM_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if (this->data_ != nullptr)
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
@@ -356,15 +386,15 @@ namespace matl
         this->rows_    = mat.rows_;
         this->cols_    = mat.cols_;
         this->set_external_mem(mat.external_mem());
+        #ifdef MATL_DEBUG
         std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&&) - data moved" << std::endl;
+        #endif
         
         // Invoke move assignment on the ScratchMemoryBorrower base class if the memory is managed by the MemoryManager
         if (mat.get_scratch_container() != nullptr)
         {
-            std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&&) - invoking ScratchMemoryBorrower move assignment..." << std::endl;
             //this->ScratchMemoryBorrower::operator=(static_cast<ScratchMemoryBorrower&&>(mat));
             ScratchMemoryBorrower::operator=(static_cast<ScratchMemoryBorrower&&>(mat));
-            std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&&) - ScratchMemoryBorrower move assignment complete" << std::endl;
         }
         else
             (*this).scratch_ = nullptr;
@@ -396,7 +426,7 @@ namespace matl
     template<class T2>
     RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T2>& mat)
     {
-        #ifdef MATL_DIM_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if (this->data_ != nullptr)
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
@@ -410,7 +440,9 @@ namespace matl
             }    
         #endif
 
+        #ifdef MATL_DEBUG
         std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (const RowMajorMatrix<T2>&) called" << std::endl;
+        #endif
 
         // Check for self assignment
         if (this!=&mat) this->copy(mat);
@@ -435,7 +467,7 @@ namespace matl
     template<typename MAT_T>
     RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (_MATRIX_<MAT_T>& mat)
     {
-        #ifdef MATL_DIM_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if (this->data_ != nullptr)
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
@@ -544,8 +576,16 @@ namespace matl
     RowMajorMatrix<T>& RowMajorMatrix<T>::operator/= (const T2 val)
     {
         const index_t N = this->size();
-        dtype reciprocal = 1.0 / val;
-        for (index_t i = 0; i < N; ++i) this->data_[i] *= reciprocal;
+        if constexpr (std::is_integral<dtype>::value)
+        {
+            // Integer division cannot be replaced with multiplication by a reciprocal
+            for (index_t i = 0; i < N; ++i) this->data_[i] /= val;
+        }
+        else
+        {
+            dtype reciprocal = 1.0 / val;
+            for (index_t i = 0; i < N; ++i) this->data_[i] *= reciprocal;
+        }
             
         return *this;
     } 
@@ -691,7 +731,7 @@ namespace matl
         // to discourage repeated hidden reallocations
         else
         {
-            #ifdef MATL_DIM_CHECK
+            #ifdef MATL_DIMENSION_CHECK
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
                 std::cerr << "Error in 'void RowMajorMatrix<T>::copy() (const Matrix<MAT_T>&)'"
@@ -709,8 +749,8 @@ namespace matl
         for (index_t ii=1; ii<(M+1); ii+=block)
             for (index_t jj=1; jj<(N+1); jj+=block)
             {
-                const index_t istop = branchless_min(ii+block, M);
-                const index_t jstop = branchless_min(jj+block, N);
+                const index_t istop = branchless_min(ii+block, M+1);
+                const index_t jstop = branchless_min(jj+block, N+1);
                 for (index_t i=ii; i!=istop; ++i)
                     for (index_t j=jj; j!=jstop; ++j)
                         (*this)(i,j) = mat(i,j);
@@ -750,7 +790,7 @@ namespace matl
         // Only allow dynamic allocation if the RowMajorMatrix has a size of 0. This is intended
         // to discourage repeated hidden reallocations
         
-        #ifdef MATL_DIM_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
         {
             std::cerr << "Error in 'void RowMajorMatrix<T>::copy() (const RowMajorMatrix<T2>&)'"
@@ -1145,32 +1185,31 @@ namespace matl
     template<class T>
     void RowMajorMatrix<T>::copy_memory_to_private()
     {
+        #ifdef MATL_DEBUG
         std::cout << "In RowMajorMatrix<T>::copy_memory_to_private()..." << std::endl;
+        #endif
         // Return if memory is not owned by memory manager
-        if (this->get_scratch_container() == nullptr) return;
-        std::cout << "Hello World!" << std::endl;
-        // Nullify the scratch container pointer
-        this->set_scratch_container(nullptr);
-        std::cout << "Scratch container nullified..." << std::endl;
+        ScratchContainer* scratch = this->get_scratch_container();
+        if (scratch == nullptr) return;
 
-        // Allocate new data array
-        T* new_data = new T[this->rows()*this->cols()];
+        // Save dimensions (free_memory nullifies the borrower, resetting them to 0)
+        const index_t rows = this->rows_;
+        const index_t cols = this->cols_;
+        const index_t N    = rows*cols;
 
-        std::cout << "Private data allocated..." << std::endl;
-
-        // Copy data from shared memory to new memory
-        const index_t N = this->size();
+        // Allocate new data array and copy data from shared memory to new memory
+        T* new_data = new T[N];
         for (index_t i = 0; i < N; ++i) {new_data[i] = this->data_[i];}
 
-        std::cout << "Data copied..." << std::endl;
+        // Free shared memory (unpairs this matrix from the container)
+        MemoryManager::get_memory_manager().free_memory(*scratch);
 
-        // Free shared memory
-        MemoryManager::get_memory_manager().free_memory(*this->scratch_);
-
-        std::cout << "Shared memory freed..." << std::endl;
-
-        // Assign new data array to object
+        // Assign privately owned data array to object
         this->data_ = new_data;
+        this->rows_ = rows;
+        this->cols_ = cols;
+        this->scratch_ = nullptr;
+        this->set_external_mem(false);
     }
 
    /***********************************************************************************************

@@ -35,9 +35,6 @@ namespace matl
 
         // Evaluate the expression to the transpose
         expr.eval(this->mat_);
-
-        // Call early destructor for temporary object
-        static_cast<MAO_&>(const_cast<_EXPRESSION_<MAO_>&>(expr)).~MAO_();
     } 
 
 

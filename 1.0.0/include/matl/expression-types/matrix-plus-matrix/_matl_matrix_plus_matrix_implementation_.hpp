@@ -47,9 +47,6 @@ namespace matl
     {
         MemoryManager::allocate(this->mat2_, expr2.rows(), expr2.cols());
         expr2.eval(this->mat2_);
-
-        // Call Destructor for temporary object
-        const_cast<MAO_2 &>(expr2).~MAO_2();
     }
 
    /**********************************************************************************************
@@ -72,9 +69,6 @@ namespace matl
     {
         MemoryManager::allocate(this->mat1_, expr1.rows(), expr1.cols());
         expr1.eval(this->mat1_);
-
-        // Call Destructor for temporary object
-        const_cast<MAO_1 &>(expr1).~MAO_1();
     }  
 
    /**********************************************************************************************
@@ -97,10 +91,6 @@ namespace matl
         MemoryManager::allocate(this->mat2_, expr2.rows(), expr2.cols());
         expr1.eval(this->mat1_);
         expr2.eval(this->mat2_);
-
-        // Call Destructor for temporary object
-        const_cast<MAO_1 &>(expr1).~MAO_1();
-        const_cast<MAO_2 &>(expr2).~MAO_2();
     } 
 
    /**********************************************************************************************
@@ -208,9 +198,9 @@ namespace matl
     template<typename MAT>
     constexpr bool _MATRIX_PLUS_MATRIX_<MAO1,MAO2>::unsafe_evaluation_target(_MATRIX_<MAT> const& target) const
     {
-        const bool branch1_unsafe = (matl::references_address(&target,this->mat1_) && transposed_matrix(this->mat1_) 
+        const bool branch1_unsafe = ((matl::references_address(&target,this->mat1_) && transposed_matrix(this->mat1_)) 
                                     || matl::unsafe_evaluation_target(target,this->mat1_));
-        const bool branch2_unsafe = (matl::references_address(&target,this->mat2_) && transposed_matrix(this->mat2_)
+        const bool branch2_unsafe = ((matl::references_address(&target,this->mat2_) && transposed_matrix(this->mat2_))
                                     || matl::unsafe_evaluation_target(target,this->mat2_));
         return (branch1_unsafe || branch2_unsafe);
     } 

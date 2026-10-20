@@ -16,12 +16,12 @@ namespace matl
     * MemoryManager::get_memory_manager().method() which is too cumbersome for the purpose of MATL
     * which is to provide a simple and intuitive interface for matrix operations.
     ***********************************************************************************************/
-    MemoryManager::MemoryManager() {}
+    inline MemoryManager::MemoryManager() {}
 
    /***********************************************************************************************
     * Destructor
     ***********************************************************************************************/
-    MemoryManager::~MemoryManager()
+    inline MemoryManager::~MemoryManager()
     {
         // Deallocate scratch memory (externally owned memory is not deleted)
         get_memory_manager().scratch_.clear();
@@ -34,23 +34,20 @@ namespace matl
     * Returns:
     *    Reference to the memory manager singleton for this thread
     ***********************************************************************************************/
-    MemoryManager& MemoryManager::get_memory_manager()
+    inline MemoryManager& MemoryManager::get_memory_manager()
     {
         if (memory_manager == nullptr)
-        {
             memory_manager = new MemoryManager();
-            memory_manager->scratch_.reserve(defaults::DEFAULT_NUM_SCRATCH_CONTAINERS);
-        }
         return *memory_manager;
     } 
 
    /***********************************************************************************************
-    * std::vector<ScratchContainer>& containers()
+    * std::deque<ScratchContainer>& containers()
     * 
     * Returns:
     *   Reference to the scratch memory containers
     ***********************************************************************************************/
-    std::vector<ScratchContainer>& MemoryManager::containers()
+    inline std::deque<ScratchContainer>& MemoryManager::containers()
     {return get_memory_manager().scratch_;}  
 
    /***********************************************************************************************
@@ -62,7 +59,7 @@ namespace matl
     *     scratch_array        ScratchContainer object to split
     *     size                 Size of the first scratch array after split
     ***********************************************************************************************/
-    void MemoryManager::split(ScratchContainer& scratch, index_t size)
+    inline void MemoryManager::split(ScratchContainer& scratch, index_t size)
     {
         #ifdef MATL_DEBUG
         std::cout << "In MemoryManager::split..." << std::endl;
@@ -124,7 +121,8 @@ namespace matl
         scratch.size_          = size;
         scratch.next_neighbor_ = new_scratch;
 
-        // Update new scratch array
+        // Update new scratch array (data must be set here, as a reused empty container has none)
+        new_scratch->data_          = &scratch.data_[size];
         new_scratch->prev_neighbor_ = &scratch;
         new_scratch->external_mem_  = scratch.external_mem();
         new_scratch->size_          = excess;
@@ -140,7 +138,7 @@ namespace matl
     * not deallocate memory or modify the number of ScratchContainer objects owned by the memory 
     * manager as this could invalidate iterators.
     ***********************************************************************************************/
-    void MemoryManager::merge_contiguous_unused()
+    inline void MemoryManager::merge_contiguous_unused()
     {
         #ifdef MATL_DEBUG
         std::cout << "In MemoryManager::merge_contiguous_unused..." << std::endl;
@@ -163,7 +161,7 @@ namespace matl
     * Parameters:
     *    size        Size (in bytes) of scratch memory to allocate
     ***********************************************************************************************/
-    ScratchContainer& MemoryManager::allocate_scratch(index_t size)
+    inline ScratchContainer& MemoryManager::allocate_scratch(index_t size)
     {
         #ifdef MATL_DEBUG
         std::cout << "In MemoryManager::allocate_scratch..." << std::endl;
@@ -211,10 +209,11 @@ namespace matl
         {
             if (container.size() == 0)
             {
-                // Add scratch memory
+                // Add scratch memory (externally owned, so it is never deleted by the MemoryManager)
                 container.nullify();
-                container.data_ = reinterpret_cast<std::byte*>(scratch);
-                container.size_ = nbytes;
+                container.data_         = reinterpret_cast<std::byte*>(scratch);
+                container.size_         = nbytes;
+                container.external_mem_ = true;
                 return container;
             }
         }
@@ -254,11 +253,13 @@ namespace matl
                 }
 
                 // Iterate through contiguous scratch arrays and nullify their borrowers
-                ScratchContainer& contig_scratch = container;
-                while (contig_scratch.next_neighbor() != nullptr)
+                for (ScratchContainer* contig = &container; contig != nullptr; contig = contig->next_neighbor())
                 {
-                    contig_scratch.borrower()->nullify_borrowed_memory();
-                    contig_scratch = *contig_scratch.next_neighbor();
+                    if (contig->borrower() != nullptr)
+                    {
+                        contig->borrower()->nullify_borrowed_memory();
+                        contig->borrower_ = nullptr;
+                    }
                 }
 
                 // Nullify all containers using this scratch memory
@@ -286,7 +287,7 @@ namespace matl
     * Returns:
     *     Reference to the reserved scratch memory container
     ***********************************************************************************************/
-    ScratchContainer& MemoryManager::reserve_scratch_memory(index_t size)
+    inline ScratchContainer& MemoryManager::reserve_scratch_memory(index_t size)
     {
         #ifdef MATL_DEBUG
         std::cout << "In MemoryManager::reserve_scratch_memory..." << std::endl;
@@ -297,13 +298,19 @@ namespace matl
         index_t block_size = MemoryManager::SCRATCH_BLOCK_SIZE;
 
         // Check if any containers are large enough
+        #ifdef MATL_DEBUG
         std::cout << "Requested size: " << size << std::endl;
+        #endif
         for (ScratchContainer& container : get_memory_manager().containers())
         {
+            #ifdef MATL_DEBUG
             std::cout << "Container size: " << container.size() << std::endl;
+            #endif
             if (container.size()-container.bytes_used() >= size)
             {
+                #ifdef MATL_DEBUG
                 std::cout << "Viable container found! bytes used: " << container.bytes_used() << std::endl;
+                #endif
                 // Split container if necessary
                 if (container.bytes_used() != 0)
                 {
@@ -369,7 +376,7 @@ namespace matl
     * Parameters:
     *     scratch_array        ScratchContainer object to free memory from
     ***********************************************************************************************/
-    void MemoryManager::free_memory(ScratchContainer& scratch)
+    inline void MemoryManager::free_memory(ScratchContainer& scratch)
     {
         #ifdef MATL_DEBUG
         std::cout << "In MemoryManager::free_memory..." << std::endl;
@@ -394,7 +401,7 @@ namespace matl
     * Delete all scratch memory from the memory manager. If any memory is being borrowed, it will
     * be copied to privately owned memory.
     ***********************************************************************************************/
-    void MemoryManager::delete_scratch_memory()
+    inline void MemoryManager::delete_scratch_memory()
     {
         #ifdef MATL_DEBUG
         std::cout << "In MemoryManager::delete_scratch_memory..." << std::endl;
@@ -438,7 +445,7 @@ namespace matl
     *     container        ScratchContainer object to assign borrower to
     *     borrower         ScratchMemoryBorrower object to assign to ScratchContainer
     ***********************************************************************************************/
-    void MemoryManager::assign_borrower(ScratchContainer*      container, 
+    inline void MemoryManager::assign_borrower(ScratchContainer*      container, 
                                         ScratchMemoryBorrower* borrower)
     {
         #ifdef MATL_DEBUG
@@ -462,8 +469,8 @@ namespace matl
             return;
         }
 
-        // If the borrower is already the borrower, return
-        if ((container->borrower() == borrower) && (borrower->scratch_ != container)) return;
+        // If the pairing already exists, return
+        if ((container->borrower() == borrower) && (borrower->scratch_ == container)) return;
 
         // If the scratch array is already being used, unpair it from its borrower
         if (container->borrower() != nullptr)
@@ -473,7 +480,9 @@ namespace matl
         // containers and update the pointers.
         if (borrower->get_scratch_container() != nullptr) // (Maybe this should be disallowed)
         {    
+            #ifdef MATL_DEBUG
             std::cout << "borrower->get_scratch_container() != nullptr" << std::endl;
+            #endif
             ScratchContainer& old_container = *borrower->get_scratch_container();
 
             index_t    old_bytes_used = old_container.bytes_used();
@@ -531,7 +540,7 @@ namespace matl
     * Returns:
     *     True if memory manager is enabled, false otherwise
     ***********************************************************************************************/
-    bool MemoryManager::enabled() const
+    inline bool MemoryManager::enabled() const
     {
         return get_memory_manager().ENABLED;
     } 
@@ -542,7 +551,7 @@ namespace matl
     *
     * Enable memory manager.
     ***********************************************************************************************/
-    void MemoryManager::enable()
+    inline void MemoryManager::enable()
     {
         get_memory_manager().ENABLED = true;
     }
@@ -552,7 +561,7 @@ namespace matl
     * 
     * Disable memory manager.
     ***********************************************************************************************/
-    void MemoryManager::disable()
+    inline void MemoryManager::disable()
     {
         get_memory_manager().ENABLED = false;
     }  
@@ -563,10 +572,14 @@ namespace matl
     * 
     * Restore default settings for memory manager.
     ***********************************************************************************************/
-    void MemoryManager::restore_defaults()
+    inline void MemoryManager::restore_defaults()
     {
         MemoryManager::ENABLED = defaults::ENABLE_MEMORY_MANAGER;
-        this->scratch_.resize(defaults::DEFAULT_NUM_SCRATCH_CONTAINERS);
+
+        // Only grow the container list. Shrinking would destroy containers that may still be
+        // lending memory or referenced as neighbors.
+        if (this->scratch_.size() < defaults::DEFAULT_NUM_SCRATCH_CONTAINERS)
+            this->scratch_.resize(defaults::DEFAULT_NUM_SCRATCH_CONTAINERS);
         MemoryManager::SCRATCH_BLOCK_SIZE = defaults::SCRATCH_BLOCK_SIZE;
     }  
 
@@ -628,7 +641,7 @@ namespace matl
     *     cols          Number of columns in matrix
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    void MemoryManager::allocate(FixedSizeRowMajorMatrix<T, M, N>& matrix, index_t rows, index_t cols)
+    void MemoryManager::allocate(FixedSizeRowMajorMatrix<T, M, N>& /*matrix*/, index_t rows, index_t cols)
     {
         // Check if requested size is the same as the size of the matrix
         if (rows != M || cols != N)

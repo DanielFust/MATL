@@ -6,13 +6,13 @@ namespace matl
    /***********************************************************************************************
     * Default constructor 
     ***********************************************************************************************/ 
-    ScratchMemoryBorrower::ScratchMemoryBorrower() : scratch_(nullptr), external_mem_(false) 
+    inline ScratchMemoryBorrower::ScratchMemoryBorrower() : scratch_(nullptr), external_mem_(false) 
     {};
 
    /***********************************************************************************************
     * External memory flag constructor 
     ***********************************************************************************************/
-    ScratchMemoryBorrower::ScratchMemoryBorrower(bool external_mem) : scratch_(nullptr), 
+    inline ScratchMemoryBorrower::ScratchMemoryBorrower(bool external_mem) : scratch_(nullptr), 
                                                                       external_mem_(external_mem) 
     {};
 
@@ -25,7 +25,7 @@ namespace matl
     * Parameters:
     *   other.......other scratch memory borrower
     ***********************************************************************************************/
-    ScratchMemoryBorrower::ScratchMemoryBorrower(ScratchMemoryBorrower&& other) : 
+    inline ScratchMemoryBorrower::ScratchMemoryBorrower(ScratchMemoryBorrower&& other) : 
         scratch_(other.scratch_),
         external_mem_(other.external_mem_)
     {
@@ -52,7 +52,7 @@ namespace matl
     * Parameters: 
     *   other.......other scratch memory borrower
     ***********************************************************************************************/ 
-    ScratchMemoryBorrower& ScratchMemoryBorrower::operator=(ScratchMemoryBorrower&& other)
+    inline ScratchMemoryBorrower& ScratchMemoryBorrower::operator=(ScratchMemoryBorrower&& other)
     {
         #ifdef MATL_DEBUG
         std::cout << "ScratchMemoryBorrower::operator=(ScratchMemoryBorrower&&) called" << std::endl;
@@ -87,7 +87,7 @@ namespace matl
     * Returns:
     *     Pointer to the scratch memory container this object is borrowing from
     ***********************************************************************************************/
-   ScratchContainer* ScratchMemoryBorrower::get_scratch_container()
+   inline ScratchContainer* ScratchMemoryBorrower::get_scratch_container()
    {return this->scratch_;};
    
  
@@ -96,7 +96,7 @@ namespace matl
     * 
     * Invokes the MemoryManager to assigns a pairing with the ScratchContainer
     ***********************************************************************************************/
-    void ScratchMemoryBorrower::set_scratch_container(ScratchContainer* scratch)
+    inline void ScratchMemoryBorrower::set_scratch_container(ScratchContainer* scratch)
     {MemoryManager::get_memory_manager().assign_borrower(scratch, this);};
 
    /***********************************************************************************************
@@ -106,7 +106,7 @@ namespace matl
     * any size data to 0 to prevent undefined behavior). This method is called whenever the
     * lending ScratchContainer is deallocated, destroyed or the memory is freed.
     ***********************************************************************************************/
-    void ScratchMemoryBorrower::nullify_borrowed_memory()
+    inline void ScratchMemoryBorrower::nullify_borrowed_memory()
     {this->scratch_ = nullptr;}
 
    /***********************************************************************************************
@@ -117,7 +117,7 @@ namespace matl
     * Parameters:
     *    external_mem........external memory flag value
     ***********************************************************************************************/
-    void ScratchMemoryBorrower::set_external_mem(bool external_mem)
+    inline void ScratchMemoryBorrower::set_external_mem(bool external_mem)
     {this->external_mem_ = external_mem;};
 
    /***********************************************************************************************
@@ -126,7 +126,7 @@ namespace matl
     * Returns:
     *     True if memory is externally owned, false otherwise
     ***********************************************************************************************/
-    bool ScratchMemoryBorrower::external_mem() const
+    inline bool ScratchMemoryBorrower::external_mem() const
     {return this->external_mem_;};
 
    /***********************************************************************************************
@@ -134,7 +134,7 @@ namespace matl
     * 
     * Copies the data from shared scratch memory to newly allocated array owned by the borrower
     ***********************************************************************************************/ 
-    void ScratchMemoryBorrower::copy_memory_to_private()
+    inline void ScratchMemoryBorrower::copy_memory_to_private()
     {this->scratch_ = nullptr;};
 }
 #endif

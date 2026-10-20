@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <complex>
 #include <vector>
+#include <deque>
 #include <cstddef>
 
 // Namespace type definitions and settings
@@ -50,17 +51,9 @@ namespace matl
 // Utilities (Must be included after Type Traits but before implementations)
 #include "./matl/utilities/_matl_utilities_.hpp"
 
-// MemoryManager instance (memory_manager is a threadlocal singleton)
-namespace matl 
-{
-    thread_local MemoryManager* MemoryManager::memory_manager = nullptr;
-
-    // Set static defaults for the MemoryManager
-    thread_local bool    MemoryManager::ENABLED                      = defaults::ENABLE_MEMORY_MANAGER;
-    thread_local index_t MemoryManager::SCRATCH_BLOCK_SIZE           = defaults::SCRATCH_BLOCK_SIZE;
-    thread_local bool    MemoryManager::CACHE_TEMPORARY_MATRICES     = defaults::ENABLE_MEMORY_MANAGER;
-    thread_local bool    MemoryManager::ALLOCATE_MATRICES_IN_SCRATCH = defaults::ALLOCATE_MATRICES_IN_SCRATCH;
-}
+// MemoryManager instance (memory_manager is a threadlocal singleton). The singleton pointer and
+// static settings are defined as inline variables in the MemoryManager class prototype so that
+// matl.hpp can be included in multiple translation units.
 
 // Operators
 #include "./matl/operators/_matl_operators_.hpp"

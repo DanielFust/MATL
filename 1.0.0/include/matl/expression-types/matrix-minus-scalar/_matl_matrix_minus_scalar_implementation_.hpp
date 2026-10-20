@@ -40,9 +40,6 @@ namespace matl
     {
         MemoryManager::allocate(this->mat_, expr.rows(), expr.cols());
         expr.eval(this->mat_);
-
-        // Call destructor on temporary object
-        const_cast<MAO_ &>(expr).~MAO_();
     } 
     
    /***********************************************************************************************

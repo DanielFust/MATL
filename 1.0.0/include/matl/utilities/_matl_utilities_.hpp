@@ -51,7 +51,7 @@ namespace matl
 
     // Matrix specialization (bottom of recursion)
     template<typename MAT1, typename MAT2>
-    constexpr bool unsafe_evaluation_target(_MATRIX_<MAT1> const& target, _MATRIX_<MAT2> const& other)
+    constexpr bool unsafe_evaluation_target(_MATRIX_<MAT1> const& /*target*/, _MATRIX_<MAT2> const& /*other*/)
     {return false;}
 
 
@@ -68,7 +68,7 @@ namespace matl
     *     'false' otherwise
     *************************************************************************************************/
     template<typename T>
-    constexpr bool transposed_matrix(T const& obj)
+    constexpr bool transposed_matrix(T const& /*obj*/)
     {return is_transposed<T>::value;}
 
 
