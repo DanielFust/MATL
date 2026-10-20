@@ -152,8 +152,8 @@ namespace matl
     struct member_type< _MATRIX_TIMES_SCALAR_<MAO, T> >
     {
         typedef typename _MATRIX_TIMES_SCALAR_<MAO, T>::dtype       dtype;
-        typedef          _MATRIX_TIMES_SCALAR_<MAO, T>::type const&                   elementwise_expression;
-        typedef typename is_fixed_size< _MATRIX_TIMES_SCALAR_<MAO, T> >::matrix_type  matmul_expression;
+        typedef          _MATRIX_TIMES_SCALAR_<MAO, T> const&                        elementwise_expression;
+        typedef typename is_fixed_size< _MATRIX_TIMES_SCALAR_<MAO, T> >::matrix_type matmul_expression;
     };
 
     // Matrix-Scalar Division class

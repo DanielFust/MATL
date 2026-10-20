@@ -14,6 +14,9 @@ namespace matl
     {
       public:  
 
+        // Data type
+        typedef typename type_traits<FS>::dtype dtype;
+
         // Row Getter
         static constexpr index_t ROWS = FS::ROWS;
 

@@ -56,6 +56,9 @@
         // Nullify previous neighbors using contiguous memory
         void nullify_prev_neighbors();
 
+        // Point neighbors and borrower at this object's address (used after a move)
+        void repoint_relationships();
+
       public:
 
         // Default Constructor
@@ -71,7 +74,7 @@
         ScratchContainer(const ScratchContainer& scratch_array);
 
         // Move Constructor
-        ScratchContainer(ScratchContainer&& scratch_array);
+        ScratchContainer(ScratchContainer&& scratch_array) noexcept;
 
         // Destructor
         ~ScratchContainer();
@@ -80,7 +83,7 @@
         ScratchContainer& operator=(const ScratchContainer& scratch_array);
 
         // Move Assignment Operator
-        ScratchContainer& operator=(ScratchContainer&& scratch_array);
+        ScratchContainer& operator=(ScratchContainer&& scratch_array) noexcept;
 
         // Get the size of the scratch array
         index_t size() const;

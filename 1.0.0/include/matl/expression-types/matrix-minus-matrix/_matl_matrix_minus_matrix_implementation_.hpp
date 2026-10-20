@@ -29,7 +29,13 @@ namespace matl
     _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::_MATRIX_MINUS_MATRIX_(MAO_1 const& mat1, 
                                                             MAO_2 const& mat2) : mat1_(unqualified_cast(mat1)), 
                                                                                  mat2_(unqualified_cast(mat2)) 
-    {std::cout << "_MATRIX_MINUS_MATRIX_ elementwise - elementwise Constructor" << std::endl;} 
+    {
+        #ifdef MATL_DEBUG
+        #ifdef MATL_DEBUG
+        std::cout << "_MATRIX_MINUS_MATRIX_ elementwise - elementwise Constructor" << std::endl;
+        #endif
+        #endif
+    }
 
 
    /***********************************************************************************************
@@ -55,12 +61,11 @@ namespace matl
                                                             MAO_2 const& expr2) : 
         mat1_(unqualified_cast(mat1)) 
     {
+        #ifdef MATL_DEBUG
         std::cout << "_MATRIX_MINUS_MATRIX_ elementwise - non-elementwise Constructor" << std::endl;
+        #endif
         MemoryManager::allocate(this->mat2_,expr2.rows(), expr2.cols());
         expr2.eval(mat2_);
-
-        // Call destructors on temporary objects
-        const_cast<MAO_2 &>(expr2).~MAO_2();
     } 
 
 
@@ -87,12 +92,11 @@ namespace matl
                                                             MAO_2 const& mat2) : 
         mat2_(unqualified_cast(mat2))
     {
+        #ifdef MATL_DEBUG
         std::cout << "_MATRIX_MINUS_MATRIX_ non-elementwise - elementwise Constructor" << std::endl;
+        #endif
         MemoryManager::allocate(this->mat1_, expr1.rows(), expr1.cols());
         expr1.eval(this->mat1_);
-
-        // Call destructors on temporary objects
-        const_cast<MAO_1 &>(expr1).~MAO_1();
     } 
 
    /***********************************************************************************************
@@ -116,15 +120,13 @@ namespace matl
     _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::_MATRIX_MINUS_MATRIX_(MAO_1 const& expr1, 
                                                             MAO_2 const& expr2)
     {
+        #ifdef MATL_DEBUG
         std::cout << "_MATRIX_MINUS_MATRIX_ non-elementwise - non-elementwise Constructor" << std::endl;
+        #endif
         MemoryManager::allocate(this->mat1_, expr1.rows(), expr1.cols());
         MemoryManager::allocate(this->mat2_, expr2.rows(), expr2.cols());
         expr1.eval(this->mat1_);
         expr2.eval(this->mat2_);
-
-        // Call destructors on temporary objects
-        const_cast<MAO_1 &>(expr1).~MAO_1();
-        const_cast<MAO_2 &>(expr2).~MAO_2();
     } 
     
 

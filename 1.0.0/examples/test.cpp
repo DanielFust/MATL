@@ -79,6 +79,7 @@ int main()
     Matrix<dtype> C(m,n);
     */
     
+    
     Matrix<dtype,m,n> A;
     Matrix<dtype,m,n> B;
     Matrix<dtype,m,n> C;
@@ -86,13 +87,27 @@ int main()
 
     A = a;
     B = b;
+    C = a;
 
-    //C = a + A + B - b - B;
-    //C = A+B*A-B;
-    C = A;
-    C = B+A + transpose(A*B+C);
-    //C = A*b;
-    //C = (A+A)*(A-B);
+    // Zero temporary matrices
+    C = a + A*2 + B - b - B/2 + 4*C;
+
+    // One temporary matrix
+    C = A + B*A - B;
+    
+    // Zero temporary matrices
+    C = A*B;
+
+    // One temporary matrix
+    C = A*C;
+    
+    // One temporary matrix
+    C = B + A + transpose(A*B+C);
+
+    // Zero temporary matrices
+    C = transpose(A+B);
+    
+    // 
    
     std::cout << "Memory Manager Enabled: " << MemoryManager::get_memory_manager().enabled() << std::endl;
     std::cout << "Number of Scratch Containers: " << MemoryManager::get_memory_manager().containers().size() << std::endl;
@@ -103,10 +118,7 @@ int main()
                   << std::endl;
     }
     
-    //C = A-a;
-    //C = a-A;
-    //C = matl::_SCALAR_MINUS_MATRIX_<dtype, RowMajorMatrix<dtype> >(a,A);
-    //matl::_SCALAR_MINUS_MATRIX_<dtype, RowMajorMatrix<dtype> > D(a,A);
+    
 
     for (index_t i = 1; i <= m; i++)
     {

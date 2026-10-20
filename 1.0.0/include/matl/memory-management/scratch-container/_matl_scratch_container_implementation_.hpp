@@ -10,28 +10,27 @@ namespace matl
    /***********************************************************************************************
     * Default Constructor
     ***********************************************************************************************/
-    ScratchContainer::ScratchContainer() : size_(0), 
-                                           bytes_used_(0), 
-                                           borrower_(nullptr), 
-                                           prev_neighbor_(nullptr), 
-                                           next_neighbor_(nullptr),
-                                           external_mem_(false)
+    inline ScratchContainer::ScratchContainer() : data_(nullptr),
+                                                  size_(0), 
+                                                  bytes_used_(0), 
+                                                  prev_neighbor_(nullptr), 
+                                                  next_neighbor_(nullptr),
+                                                  external_mem_(false),
+                                                  borrower_(nullptr)
     {}
     
 
    /***********************************************************************************************
     * Sized Constructor
     ***********************************************************************************************/ 
-    ScratchContainer::ScratchContainer(index_t size) : size_(size), 
-                                                       bytes_used_(0), 
-                                                       borrower_(nullptr), 
-                                                       prev_neighbor_(nullptr), 
-                                                       next_neighbor_(nullptr),
-                                                       external_mem_(false)
-    {
-        // Allocate memory
-        data_ = new std::byte[size_];
-    }
+    inline ScratchContainer::ScratchContainer(index_t size) : data_(new std::byte[size]),
+                                                              size_(size), 
+                                                              bytes_used_(0), 
+                                                              prev_neighbor_(nullptr), 
+                                                              next_neighbor_(nullptr),
+                                                              external_mem_(false),
+                                                              borrower_(nullptr)
+    {}
 
    /***********************************************************************************************
     * Copy Constructor
@@ -41,16 +40,14 @@ namespace matl
     * Parameters:
     *     other        ScratchContainer object to copy
     ***********************************************************************************************/
-    ScratchContainer::ScratchContainer(const ScratchContainer& other) : size_(other.size_), 
-                                                                        bytes_used_(0), 
-                                                                        borrower_(nullptr), 
-                                                                        prev_neighbor_(nullptr), 
-                                                                        next_neighbor_(nullptr),
-                                                                        external_mem_(false)
-    {
-        // Allocate memory
-        data_ = new std::byte[size_];
-    }  
+    inline ScratchContainer::ScratchContainer(const ScratchContainer& other) : data_(new std::byte[other.size_]),
+                                                                               size_(other.size_), 
+                                                                               bytes_used_(0), 
+                                                                               prev_neighbor_(nullptr), 
+                                                                               next_neighbor_(nullptr),
+                                                                               external_mem_(false),
+                                                                               borrower_(nullptr)
+    {}  
 
 
    /***********************************************************************************************
@@ -59,15 +56,16 @@ namespace matl
     * Parameters:
     *     other        ScratchContainer object to move 
     ***********************************************************************************************/
-    ScratchContainer::ScratchContainer(ScratchContainer&& other) : size_(other.size_), 
-                                                                   bytes_used_(other.bytes_used_), 
-                                                                   borrower_(other.borrower_), 
-                                                                   prev_neighbor_(other.prev_neighbor_), 
-                                                                   next_neighbor_(other.next_neighbor_),
-                                                                   external_mem_(other.external_mem_)
+    inline ScratchContainer::ScratchContainer(ScratchContainer&& other) noexcept : data_(other.data_),
+                                                                                   size_(other.size_), 
+                                                                                   bytes_used_(other.bytes_used_), 
+                                                                                   prev_neighbor_(other.prev_neighbor_), 
+                                                                                   next_neighbor_(other.next_neighbor_),
+                                                                                   external_mem_(other.external_mem_),
+                                                                                   borrower_(other.borrower_)
     {
-        // Move data
-        this->data_ = other.data_;
+        // Point neighbors and borrower at the new address
+        this->repoint_relationships();
 
         // Reset source
         other.nullify();
@@ -83,19 +81,19 @@ namespace matl
     *     data         Pointer to preallocated memory
     *     size         Size of preallocated memory
     ***********************************************************************************************/
-    ScratchContainer::ScratchContainer(std::byte* data, index_t size) : data_(data), 
-                                                                        size_(size), 
-                                                                        bytes_used_(0), 
-                                                                        borrower_(nullptr), 
-                                                                        prev_neighbor_(nullptr), 
-                                                                        next_neighbor_(nullptr),
-                                                                        external_mem_(true)
+    inline ScratchContainer::ScratchContainer(std::byte* data, index_t size) : data_(data), 
+                                                                               size_(size), 
+                                                                               bytes_used_(0), 
+                                                                               prev_neighbor_(nullptr), 
+                                                                               next_neighbor_(nullptr),
+                                                                               external_mem_(true),
+                                                                               borrower_(nullptr)
     {} 
 
    /***********************************************************************************************
     * Destructor
     ***********************************************************************************************/ 
-    ScratchContainer::~ScratchContainer()
+    inline ScratchContainer::~ScratchContainer()
     {
         // If the borrowing object has not been deleted, notify it so it can copy the data
         if (borrower_ != nullptr) 
@@ -166,7 +164,7 @@ namespace matl
     * Returns:
     *     Reference to this object
     ***********************************************************************************************/
-    ScratchContainer& ScratchContainer::operator=(const ScratchContainer& other)
+    inline ScratchContainer& ScratchContainer::operator=(const ScratchContainer& other)
     {
         // Copy info
         this->size_          = other.size_;
@@ -200,8 +198,11 @@ namespace matl
     * Returns:
     *     Reference to this object
     ***********************************************************************************************/
-    ScratchContainer& ScratchContainer::operator=(ScratchContainer&& other)
+    inline ScratchContainer& ScratchContainer::operator=(ScratchContainer&& other) noexcept
     {
+        // Check for self assignment
+        if (this == &other) return *this;
+
         // Move info
         this->size_          = other.size_;
         this->bytes_used_    = other.bytes_used_;
@@ -212,6 +213,9 @@ namespace matl
 
         // Move data
         this->data_ = other.data_;
+
+        // Point neighbors and borrower at the new address
+        this->repoint_relationships();
 
         // Reset source
         other.nullify();
@@ -225,7 +229,7 @@ namespace matl
     * Returns:
     *     size of scratch array
     ***********************************************************************************************/ 
-    index_t ScratchContainer::size() const
+    inline index_t ScratchContainer::size() const
     {return this->size_;}
 
    /***********************************************************************************************
@@ -234,7 +238,7 @@ namespace matl
     * Returns:
     *     The number of bytes in use
     ***********************************************************************************************/ 
-    index_t ScratchContainer::bytes_used() const
+    inline index_t ScratchContainer::bytes_used() const
     {return this->bytes_used_;}
 
    /***********************************************************************************************
@@ -243,7 +247,7 @@ namespace matl
     * Returns:
     *     'True' if the memory is externally owned, 'False' otherwise
     ***********************************************************************************************/ 
-    bool ScratchContainer::external_mem() const
+    inline bool ScratchContainer::external_mem() const
     {return this->external_mem_;} 
 
    /***********************************************************************************************
@@ -252,7 +256,7 @@ namespace matl
     * Returns:
     *     Pointer to the raw byte array
     ***********************************************************************************************/ 
-    std::byte* ScratchContainer::data() const
+    inline std::byte* ScratchContainer::data() const
     {return this->data_;}
 
 
@@ -262,7 +266,7 @@ namespace matl
     * Returns:
     *     Pointer to container for array that is contiguous in memory preceding data_ pointer
     ***********************************************************************************************/
-    ScratchContainer* ScratchContainer::prev_neighbor()
+    inline ScratchContainer* ScratchContainer::prev_neighbor()
     {return this->prev_neighbor_;}
 
    /***********************************************************************************************
@@ -271,7 +275,7 @@ namespace matl
     * Returns:
     *     Pointer to container for array that is contiguous in memory following data_ pointer
     ***********************************************************************************************/
-    ScratchContainer* ScratchContainer::next_neighbor()
+    inline ScratchContainer* ScratchContainer::next_neighbor()
     {return this->next_neighbor_;}
 
 
@@ -281,7 +285,7 @@ namespace matl
     * Returns:
     *     Pointer to the object matrix using the scratch memory
     ***********************************************************************************************/
-    ScratchMemoryBorrower* ScratchContainer::borrower() const
+    inline ScratchMemoryBorrower* ScratchContainer::borrower() const
     {return this->borrower_;}
     
    
@@ -292,7 +296,7 @@ namespace matl
     * 
     * Sets pointer to ScratchContainer with contiguous data preceding this array's data
     ***********************************************************************************************/
-    void ScratchContainer::set_prev_neighbor(ScratchContainer* prev)
+    inline void ScratchContainer::set_prev_neighbor(ScratchContainer* prev)
     {this->prev_neighbor_ = prev;}
 
    /***********************************************************************************************
@@ -300,15 +304,15 @@ namespace matl
     * 
     * Sets pointer to ScratchContainer with contiguous data following this array's data
     ***********************************************************************************************/
-    void ScratchContainer::set_next_neighbor(ScratchContainer* next)
-    {this->prev_neighbor_ = next;} 
+    inline void ScratchContainer::set_next_neighbor(ScratchContainer* next)
+    {this->next_neighbor_ = next;} 
 
    /***********************************************************************************************
     * void set_borrower(ScratchMemoryBorrower* borrower) 
     * 
     * Sets pointer to object using the scratch memory.
     ***********************************************************************************************/
-    void ScratchContainer::set_borrower(ScratchMemoryBorrower* borrower) 
+    inline void ScratchContainer::set_borrower(ScratchMemoryBorrower* borrower) 
     {
         MemoryManager& manager = MemoryManager::get_memory_manager();
         manager.assign_borrower(this, borrower);   
@@ -325,7 +329,7 @@ namespace matl
     *    borrower        Pointer to object using the scratch memory 
     *    size            Number of bytes required by the borrower
     ***********************************************************************************************/
-    void ScratchContainer::set_borrower(ScratchMemoryBorrower* borrower, index_t size)
+    inline void ScratchContainer::set_borrower(ScratchMemoryBorrower* borrower, index_t size)
     {
         // Check if ScratchContainer is large enough
         if (size > this->size_)
@@ -340,19 +344,33 @@ namespace matl
 
         // Set bytes used
         this->bytes_used_ = size;       
-    } 
+    }
+
+
+   /***********************************************************************************************
+    * void repoint_relationships()
+    *
+    * After a move, points this container's neighbors and borrower back at this object's address
+    * so that no raw pointer is left referencing the moved-from container.
+    ***********************************************************************************************/
+    inline void ScratchContainer::repoint_relationships()
+    {
+        if (this->prev_neighbor_ != nullptr) this->prev_neighbor_->next_neighbor_ = this;
+        if (this->next_neighbor_ != nullptr) this->next_neighbor_->prev_neighbor_ = this;
+        if (this->borrower_      != nullptr) this->borrower_->scratch_            = this;
+    }
 
 
    /***********************************************************************************************
     * void nullify()
-    * 
+    *
     * Resets the scratch array to an empty state. This does not deallocate or free memory.
     * 
     * Note: This method should be called judiciously as it invalidates pointers without dealing 
     *       with the memory they point to, which can lead to memory leaks if not handled properly.
     *       ONLY CALL THIS METHOD IF THE MEMORY IS ALREADY ACCOUNTED FOR!
     ***********************************************************************************************/
-    void ScratchContainer::nullify()
+    inline void ScratchContainer::nullify()
     {   
         // Reset data
         this->data_ = nullptr;
@@ -380,7 +398,7 @@ namespace matl
     * 
     * Combines all scratch arrays which are contiguous in memory with this array and unused.
     ***********************************************************************************************/
-    void ScratchContainer::merge_contiguous_unused()
+    inline void ScratchContainer::merge_contiguous_unused()
     {
         #ifdef MATL_DEBUG
         std::cout << "In ScratchContainer::merge_contiguous_unused..." << std::endl;
@@ -399,7 +417,7 @@ namespace matl
     * Combines all preceding scratch arrays which are contiguous in memory with this array and 
     * unused.
     ***********************************************************************************************/ 
-    void ScratchContainer::merge_prev_unused()
+    inline void ScratchContainer::merge_prev_unused()
     {
         #ifdef MATL_DEBUG
         std::cout << "In ScratchContainer::merge_prev_unused..." << std::endl;
@@ -419,6 +437,10 @@ namespace matl
                 this->size_ += prev.size();
                 this->data_ =  prev.data_;
 
+                // Relink the chain around the absorbed neighbor
+                this->prev_neighbor_ = prev.prev_neighbor_;
+                if (this->prev_neighbor_ != nullptr) this->prev_neighbor_->next_neighbor_ = this;
+
                 // Reset previous neighbor
                 prev.nullify();
             }//if (prev.bytes_used() == 0)
@@ -431,7 +453,7 @@ namespace matl
     * Combines all following scratch arrays which are contiguous in memory with this array and 
     * unused.
     ***********************************************************************************************/ 
-    void ScratchContainer::merge_next_unused()
+    inline void ScratchContainer::merge_next_unused()
     {
         #ifdef MATL_DEBUG
         std::cout << "In ScratchContainer::merge_next_unused..." << std::endl;
@@ -447,8 +469,12 @@ namespace matl
                 // Recursive merge of next neighbors
                 next.merge_next_unused();
 
-                // Join contiguous unused scratch arrays (Only size needs to be updated here)
+                // Join contiguous unused scratch arrays (data pointer is unchanged)
                 this->size_ += next.size();
+
+                // Relink the chain around the absorbed neighbor
+                this->next_neighbor_ = next.next_neighbor_;
+                if (this->next_neighbor_ != nullptr) this->next_neighbor_->prev_neighbor_ = this;
 
                 // Reset next neighbor
                 next.nullify();
@@ -461,7 +487,7 @@ namespace matl
     * 
     * Nullifies all contiguous neighbors
     ***********************************************************************************************/
-    void ScratchContainer::nullify_neighbors()
+    inline void ScratchContainer::nullify_neighbors()
     {
         this->nullify_prev_neighbors();
         this->nullify_next_neighbors();
@@ -472,7 +498,7 @@ namespace matl
     *  
     * Nullifies all contiguous neighbors following this scratch array
     * **********************************************************************************************/
-    void ScratchContainer::nullify_next_neighbors()
+    inline void ScratchContainer::nullify_next_neighbors()
     {
         // Next neighbor
         ScratchContainer* next_ptr = this->next_neighbor();
@@ -492,7 +518,7 @@ namespace matl
     * 
     * Nullifies all contiguous neighbors preceding this scratch array
     ***********************************************************************************************/
-    void ScratchContainer::nullify_prev_neighbors()
+    inline void ScratchContainer::nullify_prev_neighbors()
     {
         // Previous neighbor
         ScratchContainer* prev_ptr = this->prev_neighbor();

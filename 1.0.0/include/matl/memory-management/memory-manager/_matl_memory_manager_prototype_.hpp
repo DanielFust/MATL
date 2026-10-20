@@ -17,13 +17,15 @@ namespace matl
     {
       private:
         // Singleton instance
-        static thread_local MemoryManager* memory_manager;
+        static inline thread_local MemoryManager* memory_manager = nullptr;
 
         // Memory manager enabled or disabled
-        static thread_local bool ENABLED;
+        static inline thread_local bool ENABLED = defaults::ENABLE_MEMORY_MANAGER;
 
-        // Scratch memory size
-        std::vector<ScratchContainer> scratch_;
+        // Scratch memory containers. A std::deque is used (rather than std::vector) because
+        // ScratchContainers and ScratchMemoryBorrowers hold raw pointers to the containers.
+        // std::deque::emplace_back does not invalidate references to existing elements.
+        std::deque<ScratchContainer> scratch_;
 
       protected:  
         // Constructor
@@ -47,7 +49,7 @@ namespace matl
         static MemoryManager& get_memory_manager();
 
         // Get scratch memory containers
-        std::vector<ScratchContainer>& containers();
+        std::deque<ScratchContainer>& containers();
 
         // Merge unused contiguous scratch arrays
         void merge_contiguous_unused();
@@ -130,13 +132,13 @@ namespace matl
         /**************** Settings *****************/
 
         // Cache temporary matrices
-        static thread_local bool    CACHE_TEMPORARY_MATRICES;
+        static inline thread_local bool    CACHE_TEMPORARY_MATRICES     = defaults::ENABLE_MEMORY_MANAGER;
 
         // Allocate matrices in scratch memory
-        static thread_local bool    ALLOCATE_MATRICES_IN_SCRATCH;
+        static inline thread_local bool    ALLOCATE_MATRICES_IN_SCRATCH = defaults::ALLOCATE_MATRICES_IN_SCRATCH;
 
         // The MemoryManager will allocate scratch memory in multiples of this size
-        static thread_local index_t SCRATCH_BLOCK_SIZE;
+        static inline thread_local index_t SCRATCH_BLOCK_SIZE           = defaults::SCRATCH_BLOCK_SIZE;
     }; 
 
 
@@ -164,6 +166,6 @@ namespace matl
 
     // Matrix deallocation
     template<class T>
-    static void deallocate(RowMajorMatrix<T>&);
+    void deallocate(RowMajorMatrix<T>&);
 
 }

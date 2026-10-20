@@ -1,4 +1,4 @@
-#ifndef _MATL_IS_COLMAJOR_STORAGE_SPECIALIZTIONS__HPP
+#ifndef _MATL_IS_COLMAJOR_STORAGE_SPECIALIZATIONS__HPP
 #define _MATL_IS_COLMAJOR_STORAGE_SPECIALIZATIONS__HPP
 
 namespace matl 
@@ -57,12 +57,12 @@ namespace matl
     // RowMajorMatrix
     template<class T>
     struct is_colmajor_storage< RowMajorMatrix<T> >
-    {static constexpr bool value = true;};
+    {static constexpr bool value = false;};
 
     // FixedSizeRowMajorMatrix
     template<class T, index_t M, index_t N>
     struct is_colmajor_storage< FixedSizeRowMajorMatrix<T, M, N> >
-    {static constexpr bool value = true;};
+    {static constexpr bool value = false;};
 
 
     /********************** Expression Specializations ***********************/

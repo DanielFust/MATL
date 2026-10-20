@@ -21,7 +21,9 @@ namespace matl
         mat1_(unqualified_cast(mat1)), 
         mat2_(unqualified_cast(mat2)) 
     {
+        #ifdef MATL_DEBUG
         std::cout << "_MATRIX_TIMES_MATRIX_: Matrix-Matrix Constructor" << std::endl;
+        #endif
     }
 
    /***********************************************************************************************
@@ -40,12 +42,11 @@ namespace matl
                                                             _EXPRESSION_<EXPR2> const& expr2) : 
         mat1_(unqualified_cast(mat1))                                                          
     {
+        #ifdef MATL_DEBUG
         std::cout << "_MATRIX_TIMES_MATRIX_: Matrix-Expression Constructor" << std::endl;
+        #endif
         MemoryManager::allocate(mat2_, expr2.rows(), expr2.cols());
         expr2.eval(mat2_);
-
-        // Call Destructor for temporary object
-        static_cast<EXPR2&>(const_cast<_EXPRESSION_<EXPR2>&>(expr2)).~EXPR2();
     }
 
 
@@ -65,12 +66,11 @@ namespace matl
                                                             _MATRIX_<MAT2>      const& mat2) : 
         mat2_(unqualified_cast(mat2))
     {
+        #ifdef MATL_DEBUG
         std::cout << "_MATRIX_TIMES_MATRIX_: Expression-Matrix Constructor" << std::endl;
+        #endif
         MemoryManager::allocate(mat1_, expr1.rows(), expr1.cols());
         expr1.eval(mat1_);
-
-        // Call Destructor for temporary object
-        static_cast<EXPR1&>(const_cast<_EXPRESSION_<EXPR1>&>(expr1)).~EXPR1();
     } 
 
    /***********************************************************************************************
@@ -87,15 +87,13 @@ namespace matl
     _MATRIX_TIMES_MATRIX_<MAO1,MAO2>::_MATRIX_TIMES_MATRIX_(_EXPRESSION_<EXPR1> const& expr1, 
                                                             _EXPRESSION_<EXPR2> const& expr2)
     {
+        #ifdef MATL_DEBUG
         std::cout << "_MATRIX_TIMES_MATRIX_: Expression-Expression Constructor" << std::endl;
+        #endif
         MemoryManager::allocate(mat1_, expr1.rows(), expr1.cols());
         MemoryManager::allocate(mat2_, expr2.rows(), expr2.cols());
         expr1.eval(mat1_);
         expr2.eval(mat2_);
-
-        // Call Destructor for temporary object
-        static_cast<EXPR1&>(const_cast<_EXPRESSION_<EXPR1> &>(expr1)).~EXPR1();
-        static_cast<EXPR2&>(const_cast<_EXPRESSION_<EXPR2> &>(expr2)).~EXPR2();
     } 
 
    

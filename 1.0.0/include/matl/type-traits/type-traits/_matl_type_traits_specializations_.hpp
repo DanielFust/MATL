@@ -133,8 +133,8 @@ namespace matl
     template<typename MAO, class T>
     struct type_traits< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >
     {
-        typedef typename promote<typename type_traits<MAO>::dtype, T>::type                         dtype;
-        typedef          _MATRIX_DIVIDED_BY_SCALAR_<typename type_traits<MAO>::unqualified_type, T> unqualified_type;
+        typedef typename promote<typename type_traits<MAO>::dtype, T>::type  dtype;
+        typedef          _MATRIX_DIVIDED_BY_SCALAR_<MAO, T>                  unqualified_type;
     };
 
 
