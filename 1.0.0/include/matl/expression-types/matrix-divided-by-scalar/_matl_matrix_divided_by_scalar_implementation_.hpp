@@ -124,7 +124,7 @@ namespace matl
     template<typename MAT>
     constexpr bool _MATRIX_DIVIDED_BY_SCALAR_<MAO,T>::unsafe_evaluation_target(_MATRIX_<MAT> const& target) const
     {
-        const bool referenced_in_transpose = matl::references_address(&target, this->mat_) && transposed_matrix(target);
+        const bool referenced_in_transpose = matl::references_address(&target, this->mat_) && transposed_matrix(this->mat_);
         return referenced_in_transpose || matl::unsafe_evaluation_target(target,this->mat_);
     } 
 

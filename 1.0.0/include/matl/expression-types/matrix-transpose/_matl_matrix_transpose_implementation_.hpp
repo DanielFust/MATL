@@ -176,7 +176,7 @@ namespace matl
         }
         else // (M!=N)
         {
-            if (is_same_storage_order<MAT,MAO>::value)
+            if (is_same_storage_order<MAT, _MATRIX_TRANSPOSE_<MAO> >::value)
             {
                 const index_t K = this->size();
                 for (index_t i = 1; i <= K; i++)

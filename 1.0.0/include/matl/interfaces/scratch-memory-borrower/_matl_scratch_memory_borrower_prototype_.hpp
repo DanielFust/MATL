@@ -31,6 +31,9 @@ namespace matl
         // External Memory Flag Constructor
         ScratchMemoryBorrower(bool external_mem);
 
+        // Virtual destructor (derived matrix types are polymorphic through this interface)
+        virtual ~ScratchMemoryBorrower() = default;
+
         /************ Move Semantics *************/
         // The move contructor and move assignment operator should be called by the derived class
         // during their move constructor and move assignment operator to ensure that pointers to the
