@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [simplified]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux GCC 13
+            os: ubuntu-24.04
+            cxx: g++-13
+          - name: Linux GCC 14
+            os: ubuntu-24.04
+            cxx: g++-14
+          - name: Linux Clang 18
+            os: ubuntu-24.04
+            cxx: clang++-18
+          - name: macOS Apple Clang
+            os: macos-latest
+            cxx: clang++
+
+    defaults:
+      run:
+        working-directory: 1.0.0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compiler version
+        run: ${{ matrix.cxx }} --version
+
+      # Some Linux runner kernels use more ASLR entropy than older sanitizer runtimes support
+      - name: Configure ASLR for sanitizers
+        if: runner.os == 'Linux'
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      - name: Build examples
+        run: make examples CXX=${{ matrix.cxx }}
+
+      - name: Test suite
+        run: make check CXX=${{ matrix.cxx }}
+
+      - name: Test suite (AddressSanitizer + UndefinedBehaviorSanitizer)
+        run: make check-sanitize CXX=${{ matrix.cxx }}
+
+      - name: Upload MATL debug output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matl-test-logs-${{ matrix.os }}-${{ matrix.cxx }}
+          path: 1.0.0/build/*.log
+          if-no-files-found: ignore
