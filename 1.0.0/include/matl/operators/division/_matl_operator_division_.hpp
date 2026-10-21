@@ -8,8 +8,9 @@ namespace matl
     _MATRIX_TIMES_SCALAR_<MAT, typename type_traits< _MATRIX_TIMES_SCALAR_<MAT, T> >::dtype> 
     operator/ (_MATRIX_<MAT> const& mat, T scalar)
     {
-        typename type_traits< _MATRIX_TIMES_SCALAR_<MAT, T> >::dtype reciprocal = 1.0 / scalar;
-        return _MATRIX_TIMES_SCALAR_<MAT, T>(mat, reciprocal);
+        typedef typename type_traits< _MATRIX_TIMES_SCALAR_<MAT, T> >::dtype dtype;
+        dtype reciprocal = dtype(1) / scalar;
+        return _MATRIX_TIMES_SCALAR_<MAT, dtype>(mat, reciprocal);
     }
 
     // Matrix divided by integer scalar
@@ -22,8 +23,9 @@ namespace matl
     _MATRIX_TIMES_SCALAR_<EXPR, typename type_traits< _MATRIX_TIMES_SCALAR_<EXPR, T> >::dtype> 
     operator/ (_EXPRESSION_<EXPR> const& expr, T scalar)
     {
-        typename type_traits< _MATRIX_TIMES_SCALAR_<EXPR, T> >::dtype reciprocal = 1.0 / scalar;
-        return _MATRIX_TIMES_SCALAR_<EXPR, T>(expr, reciprocal);
+        typedef typename type_traits< _MATRIX_TIMES_SCALAR_<EXPR, T> >::dtype dtype;
+        dtype reciprocal = dtype(1) / scalar;
+        return _MATRIX_TIMES_SCALAR_<EXPR, dtype>(expr, reciprocal);
     }
 
     // Expression divided by integer scalar

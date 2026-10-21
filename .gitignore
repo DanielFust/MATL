@@ -1,0 +1,2 @@
+# Build output from 'make examples', 'make check' and 'make check-sanitize'
+1.0.0/build/

@@ -67,7 +67,7 @@ namespace matl
             throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (RowMajorMatrix&): Matrix dimensions do not match");
         #endif
         for(index_t i=0; i<SIZE; i++)
-            this->data_[i] = mat.data_[i];
+            this->data_[i] = mat(i+1);
         return *this;
     } 
 

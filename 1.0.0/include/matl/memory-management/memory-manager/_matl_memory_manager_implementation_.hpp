@@ -112,17 +112,20 @@ namespace matl
         }
 
         // If next neighbor exists, update it
-        if (scratch.next_neighbor_ != nullptr)
+        ScratchContainer* old_next = scratch.next_neighbor_;
+        if (old_next != nullptr)
         {
-            scratch.next_neighbor_->prev_neighbor_ = new_scratch;
+            old_next->prev_neighbor_ = new_scratch;
         }
 
         // Update scratch array
         scratch.size_          = size;
         scratch.next_neighbor_ = new_scratch;
 
-        // Update new scratch array (data must be set here, as a reused empty container has none)
+        // Update new scratch array (data must be set here, as a reused empty container has none).
+        // The new container is inserted between 'scratch' and its previous next neighbor.
         new_scratch->data_          = &scratch.data_[size];
+        new_scratch->next_neighbor_ = old_next;
         new_scratch->prev_neighbor_ = &scratch;
         new_scratch->external_mem_  = scratch.external_mem();
         new_scratch->size_          = excess;

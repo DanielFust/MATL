@@ -18,8 +18,8 @@ namespace matl
              enable_if_elementwise<MAO_>, 
              enable_if_scalar<T> >
     _SCALAR_MINUS_MATRIX_<T,MAO>::_SCALAR_MINUS_MATRIX_(T scalar, MAO_ const& mat) : 
-        scalar_(scalar),
-        mat_(unqualified_cast(mat))
+        mat_(unqualified_cast(mat)),
+        scalar_(scalar)
     {}
 
    /***********************************************************************************************
@@ -126,7 +126,7 @@ namespace matl
     template<typename MAT>
     constexpr bool _SCALAR_MINUS_MATRIX_<T,MAO>::unsafe_evaluation_target(_MATRIX_<MAT> const& target) const
     {
-        return (matl::references_address(&target,this->mat_) && is_transposed(this->mat_)) 
+        return (matl::references_address(&target,this->mat_) && transposed_matrix(this->mat_)) 
                || matl::unsafe_evaluation_target(target,this->mat_);
     }
 

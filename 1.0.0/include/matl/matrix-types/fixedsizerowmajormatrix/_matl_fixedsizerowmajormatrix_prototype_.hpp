@@ -31,6 +31,14 @@ namespace matl
         // Matrix datatype
         typedef T dtype;
 
+        /********************* Constructors *********************/
+
+        // Default constructor (elements are uninitialized)
+        FixedSizeRowMajorMatrix() = default;
+
+        // Copy constructor
+        FixedSizeRowMajorMatrix(FixedSizeRowMajorMatrix const&) = default;
+
         /**************** Assignment & Copying *****************/
         
         // Matrix copy (general)
