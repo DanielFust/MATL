@@ -22,6 +22,16 @@ namespace matl
     {}
 
    /***********************************************************************************************
+    * MAT const& matrix() const
+    * 
+    * Returns:
+    *     The owned matrix
+    ***********************************************************************************************/
+    template<typename MAT>
+    MAT const& _OWNED_MATRIX_<MAT>::matrix() const
+    {return *this->mat_;}
+
+   /***********************************************************************************************
     * index_t rows() const
     *
     * Returns:
@@ -50,33 +60,6 @@ namespace matl
     template<typename MAT>
     index_t _OWNED_MATRIX_<MAT>::size() const
     {return this->mat_->size();}
-
-   /***********************************************************************************************
-    * operator() (index_t i, index_t j) const
-    *
-    * Parameters:
-    *     i            Row index
-    *     j            Column index
-    * Returns:
-    *     dtype        Element of the owned matrix at index pair
-    ***********************************************************************************************/
-    template<typename MAT>
-    typename _OWNED_MATRIX_<MAT>::dtype
-    _OWNED_MATRIX_<MAT>::operator() (index_t i, index_t j) const
-    {return (*this->mat_)(i,j);}
-
-   /***********************************************************************************************
-    * operator() (index_t i) const
-    *
-    * Parameters:
-    *     i            Index of the element to get
-    * Returns:
-    *     dtype        Element of the owned matrix at index
-    ***********************************************************************************************/
-    template<typename MAT>
-    typename _OWNED_MATRIX_<MAT>::dtype
-    _OWNED_MATRIX_<MAT>::operator() (index_t i) const
-    {return (*this->mat_)(i);}
 
    /***********************************************************************************************
     * bool unsafe_evaluation_target(_MATRIX_ const&)
@@ -116,21 +99,24 @@ namespace matl
     template<typename MAT>
     template<typename MAT2>
     void _OWNED_MATRIX_<MAT>::eval(_MATRIX_<MAT2>& target) const
+    {assign_elementwise(target, *this);}
+
+   /***********************************************************************************************
+    * struct evaluator<_OWNED_MATRIX_>
+    * 
+    * Reads elements of the owned matrix directly.
+    ***********************************************************************************************/
+    template<typename MAT>
+    struct evaluator< _OWNED_MATRIX_<MAT> >
     {
-        if (is_same_storage_order<MAT2,MAT>::value)
-        {
-            const index_t N = this->size();
-            for (index_t i = 1; i <= N; i++)
-                target(i) = (*this)(i);
-        }
-        else
-        {
-            const index_t M = this->rows();
-            const index_t N = this->cols();
-            for (index_t i = 1; i <= M; i++)
-                for (index_t j = 1; j <= N; j++)
-                    target(i,j) = (*this)(i,j);
-        }
-    }
+        typedef typename _OWNED_MATRIX_<MAT>::dtype dtype;
+
+        evaluator<MAT> mat_;
+
+        explicit evaluator(_OWNED_MATRIX_<MAT> const& expr) : mat_(expr.matrix()) {}
+
+        dtype operator() (index_t i, index_t j) const {return mat_(i,j);}
+        dtype operator() (index_t i)            const {return mat_(i);}
+    };
 }
 #endif

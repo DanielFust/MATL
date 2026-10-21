@@ -3,182 +3,143 @@
  * 
  * Description: Implementations for the matrix minus scalar expression.
  **************************************************************************************************/
+#ifndef _MATL_MATRIX_MINUS_SCALAR_IMPLEMENTATION__HPP
+#define _MATL_MATRIX_MINUS_SCALAR_IMPLEMENTATION__HPP
 namespace matl
 {
    /***********************************************************************************************
-    * Constructor (elementwise)
+    * Constructor
     * 
-    * Initialize matrix minus scalar expression
+    * Stores the operands: an expression is copied, a matrix is referenced.
+    * 
     * Parameters:
-    *    mat              Matrix or elementwise expression
-    *    scalar           Scalar
-    ***********************************************************************************************/ 
+    *     mat          Matrix or expression
+    *     scalar       Scalar
+    ***********************************************************************************************/
     template<typename MAO, class T>
-    template<typename MAO_, 
-             class T_,
-             enable_if_elementwise<MAO_>,
-             enable_if_scalar<T_> >
-    _MATRIX_MINUS_SCALAR_<MAO,T>::_MATRIX_MINUS_SCALAR_(MAO_ const& mat, T_ scalar) : mat_(unqualified_cast(mat)),
-                                                                                      scalar_(scalar)
+    template<typename OP>
+    _MATRIX_MINUS_SCALAR_<MAO,T>::_MATRIX_MINUS_SCALAR_(OP const& mat, T scalar) : 
+        mat_(unqualified_cast(mat)),
+        scalar_(scalar)
     {}
 
-
    /***********************************************************************************************
-    * Constructor (non-elementwise)
-    * 
-    * Initialize matrix minus scalar expression
-    * Parameters:
-    *    expr           Non-elementwise expression
-    *    scalar         Scalar
-    ***********************************************************************************************/ 
-    template<typename MAO, class T>
-    template<typename MAO_, 
-             class T_,
-             disable_if_elementwise<MAO_>,
-             enable_if_scalar<T_> >
-    _MATRIX_MINUS_SCALAR_<MAO,T>::_MATRIX_MINUS_SCALAR_(MAO_ const& expr, T_ scalar) : scalar_(scalar)
-    {
-        MemoryManager::allocate(this->mat_, expr.rows(), expr.cols());
-        expr.eval(this->mat_);
-    } 
-    
-   /***********************************************************************************************
-    * index_t rows() const
-    *
-    * Get number of rows of resultant matrix
-    * Number of rows in expression. Downcasts to derived type.
+    * operand_type const& operand() const
     * 
     * Returns:
-    *    index_t          Number of rows in resultant matrix
-    **********************************************************************************************/ 
+    *     Matrix or expression operand
+    ***********************************************************************************************/
+    template<typename MAO, class T>
+    typename _MATRIX_MINUS_SCALAR_<MAO,T>::operand_type const& _MATRIX_MINUS_SCALAR_<MAO,T>::operand() const
+    {return this->mat_;}
+
+   /***********************************************************************************************
+    * dtype scalar() const
+    * 
+    * Returns:
+    *     Scalar operand
+    ***********************************************************************************************/
+    template<typename MAO, class T>
+    typename _MATRIX_MINUS_SCALAR_<MAO,T>::dtype _MATRIX_MINUS_SCALAR_<MAO,T>::scalar() const
+    {return this->scalar_;}
+
+   /***********************************************************************************************
+    * index_t rows() const
+    * 
+    * Returns:
+    *      index_t      Number of rows in resultant matrix
+    ***********************************************************************************************/ 
     template<typename MAO, class T>
     index_t _MATRIX_MINUS_SCALAR_<MAO,T>::rows() const
     {return this->mat_.rows();}
-     
+
    /***********************************************************************************************
     * index_t cols() const
-    * 
-    * Get number of columns of resultant matrix
-    * 
-    * Number of columns in expression. Downcasts to derived type.
-    * Returns:
-    *   index_t          Number of columns in resultant matrix
+    *
+    * Returns: 
+    *     index_t      Number of columns in resultant matrix
     ***********************************************************************************************/
     template<typename MAO, class T>
     index_t _MATRIX_MINUS_SCALAR_<MAO,T>::cols() const
-    {return this->mat_.cols();}   
-     
+    {return this->mat_.cols();}
+
    /***********************************************************************************************
     * index_t size() const
-    * 
-    * Get number of elements in of resultant matrix
-    * 
-    * Number of elements in expression. Downcasts to derived type.
-    * Returns:
-    *   index_t          Number of elements in resultant matrix
-    ***********************************************************************************************/ 
+    *
+    * Returns: 
+    *     index_t      Number of elements in resultant matrix
+    ***********************************************************************************************/
     template<typename MAO, class T>
     index_t _MATRIX_MINUS_SCALAR_<MAO,T>::size() const
     {return this->mat_.size();}
-    
-   /***********************************************************************************************
-    * dtype operator() (index_t i, index_t j) const
-    * 
-    * Retrieve the resultant value at specified index pair
-    * 
-    * Template Parameters:
-    *     MAO           Atomic expression type
-    * 
-    * Parameters:
-    *     i                Row index
-    *     j                Column index 
-    * Returns:
-    *     dtype            Value of resultant matrix at index pair
-    ************************************************************************************************/
-    template<typename MAO, class T>
-    typename _MATRIX_MINUS_SCALAR_<MAO,T>::dtype
-    _MATRIX_MINUS_SCALAR_<MAO,T>::operator() (index_t i, index_t j) const
-    {return this->mat_(i,j) - this->scalar_;}
 
    /***********************************************************************************************
-    * dtype operator() (index_t i) const
+    * bool unsafe_evaluation_target(_MATRIX_ const&)
     * 
-    * Retrieve the resultant value at specified index
-    * 
-    * Template Parameters:
-    *     MAO           Atomic expression type
-    * 
-    * Parameters:
-    *     i                Index of the element to get
-    * Returns:
-    *     dtype            Value of resultant matrix at index
-    ************************************************************************************************/
-    template<typename MAO, class T>
-    typename _MATRIX_MINUS_SCALAR_<MAO,T>::dtype
-    _MATRIX_MINUS_SCALAR_<MAO,T>::operator() (index_t i) const
-    {return this->mat_(i) - this->scalar_;} 
-
-   /***********************************************************************************************
-    * bool unsafe_evaluation_target(_MATRIX_ const*)
-    * 
-    * Check if evaluation of the expression to the target matrix would corrupt memory.
+    * Check if evaluation of the expression directly to the target matrix would corrupt memory.
+    * Elementwise evaluation is unsafe if the target is read through a transpose (element (i,j)
+    * of the result would read an element of the target that has already been overwritten).
     * 
     * Parameters:
-    *     mat            Matrix to check
+    *     target       Target matrix
     * Returns:
-    *     'true' if the evaluation of the expression to target matrix would corrupt memory 
+    *     'true' if evaluation directly to the target matrix would corrupt memory
     *     'false' otherwise
-    ***********************************************************************************************/ 
+    ***********************************************************************************************/
     template<typename MAO, class T>
     template<typename MAT>
-    constexpr bool _MATRIX_MINUS_SCALAR_<MAO,T>::unsafe_evaluation_target(_MATRIX_<MAT> const& mat) const 
+    constexpr bool _MATRIX_MINUS_SCALAR_<MAO,T>::unsafe_evaluation_target(_MATRIX_<MAT> const& target) const
     {
-        return (matl::references_address(&mat,this->mat_) && transposed_matrix(this->mat_))
-               || matl::unsafe_evaluation_target(mat,this->mat_);
-    } 
+        return (matl::references_address(&target, this->mat_) && transposed_matrix(this->mat_))
+               || matl::unsafe_evaluation_target(target, this->mat_);
+    }
 
    /***********************************************************************************************
     * bool references_address(_MATRIX_ const*)
     * 
-    * Check if the expression references the address of the target matrix.
+    * Check if the expression references the target matrix.
     * 
     * Parameters:
-    *     mat            Matrix to check
+    *     target       Target matrix
     * Returns:
-    *     'true' if the expression references the address of the target matrix
-    *     'false' otherwise
-    ***********************************************************************************************/ 
+    *     'true' if the expression references the target matrix, 'false' otherwise
+    ***********************************************************************************************/
     template<typename MAO, class T>
     template<typename MAT>
-    constexpr bool _MATRIX_MINUS_SCALAR_<MAO,T>::references_address(_MATRIX_<MAT> const* mat) const
-    {return matl::references_address(mat,this->mat_);}
-    
-
+    constexpr bool _MATRIX_MINUS_SCALAR_<MAO,T>::references_address(_MATRIX_<MAT> const* target) const
+    {return matl::references_address(target, this->mat_);}
 
    /***********************************************************************************************
-    *  void eval(MAT& target) const
+    * void eval(_MATRIX_<MAT>& target) const
     * 
-    * Evaluate the expression to the target matrix
+    * Evaluate the expression to the target matrix.
+    * 
     * Parameters:
-    *     target           Target matrix
-    ***********************************************************************************************/ 
+    *     target       Target matrix (must be a safe evaluation target with matching dimensions)
+    ***********************************************************************************************/
     template<typename MAO, class T>
     template<typename MAT>
     void _MATRIX_MINUS_SCALAR_<MAO,T>::eval(_MATRIX_<MAT>& target) const
+    {assign_elementwise(target, *this);}
+
+   /***********************************************************************************************
+    * struct evaluator<_MATRIX_MINUS_SCALAR_>
+    * 
+    * Evaluates elements of the expression from the evaluators of its operands.
+    ***********************************************************************************************/
+    template<typename MAO, class T>
+    struct evaluator< _MATRIX_MINUS_SCALAR_<MAO,T> >
     {
-        if (is_same_storage_order<MAT,MAO>::value)
-        {
-            const index_t N = this->size();
-            for (index_t i = 1; i <= N; ++i)
-                target(i) = (*this)(i);
-        }
-        else
-        {
-            const index_t M = this->rows();
-            const index_t N = this->cols();
-            for (index_t i = 1; i <= M; ++i)
-                for (index_t j = 1; j <= N; ++j)
-                    target(i,j) = (*this)(i,j);
-        }
-    }
+        typedef _MATRIX_MINUS_SCALAR_<MAO,T> expression_type;
+        typedef typename expression_type::dtype dtype;
+
+        evaluator<typename expression_type::operand_type> operand_;
+        dtype scalar_;
+
+        explicit evaluator(expression_type const& expr) : operand_(expr.operand()), scalar_(expr.scalar()) {}
+
+        dtype operator() (index_t i, index_t j) const {return operand_(i,j) - scalar_;}
+        dtype operator() (index_t i)            const {return operand_(i) - scalar_;}
+    };
 }
+#endif

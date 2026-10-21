@@ -94,7 +94,7 @@ namespace matl
     // Matrix-Matrix Product
     template<typename MAO1, typename MAO2>
     struct is_rowmajor_storage< _MATRIX_TIMES_MATRIX_<MAO1, MAO2> >
-    {static constexpr bool value = is_rowmajor_storage<MAO1>::value && is_rowmajor_storage<MAO2>::value;};
+    {static constexpr bool value = is_rowmajor_storage<typename is_fixed_size< _MATRIX_TIMES_MATRIX_<MAO1, MAO2> >::matrix_type>::value;};
 
     // Matrix-Scalar Product
     template<typename MAO, class T>

@@ -54,6 +54,13 @@ namespace matl
     constexpr bool unsafe_evaluation_target(_MATRIX_<MAT1> const& /*target*/, _MATRIX_<MAT2> const& /*other*/)
     {return false;}
 
+    // Product specialization: a product operand of an expression is computed into a temporary
+    // (see evaluator<_MATRIX_TIMES_MATRIX_>) before any element of the target is written, so it
+    // never makes evaluation unsafe, even if it reads the target.
+    template<typename MAT, typename MAO1, typename MAO2>
+    constexpr bool unsafe_evaluation_target(_MATRIX_<MAT> const& /*target*/, _MATRIX_TIMES_MATRIX_<MAO1,MAO2> const& /*product*/)
+    {return false;}
+
 
    /***********************************************************************************************
     * constexpr bool transposed_matrix(T const&)

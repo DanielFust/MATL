@@ -289,59 +289,6 @@ namespace matl
     }
 
 
-    #if 0
-   /***********************************************************************************************
-    * RowMajorMatrix<T>& operator= (_MATRIX_TIMES_MATRIX_ const&)
-    * 
-    * Specialized assignment for matrix-matrix assigment to multiplication expressions. This
-    * method provides additional logic to handle the case where the is RowMajorMatrix is also
-    * referenced in the expression.
-    * 
-    * When the RowMajorMatrix is also referenced in the expression, the expression is evaluated
-    * to a temporary matrix, then moved or copied to this matrix.
-    *
-    * Parameters:
-    *    expr          Matrix-matrix multiplication expression
-    ***********************************************************************************************/
-    template<class T>
-    template<typename MAO1, typename MAO2>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (_MATRIX_TIMES_MATRIX_<MAO1,MAO2> const& expr)
-    {
-        std::cout << "RowMajorMatrix<T>& operator= (_MATRIX_TIMES_MATRIX_ const&)" << std::endl;
-
-        // If the RowMajorMatrix is also referenced in the expression, evaluate to a temporary matrix
-        if ((expr.mat1_address() == this) || (expr.mat2_address() == this))
-        {
-            RowMajorMatrix<T> temp;
-            if (MemoryManager::ALLOCATE_NEW_MATRICES_IN_SCRATCH)
-                MemoryManager::allocate(temp, expr.rows(), expr.cols());
-            else
-                temp = RowMajorMatrix<T>(expr.rows(), expr.cols());
-
-            // Evaluate to temporary matrix
-            expr.eval(temp);
-            
-            // If this matrix is using external memory, the result must be copied
-            if (this->external_mem())
-                this->copy(temp);
-            // Otherwise, case the temporary matrix as rvalue reference to move data
-            else
-                *this = std::move(temp);
-        }
-        // Otherwise, evaluate directly to this matrix
-        else
-        {
-            // If matrix is not allocated, allocate it
-            if (this->size() == 0) 
-                MemoryManager::allocate(*this, expr.rows(), expr.cols());
-
-            // Evaluate matrix multiplication to this matrix    
-            expr.eval(*this);
-        }
-            
-        return *this;
-    } 
-    #endif
 
 
 

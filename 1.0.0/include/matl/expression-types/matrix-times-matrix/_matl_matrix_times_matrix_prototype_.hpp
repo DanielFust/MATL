@@ -1,47 +1,54 @@
 /**************************************************************************************************
  * File: _matl_matrix_times_matrix_prototype_.hpp
- * 
+ *
  * Description: Prototype for the matrix times matrix expression template.
  **************************************************************************************************/
+#ifndef _MATL_MATRIX_TIMES_MATRIX_PROTOTYPE__HPP
+#define _MATL_MATRIX_TIMES_MATRIX_PROTOTYPE__HPP
 namespace matl
 {
    /***********************************************************************************************
     * class _MATRIX_TIMES_MATRIX_
-    * 
-    * Generic matrix-matrix multiplication expression template. In order to reduce the number of
-    * floating point operations, increase cache efficiency during evaluation, and provide 
-    * compatibility with external BLAS implementations, expressions are evaluated and stored
-    * as member matrices.
-    * 
-    * Template Parameters MAO* are of type 'Matrix' when MAO* is an expression (including
-    * elementwise) and is of type 'const&' when MAO* is a _MATRIX_ type.
+    *
+    * Expression template for the product of two matrices or expressions.
+    *
+    * The expression is a formula: it stores its operands and computes nothing until it is
+    * assigned to a matrix. When assigned directly (C = A*B), the product is computed into the
+    * target. When nested inside a larger expression (C = A*B + D), evaluator<_MATRIX_TIMES_MATRIX_>
+    * computes the product into a temporary matrix at the start of the assignment.
+    *
+    * Template Parameters:
+    *     MAO1       Left operand type (matrix or expression)
+    *     MAO2       Right operand type (matrix or expression)
     ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
     class _MATRIX_TIMES_MATRIX_ : public _EXPRESSION_<_MATRIX_TIMES_MATRIX_<MAO1,MAO2> >
     {
-      private:
-        typename member_type<MAO1>::matmul_expression mat1_;
-        typename member_type<MAO2>::matmul_expression mat2_;
-      public:  
+      public:
         // Resultant matrix data type (e.g. double, int, float, etc.)
         typedef typename promote<typename type_traits<MAO1>::dtype,
                                  typename type_traits<MAO2>::dtype>::type dtype;
 
-        // MATRIX - MATRIX Constructor 
-        template<typename MAT1 = MAO1, typename MAT2 = MAO2>
-        _MATRIX_TIMES_MATRIX_(_MATRIX_<MAT1> const&, _MATRIX_<MAT2> const&); 
-        
-        // MATRIX - EXPRESSION Constructor
-        template<typename MAT1 = MAO1, typename EXPR2 = MAO2>
-        _MATRIX_TIMES_MATRIX_(_MATRIX_<MAT1> const&, _EXPRESSION_<EXPR2> const&);
+        // Operand types as stored (without references)
+        typedef std::remove_cvref_t<typename member_type<MAO1>::elementwise_expression> lhs_type;
+        typedef std::remove_cvref_t<typename member_type<MAO2>::elementwise_expression> rhs_type;
 
-        // EXPRESSION - MATRIX Constructor
-        template<typename EXPR1 = MAO1, typename MAT2 = MAO2>
-        _MATRIX_TIMES_MATRIX_(_EXPRESSION_<EXPR1> const&, _MATRIX_<MAT2> const&);
+      private:
+        // Operands (expressions by value, matrices by reference)
+        typename member_type<MAO1>::elementwise_expression mat1_;
+        typename member_type<MAO2>::elementwise_expression mat2_;
 
-        // EXPRESSION - EXPRESSION Constructor
-        template<typename EXPR1 = MAO1, typename EXPR2 = MAO2>
-        _MATRIX_TIMES_MATRIX_(_EXPRESSION_<EXPR1> const&, _EXPRESSION_<EXPR2> const&);
+      public:
+
+        // Constructor
+        template<typename OP1, typename OP2>
+        _MATRIX_TIMES_MATRIX_(OP1 const&, OP2 const&);
+
+        // Left operand
+        lhs_type const& lhs() const;
+
+        // Right operand
+        rhs_type const& rhs() const;
 
         // Get number of rows of resultant matrix
         index_t rows() const;
@@ -61,17 +68,8 @@ namespace matl
         constexpr bool references_address(_MATRIX_<MAT> const*) const;
 
         // Evaluate matrix multiplication to target matrix
-        template<typename MAT_T>
-        void eval(_MATRIX_<MAT_T>& ) const;
-
-        // Get address of member matrix 1
-        //member_type<MAO1>::matmul_expression* mat1_address() const;
-        constexpr void const* mat1_address() const;
-
-        // Get address of member matrix 2
-        //member_type<MAO2>::matmul_expression* mat2_address() const;
-        constexpr void const* mat2_address() const;
-
+        template<typename MAT>
+        void eval(_MATRIX_<MAT>& ) const;
     };
-
 }
+#endif

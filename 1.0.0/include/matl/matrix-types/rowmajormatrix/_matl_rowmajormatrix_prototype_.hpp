@@ -56,11 +56,6 @@ namespace matl
         template<typename EXPR>
         RowMajorMatrix<T>& operator= (_EXPRESSION_<EXPR> const&);
 
-        #if 0
-        // Expression execution trigger (matrix multiplication specialization)
-        template<typename MAO1, typename MAO2>
-        RowMajorMatrix<T>& operator= (_MATRIX_TIMES_MATRIX_<MAO1,MAO2> const&);
-        #endif
 
         // RowMajorMatrix move assignment
         RowMajorMatrix<T>& operator= (RowMajorMatrix<T>&&);

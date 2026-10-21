@@ -3,42 +3,60 @@
  * 
  * Description: Prototype for the matrix minus scalar expression.
  **************************************************************************************************/
-namespace matl
+#ifndef _MATL_MATRIX_MINUS_SCALAR_PROTOTYPE__HPP
+#define _MATL_MATRIX_MINUS_SCALAR_PROTOTYPE__HPP
+
+namespace matl 
 {
    /***********************************************************************************************
     * class _MATRIX_MINUS_SCALAR_
     * 
-    * Expression template class for the matrix minus scalar operation.
+    * Expression template for the difference of a matrix or expression and a scalar (subtracted from every element).
+    * 
+    * The expression is a formula: it stores its operands and computes nothing until it is
+    * assigned to a matrix, which evaluates it through evaluator<_MATRIX_MINUS_SCALAR_>.
+    * 
+    * Template Parameters:
+    *     MAO        Operand type (matrix or expression)
+    *     T          Scalar type
     ***********************************************************************************************/
     template<typename MAO, class T>
-    class _MATRIX_MINUS_SCALAR_ : public _EXPRESSION_<_MATRIX_MINUS_SCALAR_<MAO, T> >
+    class _MATRIX_MINUS_SCALAR_ : public _EXPRESSION_<_MATRIX_MINUS_SCALAR_<MAO,T> >
     {
       public:
-        // Typedefs
-        typedef typename promote<typename type_traits<MAO>::dtype, T>::type dtype;   
+        // Resultant matrix data type (e.g. double, int, float, etc.)
+        typedef typename promote<typename type_traits<MAO>::dtype, T>::type dtype;
+
+        // Operand type as stored (without references)
+        typedef std::remove_cvref_t<typename member_type<MAO>::elementwise_expression> operand_type;
 
       private:
-        // Expression or matrix
+        // Operand (expression by value, matrix by reference)
         typename member_type<MAO>::elementwise_expression mat_;
 
         // Scalar
-        dtype scalar_;  
+        dtype scalar_;
 
       public:
 
-        // Constructor (elementwise)
-        template<typename MAO_               = MAO, 
-                 class    T_                 = T,
-                 enable_if_elementwise<MAO_> = true,
-                 enable_if_scalar<T_>        = true>
-        _MATRIX_MINUS_SCALAR_(MAO_ const&, T_);
+        // Constructor
+        template<typename OP>
+        _MATRIX_MINUS_SCALAR_(OP const&, T);
 
-        // Constructor (non-elementwise)
-        template<typename MAO_                = MAO,
-                 class    T_                  = T, 
-                 disable_if_elementwise<MAO_> = true,
-                 enable_if_scalar<T_>         = true>
-        _MATRIX_MINUS_SCALAR_(MAO_ const&, T_);
+        // Matrix or expression operand
+        operand_type const& operand() const;
+
+        // Scalar operand
+        dtype scalar() const;
+
+        // Get the number of rows
+        index_t rows() const;
+
+        // Get the number of columns
+        index_t cols() const;
+
+        // Get the number of elements
+        index_t size() const;
 
         // Check if evaluation target is safe
         template<typename MAT>
@@ -51,21 +69,7 @@ namespace matl
         // Evaluate the expression to the target matrix
         template<typename MAT>
         void eval(_MATRIX_<MAT>&) const;
-
-        // Get the number of rows
-        inline index_t rows() const;
-
-        // Get the number of columns
-        inline index_t cols() const;
-
-        // Get the number of elements
-        inline index_t size() const;
-
-        // Get the element at the i-th row and j-th column
-        dtype operator() (index_t, index_t) const;
-
-        // Get the element at the i-th index
-        dtype operator() (index_t) const;
-
-    }; 
+    };
 }
+
+#endif

@@ -26,6 +26,7 @@ the build.
 | `test_main.cpp` | Test runner |
 | `test_matrix.cpp` | Construction, indexing, copy/move, scalar and compound assignment, `eye` |
 | `test_expressions.cpp` | Elementwise, scalar, product and transpose expressions; aliasing; fixed-size and mixed operands |
+| `test_evaluation.cpp` | Deferred evaluation: nested products read current operand values, no allocation until assignment, temporaries released afterwards, aliasing with deferred products |
 | `test_expression_lifetime.cpp` | Stored expressions (`auto e = ...`): ownership of sub-expressions and temporaries, live references to named matrices, initializing matrices from expressions |
 | `test_memory_manager.cpp` | Scratch-memory allocation, reuse, external buffers, teardown |
 | `test_errors.cpp` | Bounds and dimension checks (`abort()` for dynamic matrices, exceptions for fixed-size) |

@@ -1,3 +1,4 @@
+#include "./evaluation/_matl_evaluation_.hpp"
 #include "./matrix-plus-matrix/_matl_matrix_plus_matrix_implementation_.hpp"
 #include "./matrix-plus-scalar/_matl_matrix_plus_scalar_implementation_.hpp"
 #include "./matrix-minus-matrix/_matl_matrix_minus_matrix_implementation_.hpp"
