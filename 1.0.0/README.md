@@ -12,7 +12,8 @@ lazily with expression templates.
 
 MATL uses **C++20 language features** (concepts and `requires` clauses) and is compiled with
 `-std=c++20`. To stay portable across HPC systems it avoids C++20 features with uneven compiler
-support: modules, coroutines, `<format>`, and heavy use of `<ranges>`.
+support: modules, coroutines, `<format>`, heavy use of `<ranges>`, and omitting `typename`
+before dependent type names (P0634, which Clang only supports from version 16).
 
 Minimum supported compilers, tested in CI:
 

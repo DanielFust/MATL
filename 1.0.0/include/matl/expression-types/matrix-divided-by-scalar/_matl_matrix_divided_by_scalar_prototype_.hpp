@@ -16,7 +16,7 @@ namespace matl
     {
       private:
         // Expression or matrix
-        member_type<MAO>::elementwise_expression mat_;
+        typename member_type<MAO>::elementwise_expression mat_;
 
         // Scalar (type promotion NOT applied to preserve expected behavior)
         T scalar_;  

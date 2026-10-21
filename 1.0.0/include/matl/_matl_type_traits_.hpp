@@ -95,12 +95,12 @@ namespace matl
     // non-const specialization
     template<typename T>
     typename type_traits<T>::unqualified_type& unqualified_cast(T& obj)
-    {return static_cast<type_traits<T>::unqualified_type&>(obj);}
+    {return static_cast<typename type_traits<T>::unqualified_type&>(obj);}
 
     // const specialization
     template<typename T>
     typename type_traits<T>::unqualified_type const& unqualified_cast(T const& obj)
-    {return static_cast<type_traits<T>::unqualified_type const&>(obj);}
+    {return static_cast<typename type_traits<T>::unqualified_type const&>(obj);}
 
 
 

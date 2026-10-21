@@ -19,7 +19,7 @@ namespace matl
 
       private:
         // Expression or matrix
-        member_type<MAO>::elementwise_expression mat_;
+        typename member_type<MAO>::elementwise_expression mat_;
 
         // Scalar
         dtype scalar_;  
