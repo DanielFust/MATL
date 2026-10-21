@@ -190,6 +190,28 @@ are always on.
 Define `MATL_DEBUG` to print a trace of internal calls (assignments, allocations) to stdout. It is
 off by default.
 
+## Performance
+
+Matrix products use a cache-blocked kernel in the structure of GotoBLAS/BLIS: blocks of the
+operands are packed into contiguous buffers (taken from the temporary arena, so they make no heap
+allocations) and multiplied in small tiles held in SIMD registers. Small products (below about
+10x10x10) use a simple loop, which is faster there. Each element of a product is still the sum of
+its products in increasing order, so blocking does not change results (unless the compiler is
+allowed to fuse multiplications and additions, e.g. `-ffp-contract=fast` or `-ffast-math`).
+
+Elementwise expressions are evaluated in a single pass, at the speed of a hand-written loop.
+Transposes, and expressions mixing storage orders, are evaluated in small tiles so that both
+the rows and the columns being accessed stay in cache.
+
+Compile with optimization and for your processor's vector instructions for the best performance,
+e.g. `-O3 -march=native` (GCC, Clang) — products use 32-byte AVX vectors when they are enabled,
+and 16-byte vectors (SSE2, NEON) otherwise. On the development machine (Intel i9-9880H), a
+1024x1024 double-precision product runs at about 15 GFLOP/s with `-O2` and about 27 GFLOP/s with
+`-O3 -march=native`, compared with 1.4 GFLOP/s for the simple loop. `make bench` builds and runs
+the benchmarks in `benchmarks/`.
+
+The kernel's block sizes are in `detail::product_blocking` (`_matl_product_kernel_.hpp`).
+
 ## Indexing
 
 Matrices use **1-based indexing**: `A(1,1)` is the first element, and `A(i)` indexes elements in

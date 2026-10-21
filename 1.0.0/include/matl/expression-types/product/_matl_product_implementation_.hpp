@@ -16,6 +16,10 @@ namespace matl
         * expression operands are first evaluated into temporary matrices, which are released as
         * soon as the product has been computed.
         *
+        * Products of arithmetic element types use the cache-blocked kernel (see
+        * _matl_product_kernel_.hpp), except for small products, where the simple loop is faster.
+        * Both add the products of each element in the same order, so they give the same result.
+        *
         * Parameters:
         *     target       Target matrix (must not be read by the product, see
         *                  unsafe_evaluation_target)
@@ -33,6 +37,17 @@ namespace matl
             const index_t N = product.cols();
             const index_t K = product.lhs().cols();
 
+            // Cache-blocked kernel (the target is written in the product's element type)
+            if constexpr (std::is_arithmetic_v<dtype> && std::is_same_v<dtype_t<MAT>, dtype>)
+            {
+                if (M * N * K >= product_blocking<dtype>::MIN_BLOCKED_WORK)
+                {
+                    blocked_product<dtype>(target, lhs, rhs, M, N, K);
+                    return;
+                }
+            }
+
+            // Simple loop
             for (index_t i = 1; i <= M; i++)
             {
                 for (index_t j = 1; j <= N; j++)

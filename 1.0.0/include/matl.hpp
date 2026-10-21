@@ -31,6 +31,7 @@
 #include <vector>
 #include <memory>
 #include <cstddef>
+#include <cstring>
 
 // Namespace type definitions and settings
 namespace matl

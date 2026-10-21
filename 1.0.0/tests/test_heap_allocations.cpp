@@ -93,7 +93,9 @@ TEST_CASE("Heap allocations: reserve() avoids allocation on the first evaluation
     const index_t n = 64;
     RowMajorMatrix<double> A(n, n), B(n, n), D(n, n);
     matl_test::fill_random(A); matl_test::fill_random(B);
-    MemoryManager::temporary_arena().reserve(4 * n * n * sizeof(double));
+    // Two product results (n*n each), plus each product's packing buffers (at most n*n each for
+    // the left and right operands, see _matl_product_kernel_.hpp)
+    MemoryManager::temporary_arena().reserve(6 * n * n * sizeof(double));
 
     CountAllocations counter;
     D = A * B + B * A;
@@ -108,9 +110,10 @@ TEST_CASE("Heap allocations: without the arena, each temporary is a heap allocat
     CacheTemporaries off(false);
     D = A * B + C * A;                                // warm up
 
+    // Two product results, and each product's two packing buffers (see _matl_product_kernel_.hpp)
     CountAllocations counter;
-    D = A * B + C * A;                                // two temporaries
-    CHECK_EQ(counter.count(), 2l);
+    D = A * B + C * A;
+    CHECK_EQ(counter.count(), 6l);
 }
 
 TEST_CASE("Heap allocations: building and copying expressions allocates nothing")
