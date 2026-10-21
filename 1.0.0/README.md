@@ -93,11 +93,31 @@ MemoryManager::temporary_arena().release_memory();    // return the arena's memo
 ```
 
 Set `MemoryManager::CACHE_TEMPORARY_MATRICES = false` to allocate temporaries on the heap
-instead. (`MemoryManager::ALLOCATE_MATRICES_IN_SCRATCH` is a separate setting that applies to
-long-lived matrices, not to evaluation temporaries.)
+instead. Each thread has its own arena, which is freed when the thread exits.
 
 `make bench` reports the time and heap allocations per assignment for several expressions,
 with and without the arena.
+
+## Matrix memory
+
+A `RowMajorMatrix` owns its data, which it allocates on the heap. Copies are deep, and moves
+transfer the data without copying it.
+
+A matrix can also use memory that you own, e.g. to place many matrices in one contiguous block
+or to wrap a buffer received through MPI. The matrix reads and writes the buffer in place (in
+row-major order) and never frees it, so the buffer must outlive the matrix:
+
+```cpp
+std::vector<double> block(2 * 16);
+RowMajorMatrix<double> A(4, 4, block.data());        // A uses block[0..15]
+RowMajorMatrix<double> B(4, 4, block.data() + 16);   // B uses block[16..31]
+A = B * 2.0;                                         // result written into the block
+```
+
+Assigning to such a matrix (including move assignment) copies the values into the buffer. A copy
+of it owns its own data. `allocate(A, rows, cols)` and `deallocate(A)` allocate a matrix on the
+heap and release its memory; for a matrix over external memory, `deallocate` only stops using
+the buffer.
 
 ## Debug checks
 

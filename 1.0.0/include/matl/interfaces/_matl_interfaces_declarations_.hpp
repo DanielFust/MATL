@@ -20,8 +20,5 @@ namespace matl
 
     // Interface for fixed-size matrices
     template<typename FSM> class _FIXED_SIZE_MATRIX_;
-
-    // Scratch memory borrower
-    class ScratchMemoryBorrower;
 }
 #endif

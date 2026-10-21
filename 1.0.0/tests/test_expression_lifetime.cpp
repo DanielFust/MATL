@@ -146,7 +146,6 @@ TEST_CASE("Lifetime: a stored expression can initialize a matrix")
     Matrix<double> m = e;
     CHECK_MATRIX_EQ(m, Ref(2, 2, 5.0));
 
-    matl_test::ScratchMode scratch;           // allocation follows the MemoryManager settings
     Matrix<double> s = e + A;
     CHECK_MATRIX_EQ(s, Ref(2, 2, 8.0));
 }
@@ -211,16 +210,15 @@ TEST_CASE("Lifetime: temporary fixed-size matrices are owned by the expression")
     R = e;  CHECK_MATRIX_EQ(R, a + t * 2.0);
 }
 
-TEST_CASE("Lifetime: temporary scratch-backed matrices are owned by the expression")
+TEST_CASE("Lifetime: a temporary matrix over external memory keeps referencing the buffer")
 {
-    matl_test::ScratchMode scratch;
-    RowMajorMatrix<double> A = make_matrix(4, 4, 1.0);
-    Ref a = Ref::from(A), t = Ref::from(make_matrix(4, 4, 3.0));
-    auto e = A - make_matrix(4, 4, 3.0);
-    RowMajorMatrix<double> B(4, 4);            // allocate more scratch after the temporary moved
-    B = 0.0;
-    RowMajorMatrix<double> R(4, 4);
-    R = e;  CHECK_MATRIX_EQ(R, a - t);
+    RowMajorMatrix<double> A = make_matrix(2, 2, 1.0);
+    double buffer[4] = {10, 20, 30, 40};
+    auto e = A - RowMajorMatrix<double>(2, 2, buffer);   // the expression owns the view, not the data
+    RowMajorMatrix<double> R(2, 2);
+    R = e;  CHECK_MATRIX_EQ(R, Ref::from(A) - Ref::from(RowMajorMatrix<double>(2, 2, buffer)));
+    buffer[0] = 0.0;                                     // the expression reads the current buffer
+    R = e;  CHECK_EQ(R(1,1), 1.0);
 }
 
 /******************************** Mixed element types ***************************************/

@@ -3,19 +3,22 @@ namespace matl
    /***********************************************************************************************
     * class RowMajorMatrix
     * 
-    * Row major matrix class  
+    * Row major matrix class. The matrix owns its data (allocated on the heap), unless it was
+    * constructed over externally owned memory, which it uses but never deletes.
     * 
     * Template Arguments:
     *     T     Matrix data type     
     ***********************************************************************************************/ 
     template<class T>
-    class RowMajorMatrix : public _MATRIX_< RowMajorMatrix<T> >, 
-                           public ScratchMemoryBorrower
+    class RowMajorMatrix : public _MATRIX_< RowMajorMatrix<T> >
     {
       private:
         index_t rows_;
         index_t cols_;
         T*      data_;
+
+        // Is the memory externally owned (used, but not deleted, by the matrix)
+        bool    external_mem_;
 
       public:
         
@@ -45,7 +48,7 @@ namespace matl
         RowMajorMatrix(_EXPRESSION_<EXPR> const&);
 
         // Move constructor
-        RowMajorMatrix(RowMajorMatrix<T>&&);
+        RowMajorMatrix(RowMajorMatrix<T>&&) noexcept;
 
         // Destructor
         ~RowMajorMatrix();
@@ -58,7 +61,10 @@ namespace matl
 
 
         // RowMajorMatrix move assignment
-        RowMajorMatrix<T>& operator= (RowMajorMatrix<T>&&);
+        RowMajorMatrix<T>& operator= (RowMajorMatrix<T>&&) noexcept;
+
+        // RowMajorMatrix copy assignment (same type)
+        RowMajorMatrix<T>& operator= (RowMajorMatrix<T> const&);
 
         // Copy assignment/constructor for RowMajorMatrix
         template<class T2>
@@ -158,37 +164,28 @@ namespace matl
         // Print with newline
         void println() const;
 
-        /*********** ScratchMemoryBorrower interface ***********/
-
-      protected: // Only for use by MemoryManager
-
-        // Get Scratch Memory Container (probably doesn't need an override)
-        ScratchContainer* get_scratch_container();
-
-        // Set Scratch Memory Container (probably doesn't need an override)
-        void set_scratch_container(ScratchContainer*) override;
-
-        // Copy memory to privately owned memory 
-        void copy_memory_to_private() override;
-
-        // Nullify borrowed memory and reset matrix
-        void nullify_borrowed_memory() override;
-
-        // Get raw data pointer
-        std::byte* data() const override;
-
-        // Set external memory flag
-        void set_external_mem(bool) override;
-
-      public: // const ScratchMemoryBorrower methods  
-
-        // Get the number of bytes in use
-        index_t bytes_used() const override;
-
-        // Is the memory externally owned (Not managed by MemoryManager)
+        // Is the memory externally owned (not deleted by the matrix)
         bool external_mem() const;
 
-        // Give privileged access to memory manager
-        friend class MemoryManager;
+        // Allocation and deallocation of the matrix data
+        template<class U> friend void allocate(RowMajorMatrix<U>&, index_t, index_t);
+        template<class U> friend void deallocate(RowMajorMatrix<U>&);
     };
+
+
+   /***********************************************************************************************
+    * Allocating and Deallocating Matrices
+    * 
+    * 'allocate' and 'deallocate' are the general purpose procedures for allocating and
+    * deallocating matrices (loosely resembling the Fortran90 allocate/deallocate vernacular).
+    * Matrix memory is allocated on the heap and owned by the matrix.
+    ***********************************************************************************************/
+
+    // Matrix allocation
+    template<class T>
+    void allocate(RowMajorMatrix<T>&, index_t, index_t);
+
+    // Matrix deallocation
+    template<class T>
+    void deallocate(RowMajorMatrix<T>&);
 }

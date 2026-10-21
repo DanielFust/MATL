@@ -96,5 +96,9 @@ namespace matl
         template<class T2, enable_if_scalar<T2> = true>
         void operator= (T2 val);
     }; 
+
+    // Fixed-size matrix "allocation" (checks the requested dimensions match the fixed size)
+    template<class T, index_t M, index_t N>
+    void allocate(FixedSizeRowMajorMatrix<T, M, N>&, index_t, index_t);
 }
 #endif

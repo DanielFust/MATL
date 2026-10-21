@@ -1,7 +1,6 @@
 #include "./matrix-algebra-object/_matl_matrix_algebra_object_prototype_.hpp"
 #include "./matrix/_matl_matrix_prototype_.hpp"
 #include "./expression/_matl_expression_prototype_.hpp"
-#include "./scratch-memory-borrower/_matl_scratch_memory_borrower_prototype_.hpp"
 #include "./elementwise/_matl_elementwise_prototype_.hpp"
 #include "./fixed-size/_matl_fixed_size_prototype_.hpp"
 #include "./fixed-size-matrix/_matl_fixed_size_matrix_prototype_.hpp"

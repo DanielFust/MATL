@@ -15,7 +15,6 @@
 #include <stdexcept>
 #include <complex>
 #include <vector>
-#include <deque>
 #include <memory>
 #include <cstddef>
 
@@ -26,16 +25,13 @@ namespace matl
     typedef unsigned long index_t;
 
     // Default settings for MATL library. Settings for memory management can
-    // be changed dynamically by setting the static variables of the same
-    // names in the MemoryManager class.
+    // be changed dynamically through the MemoryManager class (enable/disable and
+    // CACHE_TEMPORARY_MATRICES).
     namespace defaults
     {
-        // Default settings for memory manager
+        // Default settings for memory manager (allocate evaluation temporaries from the
+        // per-thread arena)
         const bool    ENABLE_MEMORY_MANAGER            = true;
-        const index_t INITIAL_SCRATCH_MEM_SIZE         = 1024;
-        const index_t DEFAULT_NUM_SCRATCH_CONTAINERS   = 10;
-        const index_t SCRATCH_BLOCK_SIZE               = 1024;
-        const bool    ALLOCATE_MATRICES_IN_SCRATCH = false;
     }
 
     // Set block size for cache blocking

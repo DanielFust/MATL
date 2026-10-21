@@ -219,19 +219,6 @@ namespace matl_test
         std::uniform_int_distribution<matl::index_t> dist(lo, hi);
         return dist(rng());
     }
-
-    /*************************************** Fixtures ***************************************/
-
-    // Enables ALLOCATE_MATRICES_IN_SCRATCH for the lifetime of the object, then restores the
-    // previous setting. Declare it before any matrices so they are destroyed first.
-    struct ScratchMode
-    {
-        bool previous;
-        ScratchMode() : previous(matl::MemoryManager::ALLOCATE_MATRICES_IN_SCRATCH)
-        {matl::MemoryManager::ALLOCATE_MATRICES_IN_SCRATCH = true;}
-        ~ScratchMode()
-        {matl::MemoryManager::ALLOCATE_MATRICES_IN_SCRATCH = previous;}
-    };
 }
 
 /***************************************** Macros *****************************************/

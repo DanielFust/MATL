@@ -46,8 +46,8 @@ namespace matl
     * class EvaluationTemporary<MAT>
     *
     * A temporary matrix of type MAT, with the given dimensions, that lives for the duration of an
-    * evaluation. The general case allocates the matrix with MemoryManager::allocate (fixed-size
-    * matrices need no allocation).
+    * evaluation. The general case allocates the matrix with 'allocate' (fixed-size matrices need
+    * no allocation).
     ***********************************************************************************************/
     template<typename MAT>
     class EvaluationTemporary
@@ -57,7 +57,7 @@ namespace matl
 
       public:
         EvaluationTemporary(index_t rows, index_t cols)
-        {MemoryManager::allocate(this->mat_, rows, cols);}
+        {allocate(this->mat_, rows, cols);}
 
         EvaluationTemporary(EvaluationTemporary const&) = delete;
         EvaluationTemporary& operator=(EvaluationTemporary const&) = delete;

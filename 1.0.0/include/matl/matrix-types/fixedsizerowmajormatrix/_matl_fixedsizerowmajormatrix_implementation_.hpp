@@ -108,7 +108,7 @@ namespace matl
         {
             // Use temporary matrix to store the result
             FixedSizeRowMajorMatrix<T, M, N> temp;
-            MemoryManager::allocate(temp, expression.rows(), expression.cols());
+            allocate(temp, expression.rows(), expression.cols());
             expression.eval(temp);
 
             // Copy data to this matrix (I believe C-style fixed size arrays are not movable)
@@ -118,7 +118,7 @@ namespace matl
         {
             // If Matrix is not allocated yet, allocate it
             if (this->size() == 0) 
-                MemoryManager::allocate(*this,expression.rows(), expression.cols());
+                allocate(*this, expression.rows(), expression.cols());
         
             // Evaluate expression    
             expression.eval(*this);
@@ -274,5 +274,27 @@ namespace matl
             (*this)(i) = val;
     }
      
+
+
+   /***********************************************************************************************
+    * void allocate(FixedSizeRowMajorMatrix<T, M, N>&, index_t, index_t)
+    * 
+    * The 'allocate' routine for 'FixedSizeRowMajorMatrix' objects is present to support more
+    * seamless polymorphism when using mixed matrix types. Because the size of the matrix is 
+    * constant and determined at compile time, it cannot be altered. This function checks that
+    * the requested size is the same as the size of the matrix and returns if it is. If the
+    * requested size is different, an error is thrown.
+    *
+    * Parameters:
+    *     matrix        FixedSizeRowMajorMatrix object
+    *     rows          Number of rows in matrix
+    *     cols          Number of columns in matrix
+    ***********************************************************************************************/
+    template<class T, index_t M, index_t N>
+    void allocate(FixedSizeRowMajorMatrix<T, M, N>& /*matrix*/, index_t rows, index_t cols)
+    {
+        if (rows != M || cols != N)
+            throw std::runtime_error("allocate(FixedSizeRowMajorMatrix<T, M, N>&, index_t, index_t):  Requested size does not match fixed size of matrix.");
+    }
 }
 #endif

@@ -13,14 +13,6 @@ using matl_test::Ref;
 
 namespace
 {
-    // Total scratch memory currently lent to matrices
-    index_t scratch_bytes_in_use()
-    {
-        index_t total = 0;
-        for (ScratchContainer& c : MemoryManager::get_memory_manager().containers()) total += c.bytes_used();
-        return total;
-    }
-
     // Memory currently held by evaluation temporaries
     index_t temporary_bytes_in_use()
     {return MemoryManager::temporary_arena().bytes_in_use();}
@@ -142,12 +134,9 @@ TEST_CASE("Evaluation: target used inside products nested in elementwise express
 
 TEST_CASE("Evaluation: building an expression allocates no memory")
 {
-    matl_test::ScratchMode scratch;           // matrices are allocated in scratch memory
     Operands s;
-    const index_t before = scratch_bytes_in_use();
     MemoryManager::temporary_arena().reset_high_water_mark();
     auto e = s.A * s.B + transpose(s.C * s.A) - (s.A + s.D) * s.B;
-    CHECK_EQ(scratch_bytes_in_use(), before);
     CHECK_EQ(MemoryManager::temporary_arena().high_water_mark(), 0ul);   // no temporaries
 
     RowMajorMatrix<double> R(3, 3);
@@ -158,10 +147,8 @@ TEST_CASE("Evaluation: building an expression allocates no memory")
 
 TEST_CASE("Evaluation: temporaries are released when an assignment finishes")
 {
-    matl_test::ScratchMode scratch;
     Operands s;
     RowMajorMatrix<double> R(3, 3);
-    const index_t before = scratch_bytes_in_use();
     MemoryManager::temporary_arena().reset_high_water_mark();
 
     R = s.A * s.B + s.C * s.D;                    CHECK_EQ(temporary_bytes_in_use(), 0ul);
@@ -169,7 +156,6 @@ TEST_CASE("Evaluation: temporaries are released when an assignment finishes")
     R = transpose(s.A * R) + (s.B - s.C) * R;     CHECK_EQ(temporary_bytes_in_use(), 0ul);
     R = R * R;                                    CHECK_EQ(temporary_bytes_in_use(), 0ul);
     CHECK(MemoryManager::temporary_arena().high_water_mark() > 0);   // temporaries were used
-    CHECK_EQ(scratch_bytes_in_use(), before);     // and none came from scratch containers
 }
 
 TEST_CASE("Evaluation: initializing a matrix from a product expression")
