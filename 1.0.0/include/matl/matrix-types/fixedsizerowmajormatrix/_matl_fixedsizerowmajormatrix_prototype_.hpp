@@ -56,13 +56,13 @@ namespace matl
         // Expression constructor (evaluates the expression; implicit, so that
         // 'Matrix<double,M,N> m = A + B;' evaluates to a new matrix). Expressions with other
         // compile-time dimensions are rejected (SizesMatch); dynamic ones are checked at run time.
-        template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix, EXPR>
+        template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix<T, M, N>, EXPR>
         FixedSizeRowMajorMatrix(EXPR const&);
 
         /**************** Assignment & Copying *****************/
         
         // Matrix copy (general)
-        template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix, MAT>
+        template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix<T, M, N>, MAT>
         FixedSizeRowMajorMatrix& operator= (MAT const&);
 
         // Matrix copy (FixedSizeRowMajorMatrix specialization)
@@ -73,11 +73,11 @@ namespace matl
         FixedSizeRowMajorMatrix& operator= (RowMajorMatrix<T2> const&);
 
         // Expression evaluation trigger
-        template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix, EXPR>
+        template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix<T, M, N>, EXPR>
         FixedSizeRowMajorMatrix& operator=(EXPR const& expr);
 
         // Copy 
-        template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix, MAT>
+        template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix<T, M, N>, MAT>
         void copy(MAT const& mat);
 
 
