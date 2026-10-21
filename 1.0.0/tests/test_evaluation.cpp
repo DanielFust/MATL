@@ -71,8 +71,8 @@ TEST_CASE("Evaluation: an expression gives the same result each time it is evalu
 TEST_CASE("Evaluation: products are stored as formulas, not results")
 {
     using M    = RowMajorMatrix<double>;
-    using Prod = _MATRIX_TIMES_MATRIX_<M, M>;
-    static_assert(std::is_same_v<member_type<Prod>::elementwise_expression, Prod>,
+    using Prod = expr::Product<M, M>;
+    static_assert(std::is_same_v<detail::stored_t<Prod>, Prod>,
                   "a product nested in an expression is stored as a product expression");
     CHECK(true);
 }

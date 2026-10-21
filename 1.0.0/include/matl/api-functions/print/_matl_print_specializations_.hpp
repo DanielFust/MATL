@@ -1,18 +1,18 @@
-#ifndef _MATL_PRINT_SPECIALIZATIONS__HPP
-#define _MATL_PRINT_SPECIALIZATIONS__HPP
+#ifndef MATL_PRINT_SPECIALIZATIONS_HPP
+#define MATL_PRINT_SPECIALIZATIONS_HPP
 
 namespace matl 
 {
    /***********************************************************************************************
-    * void print(_MATRIX_) 
+    * void print(MAT const&)
     * 
     * Prints the matrix to the standard output stream.
     *
     * Parameters:
     *     mat         Matrix to print
     ***********************************************************************************************/
-   template<typename MAT>
-   void print(_MATRIX_<MAT> const& mat)
+   template<MatrixType MAT>
+   void print(MAT const& mat)
    {
        const index_t M = mat.rows();
        const index_t N = mat.cols();

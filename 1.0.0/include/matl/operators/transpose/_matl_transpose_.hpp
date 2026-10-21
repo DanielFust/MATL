@@ -1,11 +1,11 @@
-#ifndef _MATL_TRANSPOSE__HPP
-#define _MATL_TRANSPOSE__HPP
+#ifndef MATL_TRANSPOSE_HPP
+#define MATL_TRANSPOSE_HPP
 
 namespace matl
 {
+    // Transpose of a matrix or expression
     template<MatrixAlgebraObject MAO>
-    _MATRIX_TRANSPOSE_<MAO> transpose(MAO const& mat)
-    {return _MATRIX_TRANSPOSE_<MAO>(mat);}
+    expr::Transpose<MAO> transpose(MAO const& mat)
+    {return expr::Transpose<MAO>(mat);}
 }
-
 #endif

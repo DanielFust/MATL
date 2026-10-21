@@ -3,9 +3,9 @@
  *
  * Description: RAII holders for the temporary matrices created while an expression is evaluated.
  **************************************************************************************************/
-#ifndef _MATL_EVALUATION_TEMPORARY__HPP
-#define _MATL_EVALUATION_TEMPORARY__HPP
-namespace matl
+#ifndef MATL_EVALUATION_TEMPORARY_HPP
+#define MATL_EVALUATION_TEMPORARY_HPP
+namespace matl::detail
 {
    /***********************************************************************************************
     * class TemporaryBlock

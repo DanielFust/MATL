@@ -1,37 +1,33 @@
-#ifndef _MATL_EXPRESSION_TYPES_DECLARATIONS__HPP
-#define _MATL_EXPRESSION_TYPES_DECLARATIONS__HPP
+#ifndef MATL_EXPRESSION_TYPES_DECLARATIONS_HPP
+#define MATL_EXPRESSION_TYPES_DECLARATIONS_HPP
 namespace matl
 {
-    // General Matrix + Matrix summations
-    template<typename MAO1, typename MAO2> class _MATRIX_PLUS_MATRIX_;
+    // Expression types. These are the types of expression objects, e.g. 'auto e = A + B;'.
+    namespace expr
+    {
+        // Elementwise operations
+        struct Add;
+        struct Subtract;
+        struct Multiply;
+        struct Divide;
 
-    // General Matrix and scalar summations
-    template<typename MAO, class T> class _MATRIX_PLUS_SCALAR_;
+        // Elementwise operation on two operands (matrices, expressions, or one scalar)
+        template<typename OP, typename LHS, typename RHS> class Elementwise;
 
-    // General Matrix-Matrix subtraction
-    template<typename MAO1, typename MAO2> class _MATRIX_MINUS_MATRIX_;
+        // Matrix product
+        template<typename LHS, typename RHS> class Product;
 
-    // General Matrix and scalar subtraction
-    template<typename MAO, class T> class _MATRIX_MINUS_SCALAR_;
-    template<class T, typename MAO> class _SCALAR_MINUS_MATRIX_;
+        // Transpose
+        template<typename MAO> class Transpose;
 
-    // General Matrix * scalar multiplications
-    template<typename MAO, class T> class _MATRIX_TIMES_SCALAR_;
+        // Expression that owns a (formerly temporary) matrix
+        template<typename MAT> class Owned;
+    }
 
-    // General Matrix * Matrix multiplications
-    template<typename MAT1, typename MAT2> class _MATRIX_TIMES_MATRIX_;
-
-    // General Matrix / scalar divisions
-    template<typename MAO, class T> class _MATRIX_DIVIDED_BY_SCALAR_;
-
-    // Matrix transpose
-    template<typename MAO> class _MATRIX_TRANSPOSE_;
-
-    // Expression that owns a (formerly temporary) matrix
-    template<typename MAT> class _OWNED_MATRIX_;
-
-    // Evaluators (see expression-types/evaluation/_matl_evaluation_.hpp)
-    template<typename T> struct evaluator;
-
+    namespace detail
+    {
+        // Evaluators (see expression-types/evaluation/_matl_evaluation_.hpp)
+        template<typename T> struct evaluator;
+    }
 }
 #endif

@@ -93,13 +93,22 @@ TEST_CASE("Lifetime: an expression can be returned from a function")
 TEST_CASE("Lifetime: sub-expressions are held by value, named matrices by reference")
 {
     using M   = RowMajorMatrix<double>;
-    using Sum = _MATRIX_PLUS_MATRIX_<M, M>;
-    static_assert(std::is_reference_v<member_type<M>::elementwise_expression>,
-                  "named matrices are stored by reference");
-    static_assert(!std::is_reference_v<member_type<Sum>::elementwise_expression>,
-                  "sub-expressions are stored by value");
-    static_assert(!std::is_reference_v<member_type<_MATRIX_TIMES_SCALAR_<M, double>>::elementwise_expression>);
-    static_assert(!std::is_reference_v<member_type<_MATRIX_TRANSPOSE_<M>>::elementwise_expression>);
+    using Sum = expr::Elementwise<expr::Add, M, M>;
+    static_assert(std::is_reference_v<detail::stored_t<M>>, "named matrices are stored by reference");
+    static_assert(!std::is_reference_v<detail::stored_t<Sum>>, "sub-expressions are stored by value");
+    static_assert(!std::is_reference_v<detail::stored_t<expr::Elementwise<expr::Multiply, M, double>>>);
+    static_assert(!std::is_reference_v<detail::stored_t<expr::Transpose<M>>>);
+    static_assert(!std::is_reference_v<detail::stored_t<double>>, "scalars are stored by value");
+
+    // The operators build these expression types
+    M A(2, 2), B(2, 2);
+    static_assert(std::is_same_v<decltype(A + B), Sum>);
+    static_assert(std::is_same_v<decltype(A * 2.0), expr::Elementwise<expr::Multiply, M, double>>);
+    static_assert(std::is_same_v<decltype(2.0 - A), expr::Elementwise<expr::Subtract, double, M>>);
+    static_assert(std::is_same_v<decltype(A / 2), expr::Elementwise<expr::Divide, M, int>>);
+    static_assert(std::is_same_v<decltype(A / 2.0), expr::Elementwise<expr::Multiply, M, double>>);
+    static_assert(std::is_same_v<decltype((A + B) * A), expr::Product<Sum, M>>);
+    static_assert(std::is_same_v<decltype(transpose(A)), expr::Transpose<M>>);
     CHECK(true);
 }
 

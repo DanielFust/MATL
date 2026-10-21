@@ -8,26 +8,26 @@
  *     auto e = A + eye<double>(3);
  *
  * would be destroyed at the end of the statement while the expression still refers to it. These
- * overloads move temporary matrices into an _OWNED_MATRIX_ expression, which the resulting
+ * overloads move temporary matrices into an expr::Owned expression, which the resulting
  * expression stores by value, and then forward to the regular operators.
  *
  * Overload resolution prefers these overloads for rvalue matrix arguments (binding an rvalue to
- * 'M&&' is an exact match, whereas the regular operators bind '_MATRIX_<MAT> const&' through a
- * derived-to-base conversion). For lvalue matrix arguments the TemporaryMatrix constraint fails,
- * so the regular operators are used.
+ * 'M&&' is a better match than binding it to the 'const&' parameters of the regular operators).
+ * For lvalue matrix arguments the TemporaryMatrix constraint fails, so the regular operators are
+ * used.
  **************************************************************************************************/
-#ifndef _MATL_TEMPORARY_OPERANDS__HPP
-#define _MATL_TEMPORARY_OPERANDS__HPP
+#ifndef MATL_TEMPORARY_OPERANDS_HPP
+#define MATL_TEMPORARY_OPERANDS_HPP
 namespace matl
 {
    /***********************************************************************************************
-    * _OWNED_MATRIX_ own_temporary(M&& mat)
+    * expr::Owned<M> own_temporary(M&& mat)
     *
-    * Moves a temporary matrix into an _OWNED_MATRIX_ expression.
+    * Moves a temporary matrix into an expr::Owned expression.
     ***********************************************************************************************/
     template<TemporaryMatrix M>
-    _OWNED_MATRIX_<std::remove_cv_t<M> > own_temporary(M&& mat)
-    {return _OWNED_MATRIX_<std::remove_cv_t<M> >(std::forward<M>(mat));}
+    expr::Owned<std::remove_cv_t<M> > own_temporary(M&& mat)
+    {return expr::Owned<std::remove_cv_t<M> >(std::forward<M>(mat));}
 
 
     /******************************************* Addition *****************************************/

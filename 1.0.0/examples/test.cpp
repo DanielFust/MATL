@@ -1,21 +1,21 @@
 #include <iostream>
 #include "../include/matl.hpp"
 
+// A user-defined expression type. It describes itself to MATL with a detail::traits
+// specialization and derives from ExpressionBase, which makes it an ExpressionType that can be
+// assigned to matrices and combined with other operands.
 template<typename T> class DummyExpression;
-template<typename T> struct matl::type_traits<DummyExpression<T> >
+template<typename T> struct matl::detail::traits<DummyExpression<T> >
 {
     typedef T dtype;
-    typedef matl::Matrix<T> matrix_type;
-    typedef matl::Matrix<T> downcast_type;
-};
-template<typename T> struct matl::is_elementwise<DummyExpression<T> >
-{
-    static const bool value = false;
-    typedef matl::Matrix<T> member_type;
+    static constexpr bool          fixed_size    = false;
+    static constexpr matl::index_t rows          = 0;
+    static constexpr matl::index_t cols          = 0;
+    static constexpr matl::detail::StorageOrder storage_order = matl::detail::StorageOrder::RowMajor;
 };
 
 template<typename T>
-class DummyExpression : public matl::_EXPRESSION_<DummyExpression<T> >
+class DummyExpression : public matl::ExpressionBase<DummyExpression<T> >
 {
   private:
     matl::index_t rows_;
@@ -27,8 +27,14 @@ class DummyExpression : public matl::_EXPRESSION_<DummyExpression<T> >
     matl::index_t rows() const {return rows_;}
     matl::index_t cols() const {return cols_;}
     matl::index_t size() const {return rows_*cols_;}
-    template<typename MAT>
-    void eval(matl::_MATRIX_<MAT>& mat) const
+
+    // Reads no matrices, so it is safe to evaluate into any target
+    template<matl::MatrixType MAT>
+    bool unsafe_evaluation_target(MAT const&) const {return false;}
+    bool references_address(void const*) const {return false;}
+
+    template<matl::MatrixType MAT>
+    void eval(MAT& mat) const
     {
         for (matl::index_t i = 1; i <= rows_; i++)
             for (matl::index_t j = 1; j <= cols_; j++)
@@ -44,13 +50,12 @@ class MyClass
 {
   public:
 
-    //template<typename U = T, matl::enable_if_elementwise<U> = true> // doesn't work
-    template<typename U = T, typename std::enable_if<matl::is_elementwise<U>::value>::type = true>
-    MyClass(U& obj) {std::cout << "MyClass elementwise constructor" << std::endl;}
+    // Constructor for matrices and expressions
+    template<matl::MatrixAlgebraObject U>
+    MyClass(U& obj) {std::cout << "MyClass matrix/expression constructor" << std::endl;}
 
-
-    template <typename std::enable_if<std::is_scalar<T>::value,bool>::type = true>
-    MyClass(T& obj) {std::cout << "MyClass scalar constructor" << std::endl;}
+    // Constructor for scalars
+    MyClass(T& obj) requires matl::Scalar<T> {std::cout << "MyClass scalar constructor" << std::endl;}
 
     //MyClass(const MyClass<T>& other) {std::cout << "MyClass copy constructor" << std::endl;}
 
@@ -85,6 +90,9 @@ int main()
     A = a;
     B = b;
     C = a;
+
+    // User-defined expression type
+    C = DummyExpression<dtype>(m, n);
 
     // Zero temporary matrices
     C = a + A*2 + B - b - B/2 + 4*C;

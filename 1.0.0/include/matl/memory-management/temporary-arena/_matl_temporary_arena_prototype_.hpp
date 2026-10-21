@@ -3,8 +3,8 @@
  *
  * Description: Prototype for the TemporaryArena class.
  **************************************************************************************************/
-#ifndef _MATL_TEMPORARY_ARENA_PROTOTYPE__HPP
-#define _MATL_TEMPORARY_ARENA_PROTOTYPE__HPP
+#ifndef MATL_TEMPORARY_ARENA_PROTOTYPE_HPP
+#define MATL_TEMPORARY_ARENA_PROTOTYPE_HPP
 namespace matl
 {
    /***********************************************************************************************
