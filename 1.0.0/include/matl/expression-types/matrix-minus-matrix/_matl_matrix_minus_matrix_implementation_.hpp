@@ -3,214 +3,87 @@
  * 
  * Description: Implementations for the matrix minus matrix expression template.
  **************************************************************************************************/
+#ifndef _MATL_MATRIX_MINUS_MATRIX_IMPLEMENTATION__HPP
+#define _MATL_MATRIX_MINUS_MATRIX_IMPLEMENTATION__HPP
 namespace matl
 {
    /***********************************************************************************************
-    * Constructor (elementwise - elementwise)
+    * Constructor
     * 
-    * Initialize matrix-matrix subtraction expression from two elementwise expressions or matrices.
-    * Arguments implement 'operator (index_t,index_t) const' interface so members 'mat1_' and 
-    * 'mat2_' are initialized to the input expressions.
-    * 
-    * Member types:
-    *     mat1_:    _ELEMENTWISE<EW> const&)
-    *     mat2_:    _ELEMENTWISE<EW> const&)
-    *   
+    * Stores the operands: expressions are copied, matrices are referenced.
     * 
     * Parameters:
-    *     mat1       Matrix or expression 1
-    *     mat2       Matrix or expression 2
+    *     mat1         Left operand (matrix or expression)
+    *     mat2         Right operand (matrix or expression)
     ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
-    template<typename MAO_1,
-             typename MAO_2,
-             enable_if_elementwise<MAO_1>, 
-             enable_if_elementwise<MAO_2> >
-    _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::_MATRIX_MINUS_MATRIX_(MAO_1 const& mat1, 
-                                                            MAO_2 const& mat2) : mat1_(unqualified_cast(mat1)), 
-                                                                                 mat2_(unqualified_cast(mat2)) 
-    {
-        #ifdef MATL_DEBUG
-        #ifdef MATL_DEBUG
-        std::cout << "_MATRIX_MINUS_MATRIX_ elementwise - elementwise Constructor" << std::endl;
-        #endif
-        #endif
-    }
-
-
-   /***********************************************************************************************
-    * Constructor (elementwise - non-elementwise expression)
-    * 
-    * Initialize matrix-matrix subtraction expression from an elementwise expression or matrix and
-    * a non-elementwise expression (e.g. matrix multiplication). 
-    * 
-    * Member types:
-    *   mat1_:     _ELEMENTWISE_<EW> const&)
-    *   mat2_:     _MATRIX_<MAT>
-    * 
-    * Parameters:
-    *     mat1       Matrix or elementwise expression 
-    *     expr2      non-elementwise expression 
-    ***********************************************************************************************/
-    template<typename MAO1, typename MAO2>
-    template<typename MAO_1,
-             typename MAO_2,
-             enable_if_elementwise<MAO_1>, 
-             disable_if_elementwise<MAO_2> >
-    _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::_MATRIX_MINUS_MATRIX_(MAO_1 const& mat1, 
-                                                            MAO_2 const& expr2) : 
-        mat1_(unqualified_cast(mat1)) 
-    {
-        #ifdef MATL_DEBUG
-        std::cout << "_MATRIX_MINUS_MATRIX_ elementwise - non-elementwise Constructor" << std::endl;
-        #endif
-        MemoryManager::allocate(this->mat2_,expr2.rows(), expr2.cols());
-        expr2.eval(mat2_);
-    } 
-
-
-   /***********************************************************************************************
-    * Constructor (non-elementwise - elementwise)
-    *
-    * Initialize matrix-matrix subtraction expression from a non-elementwise expression and an
-    * elementwise expression or matrix.
-    * 
-    * Member types:
-    *     mat1_:     _MATRIX_<MAT>
-    *     mat2_:     _ELEMENTWISE_<EW> const&)
-    *
-    * Parameters: 
-    *     expr1      non-elementwise expression
-    *     mat2       elementwise expression or matrix
-    ***********************************************************************************************/
-    template<typename MAO1, typename MAO2>
-    template<typename MAO_1,
-             typename MAO_2,
-             disable_if_elementwise<MAO_1>, 
-             enable_if_elementwise<MAO_2> >
-    _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::_MATRIX_MINUS_MATRIX_(MAO_1 const& expr1, 
-                                                            MAO_2 const& mat2) : 
+    template<typename OP1, typename OP2>
+    _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::_MATRIX_MINUS_MATRIX_(OP1 const& mat1, OP2 const& mat2) : 
+        mat1_(unqualified_cast(mat1)), 
         mat2_(unqualified_cast(mat2))
-    {
-        #ifdef MATL_DEBUG
-        std::cout << "_MATRIX_MINUS_MATRIX_ non-elementwise - elementwise Constructor" << std::endl;
-        #endif
-        MemoryManager::allocate(this->mat1_, expr1.rows(), expr1.cols());
-        expr1.eval(this->mat1_);
-    } 
+    {}
 
    /***********************************************************************************************
-    * Constructor (non-elementwise - non-elementwise)
+    * lhs_type const& lhs() const
     * 
-    * Initialize matrix-matrix subtraction expression from two non-elementwise expressions.
-    * 
-    * Member types:
-    *     mat1_:     _MATRIX_<MAT>
-    *     mat2_:     _MATRIX_<MAT> 
-    * 
-    * Parameters:
-    *     expr1       non-elementwise expression
-    *     expr2       non-elementwise expression
+    * Returns:
+    *     Left operand
     ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
-    template<typename MAO_1,
-             typename MAO_2,
-             disable_if_elementwise<MAO_1>, 
-             disable_if_elementwise<MAO_2> >
-    _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::_MATRIX_MINUS_MATRIX_(MAO_1 const& expr1, 
-                                                            MAO_2 const& expr2)
-    {
-        #ifdef MATL_DEBUG
-        std::cout << "_MATRIX_MINUS_MATRIX_ non-elementwise - non-elementwise Constructor" << std::endl;
-        #endif
-        MemoryManager::allocate(this->mat1_, expr1.rows(), expr1.cols());
-        MemoryManager::allocate(this->mat2_, expr2.rows(), expr2.cols());
-        expr1.eval(this->mat1_);
-        expr2.eval(this->mat2_);
-    } 
-    
+    typename _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::lhs_type const& _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::lhs() const
+    {return this->mat1_;}
+
+   /***********************************************************************************************
+    * rhs_type const& rhs() const
+    * 
+    * Returns:
+    *     Right operand
+    ***********************************************************************************************/
+    template<typename MAO1, typename MAO2>
+    typename _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::rhs_type const& _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::rhs() const
+    {return this->mat2_;}
 
    /***********************************************************************************************
     * index_t rows() const
     * 
-    * Get number of rows of resultant matrix
-    * 
-    * Number of rows in expression. Downcasts to derived type.
     * Returns:
-    *   index_t          Number of rows in resultant matrix
-    ***********************************************************************************************/  
-    template<typename MAO1, typename MAO2>        
+    *      index_t      Number of rows in resultant matrix
+    ***********************************************************************************************/ 
+    template<typename MAO1, typename MAO2>
     index_t _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::rows() const
-    {return mat1_.rows();}
-    
+    {return this->mat1_.rows();}
+
    /***********************************************************************************************
     * index_t cols() const
-    * 
-    * Get number of columns of resultant matrix
-    * 
-    * Number of columns in expression. Downcasts to derived type.
-    * Returns:
-    *     index_t  Number of columns in resultant matrix
+    *
+    * Returns: 
+    *     index_t      Number of columns in resultant matrix
     ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
     index_t _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::cols() const
-    {return mat1_.cols();}
-
+    {return this->mat1_.cols();}
 
    /***********************************************************************************************
     * index_t size() const
-    * 
-    * Get number of elements in of resultant matrix
-    * 
-    * Number of elements in expression. Downcasts to derived type.
-    * Returns:
-    *     index_t          Number of elements in resultant matrix
+    *
+    * Returns: 
+    *     index_t      Number of elements in resultant matrix
     ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
     index_t _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::size() const
-    {return mat1_.size();}
-
-
-   /***********************************************************************************************
-    * dtype operator() (index_t i, index_t j) const
-    * 
-    * Get indexed result of expression
-    * 
-    * Parameters:
-    *     i           Row index
-    *     j           Column index 
-    * Returns:
-    *    dtype       Value of resultant matrix at index pair
-    ***********************************************************************************************/
-    template<typename MAO1, typename MAO2>
-    typename _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::dtype
-    _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::operator() (index_t i, index_t j) const
-    {return this->mat1_(i,j) - this->mat2_(i,j);} 
+    {return this->mat1_.size();}
 
    /***********************************************************************************************
-    * dtype operator() (index_t i) const
+    * bool unsafe_evaluation_target(_MATRIX_ const&)
     * 
-    * Get single-indexed result of expression
-    * 
-    * Parameters:
-    *     i           Index of the element to get
-    * Returns:
-    *     dtype       Value of resultant matrix at index i 
-    *************************************************************************************************/
-    template<typename MAO1, typename MAO2>
-    typename _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::dtype
-    _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::operator() (index_t i) const
-    {return this->mat1_(i) - this->mat2_(i);} 
-
-   /***********************************************************************************************
-    * bool unsafe_evaluation_target(_MATRIX_ const* target)
-    * 
-    * Check if evaluation of the expression to the target matrix would corrupt memory.
+    * Check if evaluation of the expression directly to the target matrix would corrupt memory.
+    * Elementwise evaluation is unsafe if the target is read through a transpose (element (i,j)
+    * of the result would read an element of the target that has already been overwritten).
     * 
     * Parameters:
-    *     target      Target matrix
+    *     target       Target matrix
     * Returns:
-    *     'true' if the evaluation of the expression to target matrix would corrupt memory
+    *     'true' if evaluation directly to the target matrix would corrupt memory
     *     'false' otherwise
     ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
@@ -221,51 +94,55 @@ namespace matl
                                     || matl::unsafe_evaluation_target(target, this->mat1_);
         const bool branch2_unsafe = (matl::references_address(&target, this->mat2_) && transposed_matrix(this->mat2_))
                                     || matl::unsafe_evaluation_target(target, this->mat2_);
-        return (branch1_unsafe || branch2_unsafe);
-    } 
+        return branch1_unsafe || branch2_unsafe;
+    }
 
    /***********************************************************************************************
-    * bool references_address(_MATRIX_ const* target)
-    *
-    * Check if the expression references the address of the target matrix.
-    *
+    * bool references_address(_MATRIX_ const*)
+    * 
+    * Check if the expression references the target matrix.
+    * 
     * Parameters:
-    *     target      Target matrix
+    *     target       Target matrix
     * Returns:
-    *     'true' if the expression references the address of the target matrix
-    *     'false' otherwise
+    *     'true' if the expression references the target matrix, 'false' otherwise
     ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
     template<typename MAT>
     constexpr bool _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::references_address(_MATRIX_<MAT> const* target) const
-    {return (matl::references_address(target, this->mat1_) || matl::references_address(target, this->mat2_));} 
+    {return matl::references_address(target, this->mat1_) || matl::references_address(target, this->mat2_);}
 
    /***********************************************************************************************
-    * void eval(MAT& target) const
+    * void eval(_MATRIX_<MAT>& target) const
     * 
-    * Evaluate matrix subtraction to target matrix
+    * Evaluate the expression to the target matrix.
     * 
     * Parameters:
-    *    target      Target matrix
+    *     target       Target matrix (must be a safe evaluation target with matching dimensions)
     ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
     template<typename MAT>
     void _MATRIX_MINUS_MATRIX_<MAO1,MAO2>::eval(_MATRIX_<MAT>& target) const
+    {assign_elementwise(target, *this);}
+
+   /***********************************************************************************************
+    * struct evaluator<_MATRIX_MINUS_MATRIX_>
+    * 
+    * Evaluates elements of the expression from the evaluators of its operands.
+    ***********************************************************************************************/
+    template<typename MAO1, typename MAO2>
+    struct evaluator< _MATRIX_MINUS_MATRIX_<MAO1,MAO2> >
     {
-        if (is_same_storage_order<MAT,MAO1,MAO2>::value)
-        {
-            const index_t N = this->mat1_.size();
-            for (index_t i = 1; i <= N; i++)
-                target(i) = (*this)(i);
-        }
-        else
-        {
-            const index_t M = this->mat1_.rows();
-            const index_t N = this->mat1_.cols();
-            for (index_t i = 1; i <= M; i++)
-                for (index_t j = 1; j <= N; j++)
-                    target(i,j) = (*this)(i,j);
-        }
-        
-    } 
+        typedef _MATRIX_MINUS_MATRIX_<MAO1,MAO2> expression_type;
+        typedef typename expression_type::dtype dtype;
+
+        evaluator<typename expression_type::lhs_type> lhs_;
+        evaluator<typename expression_type::rhs_type> rhs_;
+
+        explicit evaluator(expression_type const& expr) : lhs_(expr.lhs()), rhs_(expr.rhs()) {}
+
+        dtype operator() (index_t i, index_t j) const {return lhs_(i,j) - rhs_(i,j);}
+        dtype operator() (index_t i)            const {return lhs_(i) - rhs_(i);}
+    };
 }
+#endif

@@ -6,69 +6,59 @@
  * 
  * Class prototype for generic matrix-matrix sum expression template
  *************************************************************************************************/
-namespace matl
+#ifndef _MATL_MATRIX_PLUS_MATRIX_PROTOTYPE__HPP
+#define _MATL_MATRIX_PLUS_MATRIX_PROTOTYPE__HPP
+
+namespace matl 
 {
-   /**********************************************************************************************
+   /***********************************************************************************************
     * class _MATRIX_PLUS_MATRIX_
     * 
-    * Generic matrix-matrix sum expression template
+    * Expression template for the elementwise sum of two matrices or expressions.
+    * 
+    * The expression is a formula: it stores its operands and computes nothing until it is
+    * assigned to a matrix, which evaluates it through evaluator<_MATRIX_PLUS_MATRIX_>.
     * 
     * Template Parameters:
-    *     MAO1: Matrix or expression type
-    *     MAO2: Matrix or expression type
-    **********************************************************************************************/
+    *     MAO1       Left operand type (matrix or expression)
+    *     MAO2       Right operand type (matrix or expression)
+    ***********************************************************************************************/
     template<typename MAO1, typename MAO2>
     class _MATRIX_PLUS_MATRIX_ : public _EXPRESSION_<_MATRIX_PLUS_MATRIX_<MAO1,MAO2> >
     {
-      private:
-        typename member_type<MAO1>::elementwise_expression mat1_;
-        typename member_type<MAO2>::elementwise_expression mat2_;
-      public:  
+      public:
         // Resultant matrix data type (e.g. double, int, float, etc.)
         typedef typename promote<typename type_traits<MAO1>::dtype,
                                  typename type_traits<MAO2>::dtype>::type dtype;
 
-        // Constructor (elementwise + elementwise)
-        template<typename MAO_1 = MAO1,
-                 typename MAO_2 = MAO2,
-                 enable_if_elementwise<MAO_1> = true,
-                 enable_if_elementwise<MAO_2> = true >
-        _MATRIX_PLUS_MATRIX_(MAO_1 const&, MAO_2 const&);
+        // Operand types as stored (without references)
+        typedef std::remove_cvref_t<typename member_type<MAO1>::elementwise_expression> lhs_type;
+        typedef std::remove_cvref_t<typename member_type<MAO2>::elementwise_expression> rhs_type;
 
-        // Constructor (elementwise + non-elementwise expression)
-        template<typename MAO_1 = MAO1,
-                 typename MAO_2 = MAO2,
-                 enable_if_elementwise<MAO_1>   = true,
-                 disable_if_elementwise<MAO_2>  = true >
-        _MATRIX_PLUS_MATRIX_(MAO_1 const&, MAO_2 const&);
+      private:
+        // Operands (expressions by value, matrices by reference)
+        typename member_type<MAO1>::elementwise_expression mat1_;
+        typename member_type<MAO2>::elementwise_expression mat2_;
 
-        // Constructor (non-elementwise + elementwise)
-        template<typename MAO_1 = MAO1,
-                 typename MAO_2 = MAO2,
-                 disable_if_elementwise<MAO_1> = true,
-                 enable_if_elementwise<MAO_2>  = true >
-        _MATRIX_PLUS_MATRIX_(MAO_1 const&, MAO_2 const&);
+      public:
 
-        // Constructor (non-elementwise + non-elementwise)
-        template<typename MAO_1 = MAO1,
-                 typename MAO_2 = MAO2,
-                 disable_if_elementwise<MAO_1> = true,
-                 disable_if_elementwise<MAO_2> = true >
-        _MATRIX_PLUS_MATRIX_(MAO_1 const&, MAO_2 const&);
+        // Constructor
+        template<typename OP1, typename OP2>
+        _MATRIX_PLUS_MATRIX_(OP1 const&, OP2 const&);
 
-        // Get indexed result of expression
-        dtype operator() (index_t, index_t) const;
+        // Left operand
+        lhs_type const& lhs() const;
 
-        // Get single-indexed result of expression
-        dtype operator() (index_t) const;
+        // Right operand
+        rhs_type const& rhs() const;
 
-        // Get number of rows of resultant matrix
+        // Get the number of rows
         index_t rows() const;
 
-        // Get number of columns of resultant matrix
+        // Get the number of columns
         index_t cols() const;
 
-        // Get number of elements in resultant matrix
+        // Get the number of elements
         index_t size() const;
 
         // Check if evaluation target is safe
@@ -79,11 +69,10 @@ namespace matl
         template<typename MAT>
         constexpr bool references_address(_MATRIX_<MAT> const*) const;
 
-        // Evaluate matrix summation to target matrix
-        template<typename MAT_T>
-        void eval(_MATRIX_<MAT_T>& ) const;
-
+        // Evaluate the expression to the target matrix
+        template<typename MAT>
+        void eval(_MATRIX_<MAT>&) const;
     };
-} 
+}
 
-
+#endif

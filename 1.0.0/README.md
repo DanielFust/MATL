@@ -50,9 +50,31 @@ Expression objects are safe to store, copy and return from functions:
 
 To compute a result once and reuse it, assign it to a matrix.
 
-> **Current limitation:** a matrix product nested inside a larger expression (e.g. `A*B` in
-> `auto e = A*B + C;`) is computed when the expression is *built*, so it does not see later
-> changes to `A` or `B`. Deferring products to evaluation time is planned.
+### When work happens
+
+Building an expression computes nothing and allocates nothing. All work happens when the
+expression is assigned to a matrix:
+
+```cpp
+D = A*B + transpose(C*A) - E;
+// 1. A*B and C*A are computed into temporary matrices
+// 2. the elementwise part is evaluated in a single pass: D(i,j) = T1(i,j) + T2(j,i) - E(i,j)
+// 3. the temporaries are released (in reverse order of allocation)
+```
+
+- A product assigned directly (`C = A*B`) is computed straight into the target, with no
+  temporary.
+- Operands of a product that are expressions (e.g. `A + B` in `(A + B)*C`) are first evaluated
+  into temporaries, because each of their elements is read many times.
+- Temporaries for dynamic matrices are allocated according to the `MemoryManager` settings;
+  temporaries for fixed-size matrices need no allocation.
+- Because products are computed before any element of the target is written, the target may
+  appear anywhere inside them (`C = A*C + C`, `C = transpose(C*A)`). MATL also detects when the
+  target is read in a way that would be overwritten too early (`C = A*C`, `C = C + transpose(C)`)
+  and evaluates into a temporary first.
+
+A stored expression is re-evaluated each time it is assigned, so assigning an expression that
+contains a product to several matrices computes the product each time.
 
 Matrices use **1-based indexing**: `A(1,1)` is the first element, and `A(i)` indexes elements in
 storage (row-major) order.

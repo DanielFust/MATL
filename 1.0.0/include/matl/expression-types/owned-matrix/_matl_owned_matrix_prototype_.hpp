@@ -33,6 +33,9 @@ namespace matl
         // Constructor (takes ownership of the matrix)
         explicit _OWNED_MATRIX_(MAT mat);
 
+        // The owned matrix
+        MAT const& matrix() const;
+
         // Check if evaluation target is safe
         template<typename MAT2>
         constexpr bool unsafe_evaluation_target(_MATRIX_<MAT2> const&) const;
@@ -53,12 +56,6 @@ namespace matl
 
         // Get the number of elements
         index_t size() const;
-
-        // Get the element at the i-th row and j-th column
-        dtype operator() (index_t, index_t) const;
-
-        // Get the element at the i-th index
-        dtype operator() (index_t) const;
     };
 }
 

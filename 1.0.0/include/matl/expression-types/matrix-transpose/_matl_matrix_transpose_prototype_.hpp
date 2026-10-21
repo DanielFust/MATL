@@ -1,33 +1,40 @@
 #ifndef _MATL_MATRIX_TRANSPOSE_PROTOTYPE__HPP
 #define _MATL_MATRIX_TRANSPOSE_PROTOTYPE__HPP
 
-namespace matl 
+namespace matl
 {
    /***********************************************************************************************
     * class _MATRIX_TRANSPOSE_
-    * 
-    * Class prototype for matrix transpose expressions.
+    *
+    * Expression template for the transpose of a matrix or expression.
+    *
+    * The expression is a formula: it stores its operand and computes nothing until it is assigned
+    * to a matrix, which evaluates it through evaluator<_MATRIX_TRANSPOSE_>.
+    *
+    * Template Parameters:
+    *     MAO        Operand type (matrix or expression)
     *************************************************************************************************/
     template<typename MAO>
-    class _MATRIX_TRANSPOSE_ : public _EXPRESSION_<_MATRIX_TRANSPOSE_<MAO> >,
-                               public _ELEMENTWISE_<_MATRIX_TRANSPOSE_<MAO> >
+    class _MATRIX_TRANSPOSE_ : public _EXPRESSION_<_MATRIX_TRANSPOSE_<MAO> >
     {
-      private:
-        typename member_type<MAO>::elementwise_expression mat_;
-      
-      public:  
+      public:
         // Resultant matrix data type (e.g. double, int, float, etc.)
-        typedef typename promote<typename type_traits<MAO>::dtype>::type dtype;
- 
-        // Constructor (elementwise object)
-        template<typename MAO_               = MAO,
-                 enable_if_elementwise<MAO_> = true>
-        _MATRIX_TRANSPOSE_(MAO_ const&);
+        typedef typename type_traits<MAO>::dtype dtype;
 
-        // Constructor (non-elementwise object)
-        template<typename MAO_                = MAO,
-                 disable_if_elementwise<MAO_> = true>
-        _MATRIX_TRANSPOSE_(MAO_ const&);
+        // Operand type as stored (without references)
+        typedef std::remove_cvref_t<typename member_type<MAO>::elementwise_expression> operand_type;
+
+      private:
+        // Operand (expression by value, matrix by reference)
+        typename member_type<MAO>::elementwise_expression mat_;
+
+      public:
+
+        // Constructor
+        explicit _MATRIX_TRANSPOSE_(MAO const&);
+
+        // Operand being transposed
+        operand_type const& operand() const;
 
         // Get number of rows of resultant matrix
         index_t rows() const;
@@ -37,12 +44,6 @@ namespace matl
 
         // Get number of elements in resultant matrix
         index_t size() const;
-
-        // Get the element at the i-th row and j-th column
-        dtype operator() (index_t i, index_t j) const;
-
-        // Get the element at the i-th index
-        dtype operator() (index_t i) const;
 
         // Check if evaluation target is safe
         template<typename MAT>
@@ -57,5 +58,4 @@ namespace matl
         void eval(_MATRIX_<MAT>&) const;
     };
 }
-
 #endif

@@ -30,5 +30,8 @@ namespace matl
     // Expression that owns a (formerly temporary) matrix
     template<typename MAT> class _OWNED_MATRIX_;
 
+    // Evaluators (see expression-types/evaluation/_matl_evaluation_.hpp)
+    template<typename T> struct evaluator;
+
 }
 #endif

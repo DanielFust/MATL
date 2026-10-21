@@ -127,40 +127,6 @@ namespace matl
         return *this;
     } 
 
-    #if 0
-
-   /***********************************************************************************************
-    * FixedSizeRowMajorMatrix& operator= (_MATRIX_TIMES_MATRIX_ const&)
-    * 
-    * Expression evaluation trigger (Matrix multiplication specialization). For safety, this
-    * specialization checks if this matrix is referenced in the expression and uses a temporary
-    * matrix to store the result before copying it to this matrix.
-    * 
-    * Parameters:
-    *     _MATRIX_TIMES_MATRIX_ expr        Matrix-matrix multiplication expression
-    ***********************************************************************************************/
-    template<class T, index_t M, index_t N>
-    template<typename MAO1, typename MAO2>
-    FixedSizeRowMajorMatrix<T, M, N>&
-    FixedSizeRowMajorMatrix<T, M, N>::operator=(_MATRIX_TIMES_MATRIX_<MAO1, MAO2> const& expr)
-    {
-        // If the FixedSizeRowMajorMatrix is also referenced in the expression, evaluate to a temporary matrix
-        if ((expr.mat1_address() == this) || (expr.mat2_address() == this))
-        {
-            FixedSizeRowMajorMatrix<T, M, N> temp;
-
-            // Evaluate to temporary matrix and copy result
-            expr.eval(temp);
-            
-            *this = temp;
-        }
-        // Otherwise, evaluate directly to this matrix
-        else expr.eval(*this);
-            
-        return *this;
-    } 
-
-    #endif
     
 
    /***********************************************************************************************

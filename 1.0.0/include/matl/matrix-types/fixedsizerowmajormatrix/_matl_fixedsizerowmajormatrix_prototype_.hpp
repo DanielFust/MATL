@@ -61,11 +61,6 @@ namespace matl
         template<typename EXPR>
         FixedSizeRowMajorMatrix& operator=(_EXPRESSION_<EXPR> const& expr);
 
-        #if 0
-        // Expression evaluation trigger (Matrix multiplication specialization)
-        template<typename MAO1, typename MAO2>
-        FixedSizeRowMajorMatrix& operator=(_MATRIX_TIMES_MATRIX_<MAO1, MAO2> const& expr);
-        #endif
 
         // Copy 
         template<typename MAT>
