@@ -7,6 +7,7 @@ From the `1.0.0/` directory:
 ```sh
 make check                      # build and run the test suite
 make check-sanitize             # same, with AddressSanitizer + UndefinedBehaviorSanitizer
+make check-nodebug              # same, with MATL_NO_DEBUG (debug checks compiled out)
 make check FILTER=Transpose     # run only test cases whose name contains "Transpose"
 make check CXX=clang++          # choose a compiler (default: g++)
 ./build/matl_tests --list       # list all test case names
@@ -28,6 +29,8 @@ the build.
 | `test_expressions.cpp` | Elementwise, scalar, product and transpose expressions; aliasing; fixed-size and mixed operands |
 | `test_evaluation.cpp` | Deferred evaluation: nested products read current operand values, no allocation until assignment, temporaries released afterwards, aliasing with deferred products |
 | `test_expression_lifetime.cpp` | Stored expressions (`auto e = ...`): ownership of sub-expressions and temporaries, live references to named matrices, initializing matrices from expressions |
+| `test_temporary_arena.cpp` | TemporaryArena (stack order, growth, out-of-order release) and the exact temporaries each kind of assignment uses |
+| `test_heap_allocations.cpp` | Counts heap allocations: none during evaluation once the arena has grown. Replaces the global `operator new` for the test program (counting only inside an explicit window) |
 | `test_memory_manager.cpp` | Scratch-memory allocation, reuse, external buffers, teardown |
 | `test_errors.cpp` | Bounds and dimension checks (`abort()` for dynamic matrices, exceptions for fixed-size) |
 | `test_randomized.cpp` | Random sizes and contents (fixed seed) compared against the reference implementation |

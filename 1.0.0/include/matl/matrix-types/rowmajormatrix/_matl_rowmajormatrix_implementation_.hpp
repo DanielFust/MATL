@@ -264,16 +264,12 @@ namespace matl
         // Check (at compile-time) if the evaluation is safe 
         if (expression.unsafe_evaluation_target(*this))
         {
-            // Use temporary matrix to store the result
-            RowMajorMatrix<T> temp;
-            MemoryManager::allocate(temp, expression.rows(), expression.cols());
-            expression.eval(temp);
-
-            // Memory should have the same type of ownership after evaluation.
-            // If the memory is privately or externally owned, the result must be copied.
-            // If it is managed by the MemoryManager, the result can be moved.
-            if (this->get_scratch_container()!=nullptr) *this = std::move(temp);    
-            else this->copy(temp);    
+            // Evaluate into a temporary, then copy the result. The temporary's memory is
+            // recycled by the MemoryManager (see EvaluationTemporary), so it is copied rather
+            // than moved, and this matrix keeps its own memory.
+            EvaluationTemporary< RowMajorMatrix<T> > temp(expression.rows(), expression.cols());
+            expression.eval(temp.matrix());
+            this->copy(temp.matrix());
         }
         else // evaluation to this matrix is safe
         {

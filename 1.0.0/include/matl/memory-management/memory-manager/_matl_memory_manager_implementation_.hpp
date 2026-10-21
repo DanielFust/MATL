@@ -590,6 +590,26 @@ namespace matl
 
 
    /***********************************************************************************************
+    * TemporaryArena& temporary_arena()
+    * 
+    * Returns:
+    *     This thread's arena for evaluation temporaries
+    ***********************************************************************************************/
+    inline TemporaryArena& MemoryManager::temporary_arena()
+    {return get_memory_manager().temporaries_;}
+
+   /***********************************************************************************************
+    * bool use_temporary_arena()
+    * 
+    * Returns:
+    *     'true' if evaluation temporaries are allocated from the arena (the MemoryManager is
+    *     enabled and CACHE_TEMPORARY_MATRICES is set), 'false' if they are allocated on the heap
+    ***********************************************************************************************/
+    inline bool MemoryManager::use_temporary_arena()
+    {return get_memory_manager().enabled() && MemoryManager::CACHE_TEMPORARY_MATRICES;}
+
+
+   /***********************************************************************************************
     *                                 Matrix Allocations
     ***********************************************************************************************/  
 

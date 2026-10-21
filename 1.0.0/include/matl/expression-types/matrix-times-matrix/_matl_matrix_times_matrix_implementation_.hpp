@@ -178,14 +178,13 @@ namespace matl
         typedef typename expression_type::dtype                     dtype;
         typedef typename is_fixed_size<expression_type>::matrix_type result_type;
 
-        result_type result_;
+        EvaluationTemporary<result_type> result_;
 
-        explicit evaluator(expression_type const& expr) :
-            result_(temporary_matrix<result_type>(expr.rows(), expr.cols()))
-        {compute_product(result_, expr);}
+        explicit evaluator(expression_type const& expr) : result_(expr.rows(), expr.cols())
+        {compute_product(result_.matrix(), expr);}
 
-        dtype operator() (index_t i, index_t j) const {return result_(i,j);}
-        dtype operator() (index_t i)            const {return result_(i);}
+        dtype operator() (index_t i, index_t j) const {return result_.matrix()(i,j);}
+        dtype operator() (index_t i)            const {return result_.matrix()(i);}
     };
 }
 #endif
