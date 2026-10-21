@@ -3,9 +3,6 @@ namespace matl
     // Memory Manager
     class MemoryManager;
 
-    // Scratch Memory Container
-    class ScratchContainer;
-
     // Stack-ordered memory for evaluation temporaries
     class TemporaryArena;
 

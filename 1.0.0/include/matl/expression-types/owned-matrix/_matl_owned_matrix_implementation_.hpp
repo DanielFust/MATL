@@ -10,8 +10,7 @@ namespace matl
    /***********************************************************************************************
     * Constructor
     *
-    * Takes ownership of a matrix. The matrix's data is moved, not copied (for matrices borrowing
-    * scratch memory, the ScratchContainer pairing moves with it).
+    * Takes ownership of a matrix. The matrix's data is moved, not copied.
     *
     * Parameters:
     *     mat          Matrix to own

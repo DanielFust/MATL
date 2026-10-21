@@ -62,7 +62,6 @@ int main()
     using matl::FixedSizeRowMajorMatrix;
     using matl::Matrix;
     using matl::index_t;
-    using matl::ScratchContainer;
     using matl::MemoryManager;
     typedef double dtype;
     
@@ -70,8 +69,6 @@ int main()
     index_t const n = 3;
     dtype a = 1.0;
     dtype b = 2.0;
-
-    matl::MemoryManager::ALLOCATE_MATRICES_IN_SCRATCH = false;
 
     /*
     Matrix<dtype> A(m,n);
@@ -110,13 +107,9 @@ int main()
     // 
    
     std::cout << "Memory Manager Enabled: " << MemoryManager::get_memory_manager().enabled() << std::endl;
-    std::cout << "Number of Scratch Containers: " << MemoryManager::get_memory_manager().containers().size() << std::endl;
-    for (ScratchContainer& container : MemoryManager::get_memory_manager().containers())
-    {
-        std::cout << "Container size: " << container.size() << 
-                     ", Bytes used: "   << container.bytes_used() 
-                  << std::endl;
-    }
+    std::cout << "Temporary arena capacity: " << MemoryManager::temporary_arena().capacity()
+              << " bytes, peak use: " << MemoryManager::temporary_arena().high_water_mark()
+              << " bytes" << std::endl;
     
     
 

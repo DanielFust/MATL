@@ -21,15 +21,11 @@ namespace matl
     *     RowMajorMatrix      Row major matrix object with zero rows and zero columns
     ***********************************************************************************************/ 
     template<class T>
-    RowMajorMatrix<T>::RowMajorMatrix() : ScratchMemoryBorrower(),
-                                          rows_(0), 
+    RowMajorMatrix<T>::RowMajorMatrix() : rows_(0), 
                                           cols_(0), 
-                                          data_(nullptr)
-
-    {
-        this->set_scratch_container(nullptr);
-        this->set_external_mem(false);
-    }
+                                          data_(nullptr),
+                                          external_mem_(false)
+    {}
 
 
 
@@ -49,48 +45,32 @@ namespace matl
     *     RowMajorMatrix      Row major matrix object with specified rows and columns
     ***********************************************************************************************/ 
     template<class T>
-    RowMajorMatrix<T>::RowMajorMatrix(index_t rows, index_t cols) : ScratchMemoryBorrower(),
-                                                                    rows_(rows), 
+    RowMajorMatrix<T>::RowMajorMatrix(index_t rows, index_t cols) : rows_(rows), 
                                                                     cols_(cols),
-                                                                    data_(nullptr)
-    {
-        this->set_external_mem(false);
-
-        // Check if memory should be allocated in scratch memory or on the heap
-        MemoryManager& memory_manager = MemoryManager::get_memory_manager();
-        if (memory_manager.enabled() && memory_manager.ALLOCATE_MATRICES_IN_SCRATCH)
-            memory_manager.assign_memory(*this, rows, cols);
-        else
-        {
-            this->data_ = new T[rows*cols];
-            this->set_scratch_container(nullptr);
-        }
-    }
+                                                                    data_(new T[rows*cols]),
+                                                                    external_mem_(false)
+    {}
 
 
 
    /***********************************************************************************************
     * RowMajorMatrix(index_t rows, index_t cols, T* data)
     * 
-    * Preallocated constructor. Allows a RowMajorMatrix object to take ownership of preallocated
-    * memory. 
+    * Preallocated constructor. Allows a RowMajorMatrix object to use preallocated memory (rows*cols
+    * elements in row-major order).
     * 
-    * This is intended to allows data for many persistant matrices to be allocated (or transferred
-    * via MPI call) in a single contiguous block of memory without additional overhead of many
-    * ScratchArray containers.
+    * This is intended to allow data for many persistent matrices to be allocated (or transferred
+    * via MPI call) in a single contiguous block of memory.
     * 
-    * Note: This memory is not owned by the MemoryManager and will not be deallocated by
-    * the RowMajorMatrix destructor.
+    * Note: The memory remains owned by the caller and must outlive the matrix. It is not
+    * deallocated by the RowMajorMatrix destructor.
     ***********************************************************************************************/
     template<class T>   
-    RowMajorMatrix<T>::RowMajorMatrix(index_t rows, index_t cols, T* data) : ScratchMemoryBorrower(true),
-                                                                             rows_(rows), 
+    RowMajorMatrix<T>::RowMajorMatrix(index_t rows, index_t cols, T* data) : rows_(rows), 
                                                                              cols_(cols), 
-                                                                             data_(data)
-    {
-        this->set_external_mem(true);
-        this->set_scratch_container(nullptr);
-    }
+                                                                             data_(data),
+                                                                             external_mem_(true)
+    {}
 
    /***********************************************************************************************
     * RowMajorMatrix(_MATRIX_<MAT> const&)
@@ -103,18 +83,13 @@ namespace matl
     **************************************************************************************************/
     template<class T>
     template<typename MAT>
-    RowMajorMatrix<T>::RowMajorMatrix(_MATRIX_<MAT> const& other) : ScratchMemoryBorrower(),
-                                                                    rows_(other.rows()), 
+    RowMajorMatrix<T>::RowMajorMatrix(_MATRIX_<MAT> const& other) : rows_(other.rows()), 
                                                                     cols_(other.cols()),
-                                                                    data_(nullptr)
+                                                                    data_(new T[other.rows()*other.cols()]),
+                                                                    external_mem_(false)
     {
         const index_t M = this->rows_;
         const index_t N = this->cols_;
-
-        this->set_external_mem(false);
-
-        // Allocate memory for the new matrix
-        allocate(*this, M, N);
 
         // Copy data from the original matrix
         for (index_t i = 1; i <= M; ++i)
@@ -132,16 +107,11 @@ namespace matl
     *     other          RowMajorMatrix object to copy
     ***********************************************************************************************/ 
     template<class T>
-    RowMajorMatrix<T>::RowMajorMatrix(const RowMajorMatrix<T>& other) : ScratchMemoryBorrower(),
-                                                                        rows_(other.rows_), 
+    RowMajorMatrix<T>::RowMajorMatrix(const RowMajorMatrix<T>& other) : rows_(other.rows_), 
                                                                         cols_(other.cols_),
-                                                                        data_(nullptr)
+                                                                        data_(new T[other.rows_*other.cols_]),
+                                                                        external_mem_(false)
     {
-        this->set_external_mem(false);
-
-        // Allocate memory for the new matrix
-        allocate(*this, rows_, cols_);
-
         // Copy data from the original matrix
         const index_t N = this->rows_ * this->cols_;
         for (index_t i = 0; i < N; ++i)
@@ -152,45 +122,39 @@ namespace matl
     * RowMajorMatrix(_EXPRESSION_<EXPR> const&)
     * 
     * Expression constructor. Creates a new RowMajorMatrix sized to the expression and evaluates
-    * the expression into it. Memory is allocated according to the MemoryManager settings.
+    * the expression into it.
     * 
     * Parameters:
     *     expr           Expression to evaluate
     ***********************************************************************************************/ 
     template<class T>
     template<typename EXPR>
-    RowMajorMatrix<T>::RowMajorMatrix(_EXPRESSION_<EXPR> const& expr) : ScratchMemoryBorrower(),
-                                                                        rows_(0), 
+    RowMajorMatrix<T>::RowMajorMatrix(_EXPRESSION_<EXPR> const& expr) : rows_(0), 
                                                                         cols_(0),
-                                                                        data_(nullptr)
+                                                                        data_(nullptr),
+                                                                        external_mem_(false)
     {*this = expr;}
 
    /***********************************************************************************************
     * RowMajorMatrix(RowMajorMatrix<T>&&)
     * 
-    * Move constructor. Takes ownership of the other matrix's data without copying. If the data is
-    * borrowed from the MemoryManager, the ScratchContainer pairing is transferred to this matrix.
-    * The other matrix is left empty (0x0).
+    * Move constructor. Takes the other matrix's data without copying (externally owned memory
+    * stays externally owned). The other matrix is left empty (0x0).
     * 
     * Parameters:
     *     other          RowMajorMatrix object to move
     ***********************************************************************************************/ 
     template<class T>
-    RowMajorMatrix<T>::RowMajorMatrix(RowMajorMatrix<T>&& other) : ScratchMemoryBorrower(other.external_mem()),
-                                                                   rows_(other.rows_), 
-                                                                   cols_(other.cols_),
-                                                                   data_(other.data_)
+    RowMajorMatrix<T>::RowMajorMatrix(RowMajorMatrix<T>&& other) noexcept : rows_(other.rows_), 
+                                                                            cols_(other.cols_),
+                                                                            data_(other.data_),
+                                                                            external_mem_(other.external_mem_)
     {
-        // Transfer the ScratchContainer pairing if the memory is managed by the MemoryManager
-        if (other.get_scratch_container() != nullptr)
-            ScratchMemoryBorrower::operator=(static_cast<ScratchMemoryBorrower&&>(other));
-
         // Nullify other matrix so the data is not deleted
-        other.data_   = nullptr;
-        other.rows_   = 0;
-        other.cols_   = 0;
-        other.scratch_ = nullptr;
-        other.set_external_mem(false);
+        other.data_         = nullptr;
+        other.rows_         = 0;
+        other.cols_         = 0;
+        other.external_mem_ = false;
     } 
 
 
@@ -198,22 +162,11 @@ namespace matl
    /***********************************************************************************************
     * Destructor
     * 
-    * Template Parameters:
-    *     T        (implicit) Matrix data type
-    * 
-    * Parameters:
+    * Deletes the matrix data, unless it is externally owned.
     ***********************************************************************************************/ 
     template<class T>
     RowMajorMatrix<T>::~RowMajorMatrix()
-    {deallocate(*this);}
-   /*
-    // If data is owned by memory manager, free it (do not delete)
-        if (this->get_scratch_container() != nullptr) 
-            MemoryManager::get_memory_manager().free_memory(*this->get_scratch_container());
-        // Else memory is owned by matrix, delete it
-        else if (!this->external_mem()) delete[] this->data_;
-    }
-    */
+    {if (!this->external_mem_) delete[] this->data_;}
 
 
 
@@ -265,8 +218,8 @@ namespace matl
         if (expression.unsafe_evaluation_target(*this))
         {
             // Evaluate into a temporary, then copy the result. The temporary's memory is
-            // recycled by the MemoryManager (see EvaluationTemporary), so it is copied rather
-            // than moved, and this matrix keeps its own memory.
+            // recycled (see EvaluationTemporary), so it is copied rather than moved, and this
+            // matrix keeps its own memory.
             EvaluationTemporary< RowMajorMatrix<T> > temp(expression.rows(), expression.cols());
             expression.eval(temp.matrix());
             this->copy(temp.matrix());
@@ -275,7 +228,7 @@ namespace matl
         {
             // If Matrix is not allocated yet, allocate it
             if (this->size() == 0) 
-                MemoryManager::allocate(*this,expression.rows(), expression.cols());
+                allocate(*this, expression.rows(), expression.cols());
         
             // Evaluate expression    
             expression.eval(*this);
@@ -300,7 +253,7 @@ namespace matl
     * 
     ***********************************************************************************************/
     template<class T>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&& mat)
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&& mat) noexcept
     {
         #ifdef MATL_DEBUG
         std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&&)" 
@@ -342,29 +295,43 @@ namespace matl
         deallocate(*this);
 
         // Assign data pointer to pointer of other matrix data
-        this->data_    = mat.data_;
-        this->rows_    = mat.rows_;
-        this->cols_    = mat.cols_;
-        this->set_external_mem(mat.external_mem());
+        this->data_         = mat.data_;
+        this->rows_         = mat.rows_;
+        this->cols_         = mat.cols_;
+        this->external_mem_ = mat.external_mem_;
         #ifdef MATL_DEBUG
         std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&&) - data moved" << std::endl;
         #endif
         
-        // Invoke move assignment on the ScratchMemoryBorrower base class if the memory is managed by the MemoryManager
-        if (mat.get_scratch_container() != nullptr)
-        {
-            //this->ScratchMemoryBorrower::operator=(static_cast<ScratchMemoryBorrower&&>(mat));
-            ScratchMemoryBorrower::operator=(static_cast<ScratchMemoryBorrower&&>(mat));
-        }
-        else
-            (*this).scratch_ = nullptr;
-            //static_cast<ScratchMemoryBorrower&>(*this).scratch_ = nullptr;
-        
         // Nullify other matrix so the data is not deleted
-        mat.data_      = nullptr;
-        mat.rows_      = 0;
-        mat.cols_      = 0;
-        mat.set_external_mem(false);
+        mat.data_         = nullptr;
+        mat.rows_         = 0;
+        mat.cols_         = 0;
+        mat.external_mem_ = false;
+
+        return *this;
+    }
+
+
+
+   /***********************************************************************************************
+    *  RowMajorMatrix<T>& operator=(RowMajorMatrix<T> const&)
+    * 
+    * Copy assignment for RowMajorMatrix of the same type. Copies the data into this matrix,
+    * allocating it first if it is empty.
+    * 
+    * Parameters:
+    *     mat         Other RowMajorMatrix
+    ***********************************************************************************************/
+    template<class T>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T> const& mat)
+    {
+        #ifdef MATL_DEBUG
+        std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T> const&) called" << std::endl;
+        #endif
+
+        // Check for self assignment (copy checks the dimensions)
+        if (this != &mat) this->copy(mat);
 
         return *this;
     }
@@ -1005,9 +972,7 @@ namespace matl
             this->rows_ = rows;
             this->cols_ = cols;
 
-            if (this->scratch_ != nullptr) 
-                MemoryManager::get_memory_manager().free_memory(*this->scratch_);
-            else delete[] this->data_;
+            if (!this->external_mem_) delete[] this->data_;
 
             this->data_ = new_data;  
         }
@@ -1024,19 +989,7 @@ namespace matl
     ***********************************************************************************************/
     template<class T>
     bool RowMajorMatrix<T>::external_mem() const
-    {return ScratchMemoryBorrower::external_mem();}
-
-   /***********************************************************************************************
-    * void set_external_mem(bool)
-    * 
-    * Set external memory flag
-    * 
-    * Parameters:
-    *    ext_mem      True if memory is externally owned, false otherwise
-    ***********************************************************************************************/
-    template<class T>
-    void RowMajorMatrix<T>::set_external_mem(bool ext_mem)
-    {ScratchMemoryBorrower::set_external_mem(ext_mem);} 
+    {return this->external_mem_;}
     
 
 
@@ -1075,143 +1028,55 @@ namespace matl
     }
 
 
-   /***********************************************************************************************
-    * void set_scratch_container(ScratchArray*)
-    * 
-    * Saves the address of the scratch memory container this object is borrowing from.
-    ***********************************************************************************************/
-    template<class T>
-    void RowMajorMatrix<T>::set_scratch_container(ScratchContainer* scratch)
-    {
-        // If the container is the same as the current container, return
-        if (scratch == this->get_scratch_container()) return;
+   /*=============================================================================================*
+    *                                  ALLOCATION AND DEALLOCATION
+    *=============================================================================================*/
 
-        // If the matrix is allocated data may need to be copied to new ScratchContainer
-        if (this->data_ != nullptr)
-        {
-            // If the current data pointer does not point to the data in the scratch container, 
-            // then copy the data. This should be more robust than checking if the scratch
-            // is different, as the order of operations in MemoryManager methods may cause
-            // temporary misalignment between data pointers and 
-            // ScratchContainer-ScratchMemoryBorrower pairing pointers.
-            std::byte* data = reinterpret_cast<std::byte*>(this->data_);
-            if (data != scratch->data())
-            {
-                index_t nbytes = this->size()*sizeof(T);
-                if (nbytes>scratch->size())
-                {
-                    std::cerr << "Error in 'void RowMajorMatrix<T>::set_scratch_container(ScratchContainer*)' : "
-                              << "\n    ScratchContainer is too small to hold matrix data."
-                              << "\n    Deallocating matrix prior to assigning scratch memory is strongly recommended."
-                              << std::endl;
-                    abort();
-                }
-
-                // Copy data to new ScratchContainer
-                for (index_t i = 0; i < nbytes; ++i) scratch->data()[i] = data[i];
-
-                // If the memory was previously owned by the MemoryManager, free it
-                if (this->get_scratch_container() != nullptr) 
-                    MemoryManager::get_memory_manager().free_memory(*this->get_scratch_container());
-                // If the memory was previously owned by the matrix, deallocate it
-                else if (this->external_mem() == false) delete[] this->data_;
-
-                // External memory flag will always be false after this operation
-                this->set_external_mem(false);
-
-                // Set new data pointer
-                this->data_ = reinterpret_cast<T*>(scratch->data());
-            }
-        };
-        // Finally, set the scratch container pointer
-        ScratchMemoryBorrower::set_scratch_container(scratch);
-    }
 
    /***********************************************************************************************
-    * ScratchContainer* get_scratch_container()
+    * void allocate(RowMajorMatrix<T>&, index_t, index_t)
     * 
-    * Returns the address of the scratch memory container this object is borrowing from.
-    ***********************************************************************************************/
-    template<class T>
-    ScratchContainer* RowMajorMatrix<T>::get_scratch_container()
-    {return ScratchMemoryBorrower::get_scratch_container();}  
-
-   /***********************************************************************************************
-    * void copy_memory_to_private()
+    * Allocate memory for a RowMajorMatrix on the heap, owned by the matrix. Any data the matrix
+    * held before is released first (see deallocate).
     * 
-    * Copies the data from shared scratch memory to newly allocated array owned by the 
-    * RowMajorMatrix.
-    ***********************************************************************************************/ 
+    * Parameters:
+    *     matrix        RowMajorMatrix object to allocate memory for
+    *     rows          Number of rows in matrix
+    *     cols          Number of columns in matrix
+    ***********************************************************************************************/  
     template<class T>
-    void RowMajorMatrix<T>::copy_memory_to_private()
+    void allocate(RowMajorMatrix<T>& matrix, index_t rows, index_t cols)
     {
         #ifdef MATL_DEBUG
-        std::cout << "In RowMajorMatrix<T>::copy_memory_to_private()..." << std::endl;
+        std::cout << "In allocate(RowMajorMatrix<T>&, index_t, index_t)..." << std::endl;
         #endif
-        // Return if memory is not owned by memory manager
-        ScratchContainer* scratch = this->get_scratch_container();
-        if (scratch == nullptr) return;
-
-        // Save dimensions (free_memory nullifies the borrower, resetting them to 0)
-        const index_t rows = this->rows_;
-        const index_t cols = this->cols_;
-        const index_t N    = rows*cols;
-
-        // Allocate new data array and copy data from shared memory to new memory
-        T* new_data = new T[N];
-        for (index_t i = 0; i < N; ++i) {new_data[i] = this->data_[i];}
-
-        // Free shared memory (unpairs this matrix from the container)
-        MemoryManager::get_memory_manager().free_memory(*scratch);
-
-        // Assign privately owned data array to object
-        this->data_ = new_data;
-        this->rows_ = rows;
-        this->cols_ = cols;
-        this->scratch_ = nullptr;
-        this->set_external_mem(false);
+        deallocate(matrix);
+        matrix.data_ = new T[rows*cols];
+        matrix.rows_ = rows;
+        matrix.cols_ = cols;
     }
 
+
    /***********************************************************************************************
-    * void nullify_borrowed_memory()
+    * void deallocate(RowMajorMatrix<T>&)
     * 
-    * Sets the matrix size to zero and nullifies the data pointers if the memory is borrowed from
-    * scratch owned by the MemoryManager 
+    * Deallocate the memory of a RowMajorMatrix and leave it empty (0x0). Externally owned memory
+    * is not deleted; the matrix just stops using it.
+    * 
+    * Parameters:
+    *     matrix        RowMajorMatrix object to deallocate memory for
     ***********************************************************************************************/
     template<class T>
-    void RowMajorMatrix<T>::nullify_borrowed_memory()
+    void deallocate(RowMajorMatrix<T>& matrix)
     {
         #ifdef MATL_DEBUG
-        std::cout << "In RowMajorMatrix<T>::nullify_borrowed_memory()..." << std::endl;
+        std::cout << "In deallocate(RowMajorMatrix<T>&)..." << std::endl;
         #endif
-        // If the memory is not regulated by the MemoryManager, return
-        if (ScratchMemoryBorrower::external_mem()) return;
-        if (ScratchMemoryBorrower::get_scratch_container() == nullptr) return;
+        if (!matrix.external_mem_) delete[] matrix.data_;
 
-        // Set size to zero and nullify pointers
-        this->rows_ = 0;
-        this->cols_ = 0;
-        this->data_ = nullptr;
-        ScratchMemoryBorrower::nullify_borrowed_memory();
-    } 
-
-   /***********************************************************************************************
-    * std::byte* data() const
-    * 
-    * Returns: 
-    *     Address of the first element of the matrix data
-    ***********************************************************************************************/
-    template<class T>
-    std::byte* RowMajorMatrix<T>::data() const
-    {return reinterpret_cast<std::byte*>(this->data_);}  
-
-   /***********************************************************************************************
-    * index_t bytes_used() const
-    * 
-    * Returns:
-    *     The number of bytes used by the matrix
-    ***********************************************************************************************/ 
-    template<class T>
-    index_t RowMajorMatrix<T>::bytes_used() const
-    {return this->size()*sizeof(T);}
+        matrix.data_         = nullptr;
+        matrix.rows_         = 0;
+        matrix.cols_         = 0;
+        matrix.external_mem_ = false;
+    }
 }

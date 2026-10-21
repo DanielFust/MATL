@@ -59,13 +59,17 @@ namespace
     }
 }
 
-TEST_CASE("Randomized: expressions match the reference implementation (heap memory)")
+TEST_CASE("Randomized: expressions match the reference implementation (arena temporaries)")
 {
     run_randomized_trials();
 }
 
-TEST_CASE("Randomized: expressions match the reference implementation (scratch memory)")
+TEST_CASE("Randomized: expressions match the reference implementation (heap temporaries)")
 {
-    matl_test::ScratchMode scratch;
+    struct HeapTemporaries
+    {
+        HeapTemporaries()  {MemoryManager::CACHE_TEMPORARY_MATRICES = false;}
+        ~HeapTemporaries() {MemoryManager::CACHE_TEMPORARY_MATRICES = true;}
+    } heap;
     run_randomized_trials();
 }
