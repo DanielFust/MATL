@@ -10,7 +10,7 @@
  *
  * Build and run (from 1.0.0/):   make bench
  *
- * Note: compiled with MATL_NO_DEBUG (no bounds/dimension checks or trace output) and -O2.
+ * Note: compiled with -O2 -DNDEBUG (a release build: no bounds or dimension checks).
  *       Timings depend on the machine; compare the two columns of a row, not across machines.
  **************************************************************************************************/
 #include <chrono>

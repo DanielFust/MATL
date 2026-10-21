@@ -7,14 +7,15 @@ From the `1.0.0/` directory:
 ```sh
 make check                      # build and run the test suite
 make check-sanitize             # same, with AddressSanitizer + UndefinedBehaviorSanitizer
-make check-nodebug              # same, with MATL_NO_DEBUG (debug checks compiled out)
+make check-nodebug              # same, with MATL_NO_DEBUG (run-time debug checks compiled out)
 make check FILTER=Transpose     # run only test cases whose name contains "Transpose"
 make check CXX=clang++          # choose a compiler (default: g++)
 ./build/matl_tests --list       # list all test case names
 ```
 
-Test results are printed to stderr. Trace output from `MATL_DEBUG` (which `matl.hpp` currently
-enables by default) goes to stdout, which the Makefile writes to `build/matl_tests.stdout.log`.
+Test results are printed to stderr. The test builds enable MATL's run-time checks (they define
+neither `NDEBUG` nor `MATL_NO_DEBUG`). The sanitizer build also enables the `MATL_DEBUG` trace
+output, which goes to stdout; the Makefile writes it to `build/matl_tests_sanitize.stdout.log`.
 
 The tests are compiled with `-Wall -Wextra -Werror`, so new compiler warnings in the library fail
 the build.

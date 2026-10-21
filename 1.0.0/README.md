@@ -175,10 +175,20 @@ were reallocated after it was built.
 
 ## Debug checks
 
-`matl.hpp` enables run-time dimension checks (`MATL_DIMENSION_CHECK`), bounds checks
-(`MATL_BOUNDS_CHECK`) and `MATL_DEBUG` trace output by default. Define `MATL_NO_DEBUG` before
-including it (or compile with `-DMATL_NO_DEBUG`) to disable them, e.g. for benchmarks and
-production builds. Compile-time dimension checks are always on.
+Like `assert`, MATL's run-time checks are enabled unless `NDEBUG` is defined, so debug builds
+check and release builds (`-DNDEBUG`, the default of CMake's Release configuration) do not:
+
+| Macro | Checks |
+| --- | --- |
+| `MATL_BOUNDS_CHECK` | Indices of element access |
+| `MATL_DIMENSION_CHECK` | Dimensions of assignments and of the operations in an expression |
+
+Define `MATL_NO_DEBUG` to disable the checks in any build, or define one of the macros above
+before including `matl.hpp` to keep that check in a release build. Compile-time dimension checks
+are always on.
+
+Define `MATL_DEBUG` to print a trace of internal calls (assignments, allocations) to stdout. It is
+off by default.
 
 ## Indexing
 

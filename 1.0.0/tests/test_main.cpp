@@ -8,8 +8,9 @@
  *     matl_tests <substring>     Run test cases whose name contains <substring>
  *     matl_tests --list          List test case names
  *
- * Results are written to stderr. MATL's MATL_DEBUG trace output goes to stdout, so it can be
- * redirected separately (the Makefile writes it to build/matl_tests.stdout.log).
+ * Results are written to stderr. MATL's MATL_DEBUG trace output (enabled in the sanitizer build)
+ * goes to stdout, so it can be redirected separately (the Makefile writes it to a log file in
+ * build/).
  **************************************************************************************************/
 #include <cstring>
 

@@ -1,12 +1,24 @@
 #ifndef MATL_HPP
 #define MATL_HPP
 
-// Debug Flags (enabled by default; define MATL_NO_DEBUG before including matl.hpp to disable the
-// dimension and bounds checks and the MATL_DEBUG trace output, e.g. for benchmarks)
-#ifndef MATL_NO_DEBUG
-#define MATL_DIMENSION_CHECK
-#define MATL_BOUNDS_CHECK
-#define MATL_DEBUG
+// Debug checks
+//
+//   MATL_BOUNDS_CHECK       Index checks on element access
+//   MATL_DIMENSION_CHECK    Run-time dimension checks of assignments and expressions
+//
+// Like assert(), the checks are enabled unless NDEBUG is defined (as in typical release builds).
+// Define MATL_NO_DEBUG to disable them in any build, or define a check's macro before including
+// matl.hpp to keep it in a release build. Dimensions known at compile time are always checked.
+//
+// MATL_DEBUG (off by default) prints a trace of internal calls (assignments, allocations) to
+// stdout. Define it before including matl.hpp to enable it.
+#if !defined(NDEBUG) && !defined(MATL_NO_DEBUG)
+    #ifndef MATL_DIMENSION_CHECK
+    #define MATL_DIMENSION_CHECK
+    #endif
+    #ifndef MATL_BOUNDS_CHECK
+    #define MATL_BOUNDS_CHECK
+    #endif
 #endif
 
 // Standard Library dependencies

@@ -13,7 +13,7 @@ SAN_FLAGS   := -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno
 
 # Benchmark settings (optimized, without MATL debug checks and trace output)
 BENCH_SRC   := $(wildcard benchmarks/*.cpp)
-BENCH_FLAGS := -std=c++20 -O2 -Wall -Wextra -Werror -DMATL_NO_DEBUG
+BENCH_FLAGS := -std=c++20 -O2 -Wall -Wextra -Werror -DNDEBUG
 
 .PHONY: test clean examples tests check check-sanitize check-nodebug benchmarks bench
 
@@ -37,9 +37,9 @@ $(BUILD)/matl_tests: $(TEST_DEPS)
 
 $(BUILD)/matl_tests_sanitize: $(TEST_DEPS)
 	@mkdir -p $(BUILD)
-	$(CXX) $(TEST_FLAGS) $(SAN_FLAGS) $(TEST_SRC) $(INC) -I tests -o $@
+	$(CXX) $(TEST_FLAGS) $(SAN_FLAGS) -DMATL_DEBUG $(TEST_SRC) $(INC) -I tests -o $@
 
-# Run the test suite. Results go to stderr; MATL_DEBUG trace output (stdout) goes to a log file.
+# Run the test suite. Results go to stderr; anything the library prints to stdout goes to a log file.
 # Pass a filter to run a subset of test cases, e.g. 'make check FILTER=Transpose'
 check: $(BUILD)/matl_tests
 	./$(BUILD)/matl_tests $(FILTER) > $(BUILD)/matl_tests.stdout.log
@@ -52,7 +52,8 @@ $(BUILD)/matl_tests_nodebug: $(TEST_DEPS)
 check-nodebug: $(BUILD)/matl_tests_nodebug
 	./$(BUILD)/matl_tests_nodebug $(FILTER)
 
-# Run the test suite with AddressSanitizer and UndefinedBehaviorSanitizer
+# Run the test suite with AddressSanitizer and UndefinedBehaviorSanitizer (and the MATL_DEBUG
+# trace enabled, so that the trace code is compiled and exercised; its output goes to a log file)
 check-sanitize: $(BUILD)/matl_tests_sanitize
 	./$(BUILD)/matl_tests_sanitize $(FILTER) > $(BUILD)/matl_tests_sanitize.stdout.log
 
