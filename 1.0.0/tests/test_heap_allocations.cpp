@@ -22,7 +22,9 @@ namespace
     thread_local bool counting    = false;
     thread_local long allocations = 0;
 
-    void* counted_allocate(std::size_t bytes)
+    // Not inlined: when GCC 12/13 inline a malloc-based operator new into std::vector's growth
+    // path at -O2, they report a false-positive -Wstringop-overflow error
+    [[gnu::noinline]] void* counted_allocate(std::size_t bytes)
     {
         if (counting) ++allocations;
         if (void* p = std::malloc(bytes == 0 ? 1 : bytes)) return p;
