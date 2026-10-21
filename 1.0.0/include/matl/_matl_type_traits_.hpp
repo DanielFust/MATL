@@ -156,6 +156,32 @@ namespace matl
     // FixedSize: a matrix or expression whose dimensions are known at compile time
     template<typename T>
     concept FixedSize = MatrixAlgebraObject<T> && detail::traits< std::remove_cvref_t<T> >::fixed_size;
+
+
+    /************************************* Dimension concepts *************************************/
+    // These reject operands whose dimensions are known at compile time and do not fit, e.g. adding
+    // a 2x3 and a 3x2 fixed-size matrix does not compile. Dynamic dimensions are only known at
+    // run time, so operands with dynamic dimensions always satisfy them (they are checked when the
+    // expression is evaluated, see MATL_DIMENSION_CHECK). A scalar fits any dimensions.
+
+    namespace detail
+    {
+        // Dimensions of A and B are known at compile time (neither is a scalar)
+        template<typename A, typename B>
+        inline constexpr bool both_fixed_size_v = !Scalar<A> && !Scalar<B> &&
+                                                  traits<A>::fixed_size && traits<B>::fixed_size;
+    }
+
+    // SizesMatch: A and B can have the same dimensions (elementwise operations, assignment)
+    template<typename A, typename B>
+    concept SizesMatch = !detail::both_fixed_size_v< std::remove_cvref_t<A>, std::remove_cvref_t<B> > ||
+                         (detail::traits< std::remove_cvref_t<A> >::rows == detail::traits< std::remove_cvref_t<B> >::rows &&
+                          detail::traits< std::remove_cvref_t<A> >::cols == detail::traits< std::remove_cvref_t<B> >::cols);
+
+    // InnerSizesMatch: A can be multiplied by B (columns of A = rows of B)
+    template<typename A, typename B>
+    concept InnerSizesMatch = !detail::both_fixed_size_v< std::remove_cvref_t<A>, std::remove_cvref_t<B> > ||
+                              detail::traits< std::remove_cvref_t<A> >::cols == detail::traits< std::remove_cvref_t<B> >::rows;
 }
 
 #endif

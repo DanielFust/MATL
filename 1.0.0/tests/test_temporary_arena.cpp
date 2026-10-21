@@ -6,6 +6,7 @@
  *              memory is released and recycled.
  **************************************************************************************************/
 #include <cstdint>
+#include <stdexcept>
 
 #include "matl_test.hpp"
 
@@ -38,6 +39,36 @@ namespace
         explicit CacheTemporaries(bool value) : previous(MemoryManager::CACHE_TEMPORARY_MATRICES)
         {MemoryManager::CACHE_TEMPORARY_MATRICES = value;}
         ~CacheTemporaries() {MemoryManager::CACHE_TEMPORARY_MATRICES = previous;}
+    };
+}
+
+// A user-defined expression whose evaluation throws (to test that temporaries are released)
+namespace arena_test {class ThrowingExpression;}
+
+template<>
+struct matl::detail::traits<arena_test::ThrowingExpression>
+{
+    typedef double dtype;
+    static constexpr bool          fixed_size    = false;
+    static constexpr matl::index_t rows          = 0;
+    static constexpr matl::index_t cols          = 0;
+    static constexpr StorageOrder  storage_order = StorageOrder::RowMajor;
+};
+
+namespace arena_test
+{
+    class ThrowingExpression : public ExpressionBase<ThrowingExpression>
+    {
+        index_t rows_, cols_;
+      public:
+        typedef double dtype;
+        ThrowingExpression(index_t rows, index_t cols) : rows_(rows), cols_(cols) {}
+        index_t rows() const {return rows_;}
+        index_t cols() const {return cols_;}
+        index_t size() const {return rows_ * cols_;}
+        template<MatrixType MAT> bool unsafe_evaluation_target(MAT const&) const {return false;}
+        bool references_address(void const*) const {return false;}
+        template<MatrixType MAT> void eval(MAT&) const {throw std::runtime_error("evaluation failed");}
     };
 }
 
@@ -242,19 +273,15 @@ TEST_CASE("Arena: CACHE_TEMPORARY_MATRICES = false allocates temporaries on the 
     CHECK_MATRIX_EQ(D, a * (a * b + transpose(c * a)));
 }
 
-#ifdef MATL_BOUNDS_CHECK
 TEST_CASE("Arena: an exception during evaluation releases the temporaries")
 {
-    // A (3x3) times B (2x2) has mismatched inner dimensions. The nested product's temporary is
-    // allocated, then reading B(3,j) during the product throws (fixed-size bounds check).
+    // The nested product's result temporary is allocated, then a temporary for its expression
+    // operand, whose evaluation throws.
     RowMajorMatrix<double> A(3, 3), C(3, 2), R(3, 2);
-    FixedSizeRowMajorMatrix<double, 2, 2> B;
     A = 1.0;
-    B = 2.0;
     C = 0.0;
     ArenaPeak p;
-    CHECK_THROWS_AS(R = A * B + C, std::out_of_range);
-    CHECK(p.peak() > 0);                                     // a temporary was in use...
-    CHECK_EQ(MemoryManager::temporary_arena().bytes_in_use(), 0ul);   // ...and was released
+    CHECK_THROWS_AS(R = A * arena_test::ThrowingExpression(3, 2) + C, std::runtime_error);
+    CHECK(p.peak() > 0);                                     // temporaries were in use...
+    CHECK_EQ(MemoryManager::temporary_arena().bytes_in_use(), 0ul);   // ...and were released
 }
-#endif

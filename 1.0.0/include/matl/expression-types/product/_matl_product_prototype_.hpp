@@ -81,6 +81,9 @@ namespace matl
             // Get number of elements in resultant matrix
             index_t size() const;
 
+            // Check that the inner dimensions agree (recursively)
+            void check_dimensions() const;
+
             // Check if evaluation target is safe
             template<MatrixType MAT>
             bool unsafe_evaluation_target(MAT const&) const;

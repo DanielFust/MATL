@@ -53,16 +53,22 @@ namespace matl
         // Copy constructor
         FixedSizeRowMajorMatrix(FixedSizeRowMajorMatrix const&) = default;
 
+        // The members constrained by SizesMatch below accept only matrices and expressions that
+        // can have dimensions M x N (others do not compile; dynamic dimensions are checked at run
+        // time). They are defined here and forward to the out-of-line assign_expression and
+        // copy_matrix, because Clang before version 16 cannot match an out-of-line definition
+        // whose constraints use the class's template parameters.
+
         // Expression constructor (evaluates the expression; implicit, so that
         // 'Matrix<double,M,N> m = A + B;' evaluates to a new matrix)
-        template<ExpressionType EXPR>
-        FixedSizeRowMajorMatrix(EXPR const&);
+        template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix, EXPR>
+        FixedSizeRowMajorMatrix(EXPR const& expr) {this->assign_expression(expr);}
 
         /**************** Assignment & Copying *****************/
         
         // Matrix copy (general)
-        template<MatrixType MAT>
-        FixedSizeRowMajorMatrix& operator= (MAT const&);
+        template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix, MAT>
+        FixedSizeRowMajorMatrix& operator= (MAT const& mat) {this->copy_matrix(mat); return *this;}
 
         // Matrix copy (FixedSizeRowMajorMatrix specialization)
         FixedSizeRowMajorMatrix& operator= (FixedSizeRowMajorMatrix const&) = default;
@@ -72,12 +78,12 @@ namespace matl
         FixedSizeRowMajorMatrix& operator= (RowMajorMatrix<T2> const&);
 
         // Expression evaluation trigger
-        template<ExpressionType EXPR>
-        FixedSizeRowMajorMatrix& operator=(EXPR const& expr);
+        template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix, EXPR>
+        FixedSizeRowMajorMatrix& operator=(EXPR const& expr) {this->assign_expression(expr); return *this;}
 
         // Copy 
-        template<MatrixType MAT>
-        void copy(MAT const& mat);
+        template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix, MAT>
+        void copy(MAT const& mat) {this->copy_matrix(mat);}
 
 
         /********************* Data Access *********************/
@@ -108,6 +114,16 @@ namespace matl
         // Scalar assignment (sets every element)
         template<Scalar S>
         FixedSizeRowMajorMatrix& operator= (S val);
+
+      private:
+
+        // Evaluate an expression into this matrix
+        template<ExpressionType EXPR>
+        void assign_expression(EXPR const&);
+
+        // Copy the elements of a matrix with the same dimensions
+        template<MatrixType MAT>
+        void copy_matrix(MAT const&);
     }; 
 
     // Fixed-size matrix "allocation" (checks the requested dimensions match the fixed size)

@@ -10,7 +10,9 @@
  *     A + B * 2.0    expr::Elementwise<expr::Add, A, expr::Elementwise<expr::Multiply, B, double>>
  *
  * The operators are constrained to MATL matrices, expressions (MatrixAlgebraObject) and
- * arithmetic scalars, so they never apply to unrelated types.
+ * arithmetic scalars, so they never apply to unrelated types. Operands whose dimensions are known
+ * at compile time must fit (SizesMatch, InnerSizesMatch), e.g. adding a 2x3 and a 3x2 fixed-size
+ * matrix does not compile.
  **************************************************************************************************/
 #ifndef MATL_ARITHMETIC_OPERATORS_HPP
 #define MATL_ARITHMETIC_OPERATORS_HPP
@@ -19,7 +21,7 @@ namespace matl
     /******************************************* Addition *****************************************/
 
     // Matrix or expression + matrix or expression
-    template<MatrixAlgebraObject LHS, MatrixAlgebraObject RHS>
+    template<MatrixAlgebraObject LHS, MatrixAlgebraObject RHS> requires SizesMatch<LHS, RHS>
     expr::Elementwise<expr::Add, LHS, RHS> operator+ (LHS const& lhs, RHS const& rhs)
     {return expr::Elementwise<expr::Add, LHS, RHS>(lhs, rhs);}
 
@@ -37,7 +39,7 @@ namespace matl
     /***************************************** Subtraction ****************************************/
 
     // Matrix or expression - matrix or expression
-    template<MatrixAlgebraObject LHS, MatrixAlgebraObject RHS>
+    template<MatrixAlgebraObject LHS, MatrixAlgebraObject RHS> requires SizesMatch<LHS, RHS>
     expr::Elementwise<expr::Subtract, LHS, RHS> operator- (LHS const& lhs, RHS const& rhs)
     {return expr::Elementwise<expr::Subtract, LHS, RHS>(lhs, rhs);}
 
@@ -55,7 +57,7 @@ namespace matl
     /*************************************** Multiplication ***************************************/
 
     // Matrix or expression * matrix or expression (matrix product)
-    template<MatrixAlgebraObject LHS, MatrixAlgebraObject RHS>
+    template<MatrixAlgebraObject LHS, MatrixAlgebraObject RHS> requires InnerSizesMatch<LHS, RHS>
     expr::Product<LHS, RHS> operator* (LHS const& lhs, RHS const& rhs)
     {return expr::Product<LHS, RHS>(lhs, rhs);}
 
