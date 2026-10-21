@@ -145,6 +145,14 @@ namespace matl
         typedef typename type_traits<MAO>::dtype dtype;
         typedef          _MATRIX_TRANSPOSE_<MAO> unqualified_type;
     };
+
+    // Owned matrix class return types
+    template<typename MAT>
+    struct type_traits< _OWNED_MATRIX_<MAT> >
+    {
+        typedef typename type_traits<MAT>::dtype dtype;
+        typedef          _OWNED_MATRIX_<MAT>     unqualified_type;
+    };
     
 } 
 #endif

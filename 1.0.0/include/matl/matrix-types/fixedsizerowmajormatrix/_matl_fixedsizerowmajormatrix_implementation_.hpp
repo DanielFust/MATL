@@ -4,6 +4,20 @@
 namespace matl
 {
    /***********************************************************************************************
+    * FixedSizeRowMajorMatrix(_EXPRESSION_<EXPR> const&)
+    * 
+    * Expression constructor. Evaluates the expression into the new matrix. The expression must
+    * have dimensions M x N.
+    * 
+    * Parameters:
+    *     expr           Expression to evaluate
+    ***********************************************************************************************/
+    template<class T, index_t M, index_t N>
+    template<typename EXPR>
+    FixedSizeRowMajorMatrix<T, M, N>::FixedSizeRowMajorMatrix(_EXPRESSION_<EXPR> const& expr)
+    {*this = expr;}
+
+   /***********************************************************************************************
     * FixedSizeRowMajorMatrix::operator= (_MATRIX_&)
     * 
     * General matrix copy.

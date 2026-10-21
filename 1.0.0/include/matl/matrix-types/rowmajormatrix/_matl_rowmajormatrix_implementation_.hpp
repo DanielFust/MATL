@@ -149,6 +149,23 @@ namespace matl
     } 
 
    /***********************************************************************************************
+    * RowMajorMatrix(_EXPRESSION_<EXPR> const&)
+    * 
+    * Expression constructor. Creates a new RowMajorMatrix sized to the expression and evaluates
+    * the expression into it. Memory is allocated according to the MemoryManager settings.
+    * 
+    * Parameters:
+    *     expr           Expression to evaluate
+    ***********************************************************************************************/ 
+    template<class T>
+    template<typename EXPR>
+    RowMajorMatrix<T>::RowMajorMatrix(_EXPRESSION_<EXPR> const& expr) : ScratchMemoryBorrower(),
+                                                                        rows_(0), 
+                                                                        cols_(0),
+                                                                        data_(nullptr)
+    {*this = expr;}
+
+   /***********************************************************************************************
     * RowMajorMatrix(RowMajorMatrix<T>&&)
     * 
     * Move constructor. Takes ownership of the other matrix's data without copying. If the data is

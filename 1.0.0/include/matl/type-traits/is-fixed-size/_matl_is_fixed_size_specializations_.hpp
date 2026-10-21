@@ -157,7 +157,7 @@ namespace matl
         static constexpr index_t ROWS  = is_fixed_size<MAO1>::ROWS*value;
         static constexpr index_t COLS  = is_fixed_size<MAO2>::COLS*value;
         typedef promote<typename type_traits<MAO1>::dtype,
-                        typename type_traits<MAO1>::dtype>::type                                              dtype;
+                        typename type_traits<MAO2>::dtype>::type                                              dtype;
         typedef typename is_fixed_size_selectors::default_matrix_selector<value,ROWS,COLS,dtype>::matrix_type matrix_type;
     };
 
@@ -180,7 +180,7 @@ namespace matl
         static constexpr index_t ROWS  = is_fixed_size<MAO1>::ROWS*value;
         static constexpr index_t COLS  = is_fixed_size<MAO2>::COLS*value;
         typedef promote<typename type_traits<MAO1>::dtype,
-                        typename type_traits<MAO1>::dtype>::type                                              dtype;
+                        typename type_traits<MAO2>::dtype>::type                                              dtype;
         typedef typename is_fixed_size_selectors::default_matrix_selector<value,ROWS,COLS,dtype>::matrix_type matrix_type;
     };
 
@@ -214,7 +214,7 @@ namespace matl
         static constexpr index_t ROWS  = is_fixed_size<MAO1>::ROWS*value;
         static constexpr index_t COLS  = is_fixed_size<MAO2>::COLS*value;
         typedef promote<typename type_traits<MAO1>::dtype,
-                        typename type_traits<MAO1>::dtype>::type                                              dtype;
+                        typename type_traits<MAO2>::dtype>::type                                              dtype;
         typedef typename is_fixed_size_selectors::default_matrix_selector<value,ROWS,COLS,dtype>::matrix_type matrix_type;
     };
 
@@ -249,6 +249,17 @@ namespace matl
         static constexpr index_t COLS  = is_fixed_size<MAO>::ROWS*value;
         typedef typename type_traits<MAO>::dtype         dtype;
         typedef typename is_fixed_size_selectors::default_matrix_selector<value,ROWS,COLS,dtype>::matrix_type matrix_type;
+    };
+
+    // Owned matrix class (same as the owned matrix)
+    template<typename MAT>
+    struct is_fixed_size< _OWNED_MATRIX_<MAT> >
+    {
+        static constexpr bool    value = is_fixed_size<MAT>::value;
+        static constexpr index_t ROWS  = is_fixed_size<MAT>::ROWS;
+        static constexpr index_t COLS  = is_fixed_size<MAT>::COLS;
+        typedef typename is_fixed_size<MAT>::dtype       dtype;
+        typedef typename is_fixed_size<MAT>::matrix_type matrix_type;
     };
 
 }

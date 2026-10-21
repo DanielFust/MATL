@@ -23,6 +23,11 @@ namespace matl
     template<typename MAO>
     struct is_transposed<_MATRIX_TRANSPOSE_<MAO> >
     {static constexpr bool value = true;};
+
+    // Owned matrix (an owned matrix is never transposed)
+    template<typename MAT>
+    struct is_transposed<_OWNED_MATRIX_<MAT> >
+    {static constexpr bool value = false;};
     
 
     /********* Interfaces (downcasted) *********/

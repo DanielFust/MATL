@@ -102,5 +102,10 @@ namespace matl
     template<typename MAO>
     struct is_elementwise< _MATRIX_TRANSPOSE_<MAO> >
     {static constexpr bool value = true;};
+
+    // Owned matrix class
+    template<typename MAT>
+    struct is_elementwise< _OWNED_MATRIX_<MAT> >
+    {static constexpr bool value = true;};
 }
 #endif

@@ -39,6 +39,11 @@ namespace matl
         // Copy constructor
         FixedSizeRowMajorMatrix(FixedSizeRowMajorMatrix const&) = default;
 
+        // Expression constructor (evaluates the expression; implicit, so that
+        // 'Matrix<double,M,N> m = A + B;' evaluates to a new matrix)
+        template<typename EXPR>
+        FixedSizeRowMajorMatrix(_EXPRESSION_<EXPR> const&);
+
         /**************** Assignment & Copying *****************/
         
         // Matrix copy (general)

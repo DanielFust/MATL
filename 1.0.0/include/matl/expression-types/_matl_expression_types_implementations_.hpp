@@ -7,6 +7,7 @@
 #include "./matrix-times-matrix/_matl_matrix_times_matrix_implementation_.hpp"
 #include "./matrix-divided-by-scalar/_matl_matrix_divided_by_scalar_implementation_.hpp"
 #include "./matrix-transpose/_matl_matrix_transpose_implementation_.hpp"
+#include "./owned-matrix/_matl_owned_matrix_implementation_.hpp"
 
 
 

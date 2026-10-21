@@ -13,6 +13,7 @@
 #include <complex>
 #include <vector>
 #include <deque>
+#include <memory>
 #include <cstddef>
 
 // Namespace type definitions and settings

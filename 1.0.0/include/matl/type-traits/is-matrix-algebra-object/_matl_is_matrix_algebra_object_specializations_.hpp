@@ -101,6 +101,11 @@ namespace matl
     struct is_matrix_algebra_object< _MATRIX_TRANSPOSE_<MAO> >
     {static constexpr bool value = true;};
 
+    // Owned matrix class
+    template<typename MAT>
+    struct is_matrix_algebra_object< _OWNED_MATRIX_<MAT> >
+    {static constexpr bool value = true;};
+
 }
 
 #endif

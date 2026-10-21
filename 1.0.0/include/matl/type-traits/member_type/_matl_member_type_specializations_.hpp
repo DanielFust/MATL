@@ -41,7 +41,7 @@ namespace matl
     template<typename EW>
     struct member_type< _ELEMENTWISE_<EW> >
     {
-        typedef          EW const&                          elementwise_expression;
+        typedef typename member_type<EW>::elementwise_expression elementwise_expression;
         typedef typename member_type<EW>::matmul_expression matmul_expression;
     };
 
@@ -98,7 +98,7 @@ namespace matl
     struct member_type< _MATRIX_PLUS_MATRIX_<MAO1, MAO2> >
     {
         typedef typename _MATRIX_PLUS_MATRIX_<MAO1, MAO2>::dtype dtype;
-        typedef          _MATRIX_PLUS_MATRIX_<MAO1, MAO2> const&                       elementwise_expression;
+        typedef          _MATRIX_PLUS_MATRIX_<MAO1, MAO2>                             elementwise_expression;
         typedef typename is_fixed_size< _MATRIX_PLUS_MATRIX_<MAO1, MAO2> >::matrix_type matmul_expression;
     };
 
@@ -107,7 +107,7 @@ namespace matl
     struct member_type< _MATRIX_PLUS_SCALAR_<MAO, T> >
     {
         typedef typename _MATRIX_PLUS_SCALAR_<MAO, T>::dtype dtype;
-        typedef          _MATRIX_PLUS_SCALAR_<MAO, T> const&                        elementwise_expression;
+        typedef          _MATRIX_PLUS_SCALAR_<MAO, T>                              elementwise_expression;
         typedef typename is_fixed_size< _MATRIX_PLUS_SCALAR_<MAO, T> >::matrix_type matmul_expression;
     };
 
@@ -116,7 +116,7 @@ namespace matl
     struct member_type< _MATRIX_MINUS_MATRIX_<MAO1, MAO2> >
     {
         typedef typename _MATRIX_MINUS_MATRIX_<MAO1, MAO2>::dtype dtype;
-        typedef          _MATRIX_MINUS_MATRIX_<MAO1, MAO2> const&                        elementwise_expression;
+        typedef          _MATRIX_MINUS_MATRIX_<MAO1, MAO2>                              elementwise_expression;
         typedef typename is_fixed_size< _MATRIX_MINUS_MATRIX_<MAO1, MAO2> >::matrix_type matmul_expression;
     };
 
@@ -125,7 +125,7 @@ namespace matl
     struct member_type< _MATRIX_MINUS_SCALAR_<MAO, T> >
     {
         typedef typename _MATRIX_MINUS_SCALAR_<MAO, T>::dtype dtype;
-        typedef          _MATRIX_MINUS_SCALAR_<MAO, T> const&                        elementwise_expression;
+        typedef          _MATRIX_MINUS_SCALAR_<MAO, T>                              elementwise_expression;
         typedef typename is_fixed_size< _MATRIX_MINUS_SCALAR_<MAO, T> >::matrix_type matmul_expression;
     };
 
@@ -134,7 +134,7 @@ namespace matl
     struct member_type< _SCALAR_MINUS_MATRIX_<T, MAO> >
     {
         typedef typename _SCALAR_MINUS_MATRIX_<T, MAO>::dtype dtype;
-        typedef          _SCALAR_MINUS_MATRIX_<T, MAO> const&                        elementwise_expression;
+        typedef          _SCALAR_MINUS_MATRIX_<T, MAO>                              elementwise_expression;
         typedef typename is_fixed_size< _SCALAR_MINUS_MATRIX_<T, MAO> >::matrix_type matmul_expression;
     };
 
@@ -152,7 +152,7 @@ namespace matl
     struct member_type< _MATRIX_TIMES_SCALAR_<MAO, T> >
     {
         typedef typename _MATRIX_TIMES_SCALAR_<MAO, T>::dtype       dtype;
-        typedef          _MATRIX_TIMES_SCALAR_<MAO, T> const&                        elementwise_expression;
+        typedef          _MATRIX_TIMES_SCALAR_<MAO, T>                              elementwise_expression;
         typedef typename is_fixed_size< _MATRIX_TIMES_SCALAR_<MAO, T> >::matrix_type matmul_expression;
     };
 
@@ -161,7 +161,7 @@ namespace matl
     struct member_type< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >
     {
         typedef typename _MATRIX_DIVIDED_BY_SCALAR_<MAO, T>::dtype dtype;
-        typedef          _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> const&                        elementwise_expression;
+        typedef          _MATRIX_DIVIDED_BY_SCALAR_<MAO, T>                              elementwise_expression;
         typedef typename is_fixed_size< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >::matrix_type matmul_expression;
     };
 
@@ -170,8 +170,17 @@ namespace matl
     struct member_type< _MATRIX_TRANSPOSE_<MAO> >
     {
         typedef typename _MATRIX_TRANSPOSE_<MAO>::dtype dtype;
-        typedef          _MATRIX_TRANSPOSE_<MAO> const&                        elementwise_expression;
+        typedef          _MATRIX_TRANSPOSE_<MAO>                              elementwise_expression;
         typedef typename is_fixed_size< _MATRIX_TRANSPOSE_<MAO> >::matrix_type matmul_expression;
+    };
+    // Owned matrix class (by value: copying it copies a shared pointer, not the matrix). Products
+    // evaluate the owned matrix into their own matrix operand.
+    template<typename MAT>
+    struct member_type< _OWNED_MATRIX_<MAT> >
+    {
+        typedef typename _OWNED_MATRIX_<MAT>::dtype dtype;
+        typedef          _OWNED_MATRIX_<MAT>        elementwise_expression;
+        typedef typename is_fixed_size< _OWNED_MATRIX_<MAT> >::matrix_type matmul_expression;
     };
 }
 #endif
