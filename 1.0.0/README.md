@@ -154,11 +154,31 @@ of it owns its own data. `allocate(A, rows, cols)` and `deallocate(A)` allocate 
 heap and release its memory; for a matrix over external memory, `deallocate` only stops using
 the buffer.
 
+## Dimension checks
+
+Dimensions known at compile time are checked at compile time. Adding a 2x3 and a 3x2 fixed-size
+matrix, multiplying matrices whose inner dimensions differ, or assigning a result to a fixed-size
+matrix of another size does not compile:
+
+```cpp
+Matrix<double,2,3> A;  Matrix<double,3,2> B;
+auto e = A + B;    // error: ... because 'SizesMatch<...<double,2,3>, ...<double,3,2>>' evaluated to false
+auto p = A * B;    // OK: 2x3 * 3x2
+```
+
+The concepts `SizesMatch<A, B>` and `InnerSizesMatch<A, B>` express these rules. When a dimension
+is only known at run time (dynamic matrices, or a mix of fixed-size and dynamic operands), the
+check happens when the expression is assigned, if dimension checks are enabled (see below):
+operands of different sizes, or a product with different inner dimensions, print an error and
+abort. Because the check runs at assignment, it also catches a stored expression whose matrices
+were reallocated after it was built.
+
 ## Debug checks
 
-`matl.hpp` enables dimension checks, bounds checks and `MATL_DEBUG` trace output by default.
-Define `MATL_NO_DEBUG` before including it (or compile with `-DMATL_NO_DEBUG`) to disable them,
-e.g. for benchmarks and production builds.
+`matl.hpp` enables run-time dimension checks (`MATL_DIMENSION_CHECK`), bounds checks
+(`MATL_BOUNDS_CHECK`) and `MATL_DEBUG` trace output by default. Define `MATL_NO_DEBUG` before
+including it (or compile with `-DMATL_NO_DEBUG`) to disable them, e.g. for benchmarks and
+production builds. Compile-time dimension checks are always on.
 
 ## Indexing
 

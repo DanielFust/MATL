@@ -13,7 +13,7 @@ namespace matl
     *     expr           Expression to evaluate
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<ExpressionType EXPR>
+    template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix<T, M, N>, EXPR>
     FixedSizeRowMajorMatrix<T, M, N>::FixedSizeRowMajorMatrix(EXPR const& expr)
     {*this = expr;}
 
@@ -26,7 +26,7 @@ namespace matl
     *     mat        Matrix to copy
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<MatrixType MAT>
+    template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix<T, M, N>, MAT>
     FixedSizeRowMajorMatrix<T, M, N>&
     FixedSizeRowMajorMatrix<T, M, N>::operator= (MAT const& mat)
     {
@@ -73,10 +73,15 @@ namespace matl
     *     expr      Matrix expression
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<ExpressionType EXPR>
+    template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix<T, M, N>, EXPR>
     FixedSizeRowMajorMatrix<T, M, N>&
     FixedSizeRowMajorMatrix<T, M, N>::operator=(EXPR const& expression)
     {
+        // The operands of every operation in the expression must fit
+        #ifdef MATL_DIMENSION_CHECK
+        detail::check_dimensions(expression);
+        #endif
+
         #ifdef MATL_BOUNDS_CHECK
         if ((this->rows() != expression.rows())|| (this->cols() != expression.cols()))
             throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (EXPR const&): Matrix dimensions do not match");
@@ -117,7 +122,7 @@ namespace matl
     *     mat        Matrix to copy
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<MatrixType MAT>
+    template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix<T, M, N>, MAT>
     void FixedSizeRowMajorMatrix<T, M, N>::copy(MAT const& mat)
     {
         #ifdef MATL_BOUNDS_CHECK

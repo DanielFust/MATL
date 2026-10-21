@@ -28,6 +28,9 @@ namespace matl
     {
         // Evaluators (see expression-types/evaluation/_matl_evaluation_.hpp)
         template<typename T> struct evaluator;
+
+        // Run-time dimension check of an expression (see evaluation/_matl_evaluation_.hpp)
+        template<typename X> void check_dimensions(X const&);
     }
 }
 #endif

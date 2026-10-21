@@ -198,9 +198,11 @@ namespace matl
         #endif
 
         // Dimension check debug flag:
-        // Only allow dynamic allocation if the RowMajorMatrix has a size of 0. This is intended
-        // to discourage repeated hidden reallocations 
+        // The operands of every operation in the expression must fit. Only allow dynamic
+        // allocation if the RowMajorMatrix has a size of 0. This is intended to discourage
+        // repeated hidden reallocations 
         #ifdef MATL_DIMENSION_CHECK
+        detail::check_dimensions(expression);
         if (  ((this->rows_ != expression.rows()) || (this->cols_ != expression.cols()))
             && (this->size() != 0) ) 
         {

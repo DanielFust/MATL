@@ -113,6 +113,25 @@ namespace matl
         {return this->lhs_.rows() * this->rhs_.cols();}
 
        /*******************************************************************************************
+        * void check_dimensions() const
+        *
+        * Checks the operands (recursively), then that the number of columns of the left operand
+        * equals the number of rows of the right operand. Aborts with an error message otherwise
+        * (see detail::check_dimensions).
+        *******************************************************************************************/
+        template<typename LHS, typename RHS>
+        void Product<LHS,RHS>::check_dimensions() const
+        {
+            detail::check_dimensions(this->lhs_);
+            detail::check_dimensions(this->rhs_);
+
+            if (this->lhs_.cols() != this->rhs_.rows())
+                detail::dimension_error("matrix product (columns of the left operand must equal rows of the right operand)",
+                                        this->lhs_.rows(), this->lhs_.cols(),
+                                        this->rhs_.rows(), this->rhs_.cols());
+        }
+
+       /*******************************************************************************************
         * bool unsafe_evaluation_target(MAT const&)
         *
         * Check if computing the product directly into the target matrix would corrupt memory.

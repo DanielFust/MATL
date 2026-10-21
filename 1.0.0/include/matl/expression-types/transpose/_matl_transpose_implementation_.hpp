@@ -61,6 +61,15 @@ namespace matl::expr
     {return mat_.size();}
 
    /***********************************************************************************************
+    * void check_dimensions() const
+    *
+    * A transpose fits any operand; checks the operand (recursively).
+    ***********************************************************************************************/
+    template<typename MAO>
+    void Transpose<MAO>::check_dimensions() const
+    {detail::check_dimensions(this->mat_);}
+
+   /***********************************************************************************************
     * bool unsafe_evaluation_target(MAT const&)
     *
     * Check if evaluation of the expression directly to the target matrix would corrupt memory.

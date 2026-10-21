@@ -28,12 +28,12 @@ the build.
 | `test_matrix.cpp` | Construction, indexing, copy/move, scalar and compound assignment, `eye` |
 | `test_expressions.cpp` | Elementwise, scalar, product and transpose expressions; aliasing; fixed-size and mixed operands |
 | `test_evaluation.cpp` | Deferred evaluation: nested products read current operand values, no allocation until assignment, temporaries released afterwards, aliasing with deferred products |
-| `test_types.cpp` | Concepts, the expression types the operators build, traits (fixed sizes, storage order, element-type promotion), assignment forms |
+| `test_types.cpp` | Concepts, the expression types the operators build, traits (fixed sizes, storage order, element-type promotion), assignment forms, compile-time dimension checks |
 | `test_expression_lifetime.cpp` | Stored expressions (`auto e = ...`): ownership of sub-expressions and temporaries, live references to named matrices, initializing matrices from expressions |
 | `test_temporary_arena.cpp` | TemporaryArena (stack order, growth, out-of-order release) and the exact temporaries each kind of assignment uses |
 | `test_heap_allocations.cpp` | Counts heap allocations: none during evaluation once the arena has grown. Replaces the global `operator new` for the test program (counting only inside an explicit window) |
 | `test_memory_manager.cpp` | Matrix memory ownership (heap and external buffers), `allocate`/`deallocate`, MemoryManager settings, per-thread arenas |
-| `test_errors.cpp` | Bounds and dimension checks (`abort()` for dynamic matrices, exceptions for fixed-size) |
+| `test_errors.cpp` | Run-time bounds and dimension checks, including operands of different sizes (`abort()` for dynamic matrices and expressions, exceptions for fixed-size matrices) |
 | `test_randomized.cpp` | Random sizes and contents (fixed seed) compared against the reference implementation |
 
 Each test file is a separate translation unit, so the build also verifies that `matl.hpp` can be

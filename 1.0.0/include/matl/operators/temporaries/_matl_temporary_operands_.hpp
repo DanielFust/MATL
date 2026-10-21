@@ -33,12 +33,12 @@ namespace matl
     /******************************************* Addition *****************************************/
 
     // Temporary matrix + operand
-    template<TemporaryMatrix M, Operand R>
+    template<TemporaryMatrix M, Operand R> requires SizesMatch<M, R>
     auto operator+ (M&& mat, R&& rhs)
     {return own_temporary(std::forward<M>(mat)) + std::forward<R>(rhs);}
 
     // Operand + temporary matrix
-    template<Operand L, TemporaryMatrix M> requires (!TemporaryMatrix<L>)
+    template<Operand L, TemporaryMatrix M> requires (!TemporaryMatrix<L>) && SizesMatch<L, M>
     auto operator+ (L&& lhs, M&& mat)
     {return std::forward<L>(lhs) + own_temporary(std::forward<M>(mat));}
 
@@ -46,12 +46,12 @@ namespace matl
     /***************************************** Subtraction ****************************************/
 
     // Temporary matrix - operand
-    template<TemporaryMatrix M, Operand R>
+    template<TemporaryMatrix M, Operand R> requires SizesMatch<M, R>
     auto operator- (M&& mat, R&& rhs)
     {return own_temporary(std::forward<M>(mat)) - std::forward<R>(rhs);}
 
     // Operand - temporary matrix
-    template<Operand L, TemporaryMatrix M> requires (!TemporaryMatrix<L>)
+    template<Operand L, TemporaryMatrix M> requires (!TemporaryMatrix<L>) && SizesMatch<L, M>
     auto operator- (L&& lhs, M&& mat)
     {return std::forward<L>(lhs) - own_temporary(std::forward<M>(mat));}
 
@@ -59,12 +59,12 @@ namespace matl
     /*************************************** Multiplication ***************************************/
 
     // Temporary matrix * operand
-    template<TemporaryMatrix M, Operand R>
+    template<TemporaryMatrix M, Operand R> requires InnerSizesMatch<M, R>
     auto operator* (M&& mat, R&& rhs)
     {return own_temporary(std::forward<M>(mat)) * std::forward<R>(rhs);}
 
     // Operand * temporary matrix
-    template<Operand L, TemporaryMatrix M> requires (!TemporaryMatrix<L>)
+    template<Operand L, TemporaryMatrix M> requires (!TemporaryMatrix<L>) && InnerSizesMatch<L, M>
     auto operator* (L&& lhs, M&& mat)
     {return std::forward<L>(lhs) * own_temporary(std::forward<M>(mat));}
 
