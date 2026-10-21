@@ -21,9 +21,11 @@
  *
  * Each element of C is the sum of its K products added in increasing k, as in the simple
  * i-j-k loop: a tile's partial sums are loaded back from C when the next block of KC products is
- * added to them. Blocking therefore does not change the result (unless the compiler contracts
- * multiplications and additions into fused multiply-adds, which it may only do when allowed by
- * the floating-point options, e.g. -ffp-contract=fast).
+ * added to them. Without fused multiply-add (FMA) instructions, the kernel therefore gives exactly
+ * the result of the simple loop. When the target has FMA (e.g. -march=native on recent x86, or
+ * ARM), GCC and Clang fuse each multiply and add by default, which rounds once instead of twice;
+ * the kernel then does one FMA per product in increasing k, but the simple loop may be fused
+ * differently, so the two can differ in the last bits. -ffp-contract=off disables fusion.
  **************************************************************************************************/
 #ifndef MATL_PRODUCT_KERNEL_HPP
 #define MATL_PRODUCT_KERNEL_HPP

@@ -196,8 +196,10 @@ Matrix products use a cache-blocked kernel in the structure of GotoBLAS/BLIS: bl
 operands are packed into contiguous buffers (taken from the temporary arena, so they make no heap
 allocations) and multiplied in small tiles held in SIMD registers. Small products (below about
 10x10x10) use a simple loop, which is faster there. Each element of a product is still the sum of
-its products in increasing order, so blocking does not change results (unless the compiler is
-allowed to fuse multiplications and additions, e.g. `-ffp-contract=fast` or `-ffast-math`).
+its products in increasing order, so without fused multiply-add (FMA) instructions blocking
+gives exactly the result of a simple loop. When FMA is available (e.g. `-march=native` on recent
+x86, or ARM), compilers fuse multiplications and additions by default; results may then differ
+from a simple loop in the last bits. Compile with `-ffp-contract=off` to disable fusion.
 
 Elementwise expressions are evaluated in a single pass, at the speed of a hand-written loop.
 Transposes, and expressions mixing storage orders, are evaluated in small tiles so that both
