@@ -45,11 +45,11 @@ class MyClass
   public:
 
     //template<typename U = T, matl::enable_if_elementwise<U> = true> // doesn't work
-    template<typename U = T, std::enable_if<matl::is_elementwise<U>::value>::type = true>
+    template<typename U = T, typename std::enable_if<matl::is_elementwise<U>::value>::type = true>
     MyClass(U& obj) {std::cout << "MyClass elementwise constructor" << std::endl;}
 
 
-    template <std::enable_if<std::is_scalar<T>::value,bool>::type = true>
+    template <typename std::enable_if<std::is_scalar<T>::value,bool>::type = true>
     MyClass(T& obj) {std::cout << "MyClass scalar constructor" << std::endl;}
 
     //MyClass(const MyClass<T>& other) {std::cout << "MyClass copy constructor" << std::endl;}

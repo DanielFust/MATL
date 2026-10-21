@@ -95,12 +95,12 @@ namespace matl
     // non-const specialization
     template<typename T>
     typename type_traits<T>::unqualified_type& unqualified_cast(T& obj)
-    {return static_cast<type_traits<T>::unqualified_type&>(obj);}
+    {return static_cast<typename type_traits<T>::unqualified_type&>(obj);}
 
     // const specialization
     template<typename T>
     typename type_traits<T>::unqualified_type const& unqualified_cast(T const& obj)
-    {return static_cast<type_traits<T>::unqualified_type const&>(obj);}
+    {return static_cast<typename type_traits<T>::unqualified_type const&>(obj);}
 
 
 
@@ -129,6 +129,29 @@ namespace matl
     // NonElementwise
     template<typename T>
     concept NonElementwise = !is_elementwise<T>::value && is_matrix_algebra_object<T>::value;
+
+    // Detects matrix types: classes derived from _MATRIX_<MAT> for some MAT
+    namespace concept_detail
+    {
+        template<typename MAT>
+        std::true_type derives_from_matrix(_MATRIX_<MAT> const*);
+        std::false_type derives_from_matrix(...);
+    }
+
+    // MatrixType: a matrix (not an expression), ignoring references and cv-qualifiers
+    template<typename T>
+    concept MatrixType = decltype(concept_detail::derives_from_matrix(
+                                      std::declval<std::remove_cvref_t<T> const*>()))::value;
+
+    // TemporaryMatrix: a deduced forwarding-reference type that binds a temporary (rvalue) matrix.
+    // For 'template<TemporaryMatrix M> f(M&& m)', M is deduced as a non-reference type only for
+    // rvalue arguments.
+    template<typename T>
+    concept TemporaryMatrix = MatrixType<T> && !std::is_reference_v<T>;
+
+    // Operand: anything that can appear in a matrix algebra expression (matrix, expression or scalar)
+    template<typename T>
+    concept Operand = MatrixAlgebraObject<std::remove_cvref_t<T>> || Scalar<std::remove_cvref_t<T>>;
 
 } 
 

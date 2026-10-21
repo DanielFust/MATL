@@ -39,6 +39,11 @@ namespace matl
         // Copy constructor (Same type)
         RowMajorMatrix(RowMajorMatrix<T> const&);
 
+        // Expression constructor (evaluates the expression; implicit, so that
+        // 'Matrix<double> m = A + B;' evaluates to a new matrix)
+        template<typename EXPR>
+        RowMajorMatrix(_EXPRESSION_<EXPR> const&);
+
         // Move constructor
         RowMajorMatrix(RowMajorMatrix<T>&&);
 

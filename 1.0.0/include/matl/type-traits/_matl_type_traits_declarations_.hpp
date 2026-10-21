@@ -25,6 +25,7 @@ namespace matl
     template<typename MAT1, typename MAT2>   struct type_traits< _MATRIX_TIMES_MATRIX_<MAT1, MAT2> >;
     template<typename MAO, class T>          struct type_traits< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >;
     template<typename MAO>                   struct type_traits< _MATRIX_TRANSPOSE_<MAO> >;
+    template<typename MAT>                   struct type_traits< _OWNED_MATRIX_<MAT> >;
 
     // Matrix Algebra Object Declarations
     template<typename... T> struct is_matrix_algebra_object;
@@ -50,6 +51,7 @@ namespace matl
     template<typename MAT1, typename MAT2> struct is_matrix_algebra_object< _MATRIX_TIMES_MATRIX_<MAT1, MAT2> >;
     template<typename MAO, class T>        struct is_matrix_algebra_object< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >;
     template<typename MAO>                 struct is_matrix_algebra_object< _MATRIX_TRANSPOSE_<MAO> >;
+    template<typename MAT>                 struct is_matrix_algebra_object< _OWNED_MATRIX_<MAT> >;
 
     // Elementwise Declarations
     template<typename... T> struct is_elementwise;
@@ -73,6 +75,7 @@ namespace matl
     template<typename MAT1, typename MAT2> struct is_elementwise< _MATRIX_TIMES_MATRIX_<MAT1, MAT2> >;
     template<typename MAO, class T>        struct is_elementwise< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >;
     template<typename MAO>                 struct is_elementwise< _MATRIX_TRANSPOSE_<MAO> >;
+    template<typename MAT>                 struct is_elementwise< _OWNED_MATRIX_<MAT> >;
 
 
     // FixedSize Declarations
@@ -99,6 +102,7 @@ namespace matl
     template<typename MAT1, typename MAT2> struct is_fixed_size< _MATRIX_TIMES_MATRIX_<MAT1, MAT2> >;
     template<typename MAO, class T>        struct is_fixed_size< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >;
     template<typename MAO>                 struct is_fixed_size< _MATRIX_TRANSPOSE_<MAO> >;
+    template<typename MAT>                 struct is_fixed_size< _OWNED_MATRIX_<MAT> >;
 
     // is_transposed Declarations
     template<typename... T> struct is_transposed;
@@ -111,6 +115,7 @@ namespace matl
     template<typename FS>   struct is_transposed< _FIXED_SIZE_<FS> >;
     // Only _MATRIX_TRANSPOSE_ is transposed
     template<typename MAO>  struct is_transposed< _MATRIX_TRANSPOSE_<MAO> >;
+    template<typename MAT>  struct is_transposed< _OWNED_MATRIX_<MAT> >;
     
 
     // is_rowmajor_storage Declarations
@@ -139,6 +144,7 @@ namespace matl
     template<typename MAT1, typename MAT2> struct is_rowmajor_storage< _MATRIX_TIMES_MATRIX_<MAT1, MAT2> >;
     template<typename MAO, class T>        struct is_rowmajor_storage< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >;
     template<typename MAO>                 struct is_rowmajor_storage< _MATRIX_TRANSPOSE_<MAO> >;
+    template<typename MAT>                 struct is_rowmajor_storage< _OWNED_MATRIX_<MAT> >;
 
 
     // is_colmajor_storage Declarations
@@ -167,6 +173,7 @@ namespace matl
     template<typename MAT1, typename MAT2> struct is_colmajor_storage< _MATRIX_TIMES_MATRIX_<MAT1, MAT2> >;
     template<typename MAO, class T>        struct is_colmajor_storage< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >;
     template<typename MAO>                 struct is_colmajor_storage< _MATRIX_TRANSPOSE_<MAO> >;
+    template<typename MAT>                 struct is_colmajor_storage< _OWNED_MATRIX_<MAT> >;
 
     // is_same_storage_order Declarations
     template<typename T, typename ... OTHER_TYPES> struct is_same_storage_order;
@@ -195,6 +202,7 @@ namespace matl
     template<typename MAT1, typename MAT2> struct member_type< _MATRIX_TIMES_MATRIX_<MAT1, MAT2> >;
     template<typename MAO, class T>        struct member_type< _MATRIX_DIVIDED_BY_SCALAR_<MAO, T> >;
     template<typename MAO>                 struct member_type< _MATRIX_TRANSPOSE_<MAO> >;
+    template<typename MAT>                 struct member_type< _OWNED_MATRIX_<MAT> >;
 }
 
 #endif

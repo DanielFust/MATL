@@ -13,7 +13,7 @@ namespace matl
                                public _ELEMENTWISE_<_MATRIX_TRANSPOSE_<MAO> >
     {
       private:
-        member_type<MAO>::elementwise_expression mat_;
+        typename member_type<MAO>::elementwise_expression mat_;
       
       public:  
         // Resultant matrix data type (e.g. double, int, float, etc.)

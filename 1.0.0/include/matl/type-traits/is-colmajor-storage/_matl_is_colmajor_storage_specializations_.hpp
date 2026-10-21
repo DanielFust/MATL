@@ -112,6 +112,11 @@ namespace matl
     struct is_colmajor_storage< _MATRIX_TRANSPOSE_<MAO> >
     {static constexpr bool value = is_rowmajor_storage<MAO>::value;};
 
+    // Owned matrix (same as the owned matrix)
+    template<typename MAT>
+    struct is_colmajor_storage< _OWNED_MATRIX_<MAT> >
+    {static constexpr bool value = is_colmajor_storage<MAT>::value;};
+
 }
 
 #endif

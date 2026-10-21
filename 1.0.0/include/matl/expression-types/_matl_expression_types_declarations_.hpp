@@ -27,5 +27,8 @@ namespace matl
     // Matrix transpose
     template<typename MAO> class _MATRIX_TRANSPOSE_;
 
+    // Expression that owns a (formerly temporary) matrix
+    template<typename MAT> class _OWNED_MATRIX_;
+
 }
 #endif

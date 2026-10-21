@@ -21,8 +21,8 @@ namespace matl
     class _MATRIX_PLUS_MATRIX_ : public _EXPRESSION_<_MATRIX_PLUS_MATRIX_<MAO1,MAO2> >
     {
       private:
-        member_type<MAO1>::elementwise_expression mat1_;
-        member_type<MAO2>::elementwise_expression mat2_;
+        typename member_type<MAO1>::elementwise_expression mat1_;
+        typename member_type<MAO2>::elementwise_expression mat2_;
       public:  
         // Resultant matrix data type (e.g. double, int, float, etc.)
         typedef typename promote<typename type_traits<MAO1>::dtype,
