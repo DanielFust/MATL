@@ -3,8 +3,8 @@
  *
  * Description: Implementation of the TemporaryArena class.
  **************************************************************************************************/
-#ifndef _MATL_TEMPORARY_ARENA_IMPLEMENTATION__HPP
-#define _MATL_TEMPORARY_ARENA_IMPLEMENTATION__HPP
+#ifndef MATL_TEMPORARY_ARENA_IMPLEMENTATION_HPP
+#define MATL_TEMPORARY_ARENA_IMPLEMENTATION_HPP
 namespace matl
 {
    /***********************************************************************************************

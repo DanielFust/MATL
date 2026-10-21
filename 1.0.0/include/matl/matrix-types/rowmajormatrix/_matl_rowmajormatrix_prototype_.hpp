@@ -1,5 +1,19 @@
 namespace matl
 {
+    namespace detail
+    {
+        // Traits of RowMajorMatrix (see _matl_type_traits_.hpp)
+        template<class T>
+        struct traits< RowMajorMatrix<T> >
+        {
+            typedef T dtype;
+            static constexpr bool         fixed_size    = false;
+            static constexpr index_t      rows          = 0;
+            static constexpr index_t      cols          = 0;
+            static constexpr StorageOrder storage_order = StorageOrder::RowMajor;
+        };
+    }
+
    /***********************************************************************************************
     * class RowMajorMatrix
     * 
@@ -10,7 +24,7 @@ namespace matl
     *     T     Matrix data type     
     ***********************************************************************************************/ 
     template<class T>
-    class RowMajorMatrix : public _MATRIX_< RowMajorMatrix<T> >
+    class RowMajorMatrix : public MatrixBase< RowMajorMatrix<T> >
     {
       private:
         index_t rows_;
@@ -36,16 +50,16 @@ namespace matl
         RowMajorMatrix(index_t, index_t, T*);
 
         // Copy constructor (General matrix)
-        template<typename MAT>
-        RowMajorMatrix(_MATRIX_<MAT> const&);
+        template<MatrixType MAT>
+        RowMajorMatrix(MAT const&);
 
         // Copy constructor (Same type)
         RowMajorMatrix(RowMajorMatrix<T> const&);
 
         // Expression constructor (evaluates the expression; implicit, so that
         // 'Matrix<double> m = A + B;' evaluates to a new matrix)
-        template<typename EXPR>
-        RowMajorMatrix(_EXPRESSION_<EXPR> const&);
+        template<ExpressionType EXPR>
+        RowMajorMatrix(EXPR const&);
 
         // Move constructor
         RowMajorMatrix(RowMajorMatrix<T>&&) noexcept;
@@ -56,8 +70,8 @@ namespace matl
         /************* Assignment and Copying ******************/
 
         // Expression execution trigger
-        template<typename EXPR>
-        RowMajorMatrix<T>& operator= (_EXPRESSION_<EXPR> const&);
+        template<ExpressionType EXPR>
+        RowMajorMatrix<T>& operator= (EXPR const&);
 
 
         // RowMajorMatrix move assignment
@@ -66,61 +80,49 @@ namespace matl
         // RowMajorMatrix copy assignment (same type)
         RowMajorMatrix<T>& operator= (RowMajorMatrix<T> const&);
 
-        // Copy assignment/constructor for RowMajorMatrix
+        // Copy assignment for RowMajorMatrix of another element type
         template<class T2>
-        RowMajorMatrix<T>& operator= (RowMajorMatrix<T2>&);
+        RowMajorMatrix<T>& operator= (RowMajorMatrix<T2> const&);
 
-        // Copy assignment/constructor for General Matrix
-        template<typename MAT>
-        RowMajorMatrix<T>& operator= (_MATRIX_<MAT>&);
+        // Copy assignment for General Matrix
+        template<MatrixType MAT>
+        RowMajorMatrix<T>& operator= (MAT const&);
 
-        // Scalar assignement shortcut
-        template<class T2, enable_if_scalar<T2> >
-        RowMajorMatrix<T>& operator= (const T2);
+        // Scalar assignment (sets every element)
+        template<Scalar S>
+        RowMajorMatrix<T>& operator= (S);
 
         // Addition assignment (by scalar)
-        template<class T2, enable_if_scalar<T2> = true >
-        RowMajorMatrix<T>& operator+= (const T2);
+        template<Scalar S>
+        RowMajorMatrix<T>& operator+= (S);
 
         // Subtraction assignment (by scalar)
-        template<class T2, enable_if_scalar<T2> = true >
-        RowMajorMatrix<T>& operator-= (const T2);
+        template<Scalar S>
+        RowMajorMatrix<T>& operator-= (S);
 
         // Multiplication assignment (by scalar)
-        template<class T2, enable_if_scalar<T2> = true >
-        RowMajorMatrix<T>& operator*= (const T2);
+        template<Scalar S>
+        RowMajorMatrix<T>& operator*= (S);
 
         // Division assignment (by scalar)
-        template<class T2, enable_if_scalar<T2> = true >
-        RowMajorMatrix<T>& operator/= (const T2);
+        template<Scalar S>
+        RowMajorMatrix<T>& operator/= (S);
 
-        // Addition assignment (by matrix)
-        template<typename MAT>
-        RowMajorMatrix<T>& operator+= (_MATRIX_<MAT>&);
+        // Addition assignment (by matrix or expression)
+        template<MatrixAlgebraObject MAO>
+        RowMajorMatrix<T>& operator+= (MAO const&);
 
-        // Subtraction assignment (by matrix)
-        template<typename MAT>
-        RowMajorMatrix<T>& operator-= (_MATRIX_<MAT>&);
+        // Subtraction assignment (by matrix or expression)
+        template<MatrixAlgebraObject MAO>
+        RowMajorMatrix<T>& operator-= (MAO const&);
 
-        // Multiplication assignment (by matrix)
-        template<typename MAT>
-        RowMajorMatrix<T>& operator*= (_MATRIX_<MAT>&);
-
-        // Addition assignment (by matrix expression)
-        template<typename EXPR>
-        RowMajorMatrix<T>& operator+= (_EXPRESSION_<EXPR> const&);
-
-        // Subtraction assignment (by matrix expression)
-        template<typename EXPR>
-        RowMajorMatrix<T>& operator-= (_EXPRESSION_<EXPR> const&);
-
-        // Multiplication assignment (by matrix expression)
-        template<typename EXPR>
-        RowMajorMatrix<T>& operator*= (_EXPRESSION_<EXPR> const&);
+        // Multiplication assignment (matrix product, by matrix or expression)
+        template<MatrixAlgebraObject MAO>
+        RowMajorMatrix<T>& operator*= (MAO const&);
 
         // General matrix copy
-        template<typename MAT>
-        void copy(const _MATRIX_<MAT>&);
+        template<MatrixType MAT>
+        void copy(MAT const&);
 
         // RowMajorMatrix copy
         template<class T2>
@@ -142,10 +144,6 @@ namespace matl
 
         /********************** Utilities **********************/
 
-        // Data writing shortcut
-        template<class T2, enable_if_scalar<T2> = true>
-        void operator= (const T2);
-
         // Row Getter
         index_t rows() const;
 
@@ -166,6 +164,9 @@ namespace matl
 
         // Is the memory externally owned (not deleted by the matrix)
         bool external_mem() const;
+
+        // RowMajorMatrix types of other element types (to copy their data)
+        template<class U> friend class RowMajorMatrix;
 
         // Allocation and deallocation of the matrix data
         template<class U> friend void allocate(RowMajorMatrix<U>&, index_t, index_t);

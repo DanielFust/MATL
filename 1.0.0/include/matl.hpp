@@ -11,6 +11,8 @@
 
 // Standard Library dependencies
 #include <type_traits>
+#include <concepts>
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <complex>
@@ -41,15 +43,12 @@ namespace matl
 // Forward class and operator declarations
 #include "./matl/_matl_declarations_.hpp" 
 
-// Type Traits 
+// Concepts and type traits
 /*(Type traits MUST be included BEFORE class and function prototypes but AFTER class declarations) */
 #include "./matl/_matl_type_traits_.hpp"
 
 // Class Prototypes
 #include "./matl/_matl_prototypes_.hpp"
-
-// Utilities (Must be included after Type Traits but before implementations)
-#include "./matl/utilities/_matl_utilities_.hpp"
 
 // MemoryManager instance (memory_manager is a threadlocal singleton). The singleton pointer and
 // static settings are defined as inline variables in the MemoryManager class prototype so that

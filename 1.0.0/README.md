@@ -98,6 +98,41 @@ instead. Each thread has its own arena, which is freed when the thread exits.
 `make bench` reports the time and heap allocations per assignment for several expressions,
 with and without the arena.
 
+## Types and namespaces
+
+| Namespace | Contents |
+| --- | --- |
+| `matl` | Everything you use directly: matrix types (`Matrix`, `RowMajorMatrix`, `FixedSizeRowMajorMatrix`), operators, `transpose`, `eye`, `allocate`/`deallocate`, `MemoryManager`, and the concepts below |
+| `matl::expr` | Expression types, i.e. what `auto e = A + B;` holds: `Elementwise<Op, L, R>` (every `+`, `-`, and `*` or `/` by a scalar), `Product<L, R>`, `Transpose<M>`, `Owned<M>` |
+| `matl::detail` | Implementation details (evaluators, traits); not part of the interface |
+
+You rarely need to name an expression type, but they appear in compiler messages and debuggers,
+e.g. `A + B*2.0` has type
+`matl::expr::Elementwise<matl::expr::Add, RowMajorMatrix<double>, matl::expr::Elementwise<matl::expr::Multiply, RowMajorMatrix<double>, double>>`.
+
+Write generic functions with the concepts:
+
+| Concept | Satisfied by |
+| --- | --- |
+| `MatrixType` | Matrices (any MATL matrix type) |
+| `ExpressionType` | Expressions |
+| `MatrixAlgebraObject` | Matrices and expressions |
+| `Scalar` | Arithmetic types (`int`, `double`, ...) |
+| `FixedSize` | Matrices and expressions with compile-time dimensions |
+
+```cpp
+template<matl::MatrixType MAT>
+double trace(MAT const& A)
+{
+    double sum = 0;
+    for (matl::index_t i = 1; i <= A.rows(); ++i) sum += A(i,i);
+    return sum;
+}
+```
+
+The operators only accept MATL matrices, expressions and arithmetic scalars, so a misuse such as
+`A + "text"` is reported as an unsatisfied constraint rather than an error inside the library.
+
 ## Matrix memory
 
 A `RowMajorMatrix` owns its data, which it allocates on the heap. Copies are deep, and moves

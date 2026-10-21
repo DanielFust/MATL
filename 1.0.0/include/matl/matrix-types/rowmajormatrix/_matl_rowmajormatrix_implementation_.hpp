@@ -73,7 +73,7 @@ namespace matl
     {}
 
    /***********************************************************************************************
-    * RowMajorMatrix(_MATRIX_<MAT> const&)
+    * RowMajorMatrix(MAT const&)
     * 
     * Copy constructor. Creates a new RowMajorMatrix object with the same dimensions and data as
     * the original matrix. The data is copied to a new array owned by the new matrix.
@@ -82,8 +82,8 @@ namespace matl
     *    other          Matrix object to copy
     **************************************************************************************************/
     template<class T>
-    template<typename MAT>
-    RowMajorMatrix<T>::RowMajorMatrix(_MATRIX_<MAT> const& other) : rows_(other.rows()), 
+    template<MatrixType MAT>
+    RowMajorMatrix<T>::RowMajorMatrix(MAT const& other) : rows_(other.rows()), 
                                                                     cols_(other.cols()),
                                                                     data_(new T[other.rows()*other.cols()]),
                                                                     external_mem_(false)
@@ -119,7 +119,7 @@ namespace matl
     } 
 
    /***********************************************************************************************
-    * RowMajorMatrix(_EXPRESSION_<EXPR> const&)
+    * RowMajorMatrix(EXPR const&)
     * 
     * Expression constructor. Creates a new RowMajorMatrix sized to the expression and evaluates
     * the expression into it.
@@ -128,8 +128,8 @@ namespace matl
     *     expr           Expression to evaluate
     ***********************************************************************************************/ 
     template<class T>
-    template<typename EXPR>
-    RowMajorMatrix<T>::RowMajorMatrix(_EXPRESSION_<EXPR> const& expr) : rows_(0), 
+    template<ExpressionType EXPR>
+    RowMajorMatrix<T>::RowMajorMatrix(EXPR const& expr) : rows_(0), 
                                                                         cols_(0),
                                                                         data_(nullptr),
                                                                         external_mem_(false)
@@ -180,7 +180,7 @@ namespace matl
   
 
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator= (_EXPRESSION_ const&)
+    * RowMajorMatrix<T>& operator= (EXPR const&)
     * 
     * Triggers the evaluation of an expression and assigns the result to the RowMajorMatrix. If the
     * RowMajorMatrix is not allocated, it will be allocated to the size of the expression, 
@@ -190,11 +190,11 @@ namespace matl
     *   expression          Expression to evaluate
     ***********************************************************************************************/
     template<class T>
-    template<typename EXPR>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (_EXPRESSION_<EXPR> const& expression)
+    template<ExpressionType EXPR>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (EXPR const& expression)
     {
         #ifdef MATL_DEBUG
-        std::cout << "RowMajorMatrix<T>& operator= (_EXPRESSION_ const&)" << std::endl;
+        std::cout << "RowMajorMatrix<T>& operator= (EXPR const&)" << std::endl;
         #endif
 
         // Dimension check debug flag:
@@ -204,10 +204,9 @@ namespace matl
         if (  ((this->rows_ != expression.rows()) || (this->cols_ != expression.cols()))
             && (this->size() != 0) ) 
         {
-            std::cerr << "Error in 'void RowMajorMatrix<T>::operator= (const _EXPRESSION_<EXPR> "
-                          "&expression)'"
+            std::cerr << "Error in 'void RowMajorMatrix<T>::operator= (EXPR const& expression)'"
                       << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" << this->cols_
-                      << " incompatible with _EXPRESSION_ with dimensions " << expression.rows()
+                      << " incompatible with expression with dimensions " << expression.rows()
                       << "x" << expression.cols() 
                       << std::endl;
             abort();          
@@ -220,7 +219,7 @@ namespace matl
             // Evaluate into a temporary, then copy the result. The temporary's memory is
             // recycled (see EvaluationTemporary), so it is copied rather than moved, and this
             // matrix keeps its own memory.
-            EvaluationTemporary< RowMajorMatrix<T> > temp(expression.rows(), expression.cols());
+            detail::EvaluationTemporary< RowMajorMatrix<T> > temp(expression.rows(), expression.cols());
             expression.eval(temp.matrix());
             this->copy(temp.matrix());
         }
@@ -339,9 +338,9 @@ namespace matl
 
 
    /***********************************************************************************************
-    *  RowMajorMatrix<T>& operator=(RowMajorMatrix&)
+    *  RowMajorMatrix<T>& operator=(RowMajorMatrix<T2> const&)
     * 
-    * Copy assignment for RowMajorMatrix
+    * Copy assignment for RowMajorMatrix of another element type
     * 
     * Template Parameters:
     *     T2          Data type of other matrix
@@ -351,13 +350,13 @@ namespace matl
     ***********************************************************************************************/
     template<class T>
     template<class T2>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T2>& mat)
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T2> const& mat)
     {
         #ifdef MATL_DIMENSION_CHECK
         if (this->data_ != nullptr)
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
-                std::cerr << "Error in 'void RowMajorMatrix<T>::operator= (const RowMajorMatrix<T2>&)'"
+                std::cerr << "Error in 'void RowMajorMatrix<T>::operator= (RowMajorMatrix<T2> const&)'"
                             << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" 
                             << this->cols_
                             << " incompatible with RowMajorMatrix with dimensions " << mat.rows()
@@ -368,11 +367,11 @@ namespace matl
         #endif
 
         #ifdef MATL_DEBUG
-        std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (const RowMajorMatrix<T2>&) called" << std::endl;
+        std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T2> const&) called" << std::endl;
         #endif
 
         // Check for self assignment
-        if (this!=&mat) this->copy(mat);
+        if (static_cast<void const*>(this) != static_cast<void const*>(&mat)) this->copy(mat);
 
         return *this;
     }
@@ -380,26 +379,26 @@ namespace matl
 
 
    /***********************************************************************************************
-    *  RowMajorMatrix<T>& operator=(const Matrix&)
+    *  RowMajorMatrix<T>& operator=(MAT const&)
     * 
     * Copy assignment for general Matrix
     * 
     * Template Parameters:
-    *     MAT_T       Other matrix type
+    *     MAT         Other matrix type
     * Parameters:
     *     mat         Other RowMajorMatrix
     * 
     ***********************************************************************************************/
     template<class T>
-    template<typename MAT_T>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (_MATRIX_<MAT_T>& mat)
+    template<MatrixType MAT>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (MAT const& mat)
     {
         #ifdef MATL_DIMENSION_CHECK
         if (this->data_ != nullptr)
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
                 std::cerr << "Error in 'void RowMajorMatrix<T>::operator= "
-                            << "(const Matrix<MAT_T>& mat)'"
+                            << "(MAT const& mat)'"
                             << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" 
                             << this->cols_
                             << " incompatible with Matrix with dimensions " << mat.rows()
@@ -409,10 +408,8 @@ namespace matl
             }    
         #endif
 
-        //std::cout << "void RowMajorMatrix<T>::operator= (const Matrix<MAT_T>&) called" << std::endl;
-
         // If no self-assignment, copy data
-        if (this != &mat) this->copy(mat);
+        if (static_cast<void const*>(this) != static_cast<void const*>(&mat)) this->copy(mat);
 
         return *this;
     }
@@ -420,18 +417,18 @@ namespace matl
 
 
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator= (const T2)
+    * RowMajorMatrix<T>& operator= (S)
     * 
     * Scalar assignement shortcut   
     * 
     * Template Parameters:
-    *    T2          Scalar data type
+    *    S           Scalar data type
     * Parameters:
     *    val         Scalar value
     ***********************************************************************************************/
     template<class T>
-    template<class T2, enable_if_scalar<T2>>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (const T2 val)
+    template<Scalar S>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (S val)
     {
         const index_t N = this->size();
         for (index_t i = 0; i < N; ++i) this->data_[i] = val;
@@ -440,7 +437,7 @@ namespace matl
 
 
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator+= (const T2)
+    * RowMajorMatrix<T>& operator+= (S)
     * 
     * Addition assignment (by scalar)
     * 
@@ -448,8 +445,8 @@ namespace matl
     *   val         Scalar value
     ***********************************************************************************************/
     template<class T>
-    template<class T2, enable_if_scalar<T2>>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator+= (const T2 val)
+    template<Scalar S>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator+= (S val)
     {
         const index_t N = this->size();
         for (index_t i = 0; i < N; ++i) this->data_[i] += val;
@@ -457,7 +454,7 @@ namespace matl
     }
 
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator-= (const T2)
+    * RowMajorMatrix<T>& operator-= (S)
     * 
     * Subtraction assignment (by scalar)
     * 
@@ -465,8 +462,8 @@ namespace matl
     *   val         Scalar value
     ***********************************************************************************************/
     template<class T>
-    template<class T2, enable_if_scalar<T2>>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator-= (const T2 val)
+    template<Scalar S>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator-= (S val)
     {
         const index_t N = this->size();
         for (index_t i = 0; i < N; ++i) this->data_[i] -= val;
@@ -474,7 +471,7 @@ namespace matl
     } 
 
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator*= (const T2)
+    * RowMajorMatrix<T>& operator*= (S)
     * 
     * Multiplication assignment (by scalar)
     * 
@@ -482,8 +479,8 @@ namespace matl
     *   val         Scalar value
     ***********************************************************************************************/
     template<class T>
-    template<class T2, enable_if_scalar<T2>>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator*= (const T2 val)
+    template<Scalar S>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator*= (S val)
     {
         const index_t N = this->size();
         for (index_t i = 0; i < N; ++i) this->data_[i] *= val;
@@ -491,7 +488,7 @@ namespace matl
     }
     
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator/= (const T2)
+    * RowMajorMatrix<T>& operator/= (S)
     * 
     * Division assignment (by scalar)
     * 
@@ -499,8 +496,8 @@ namespace matl
     *   val         Scalar value
     ***********************************************************************************************/
     template<class T>
-    template<class T2, enable_if_scalar<T2>>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator/= (const T2 val)
+    template<Scalar S>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator/= (S val)
     {
         const index_t N = this->size();
         if constexpr (std::is_integral<dtype>::value)
@@ -519,131 +516,83 @@ namespace matl
 
 
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator+= (_MATRIX_<MAT_T>&)
+    * RowMajorMatrix<T>& operator+= (MAO const&)
     * 
-    * Addition assignment (by matrix)
+    * Addition assignment (by matrix or expression)
     * 
     * Parameters:
-    *     mat               Matrix
+    *     mao               Matrix or expression
     * Returns:
     *     RowMajorMatrix    reference to self
     ***********************************************************************************************/
     template<class T>
-    template<typename MAT>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator+= (_MATRIX_<MAT>& mat)
+    template<MatrixAlgebraObject MAO>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator+= (MAO const& mao)
     {
-        *this = *this + mat;
+        *this = *this + mao;
         return *this;
     } 
 
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator-= (_MATRIX_<MAT_T>&)
+    * RowMajorMatrix<T>& operator-= (MAO const&)
     *
-    * Subtraction assignment (by matrix)
+    * Subtraction assignment (by matrix or expression)
     *
     * Parameters:
-    *     mat               Matrix
+    *     mao               Matrix or expression
     * Returns:
     *     RowMajorMatrix    reference to self
     ***********************************************************************************************/
     template<class T>
-    template<typename MAT>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator-= (_MATRIX_<MAT>& mat)
+    template<MatrixAlgebraObject MAO>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator-= (MAO const& mao)
     {
-        *this = *this - mat;
+        *this = *this - mao;
         return *this;
     }
    
    /***********************************************************************************************
-    * RowMajorMatrix<T>& operator*= (_MATRIX_<MAT_T>&)
+    * RowMajorMatrix<T>& operator*= (MAO const&)
     * 
-    * Multiplication assignment (by matrix)
+    * Multiplication assignment (matrix product, by matrix or expression)
     * 
     * Parameters:
-    *     mat               Matrix
+    *     mao               Matrix or expression
     * Returns:
     *     RowMajorMatrix    reference to self
     ***********************************************************************************************/
     template<class T>
-    template<typename MAT>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator*= (_MATRIX_<MAT>& mat)
+    template<MatrixAlgebraObject MAO>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator*= (MAO const& mao)
     {
-        *this = *this * mat;
+        *this = *this * mao;
         return *this;
     }
     
-   /***********************************************************************************************
-    * RowMajorMatrix<T>& operator+= (_EXPRESSION_<EXPR> const&)
-    *
-    * Addition assignment (by matrix expression)
-    *
-    * Parameters:
-    *     expr              Matrix expression
-    * Returns:
-    *     RowMajorMatrix    reference to self
-    ***********************************************************************************************/
-    template<class T>
-    template<typename EXPR>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator+= (_EXPRESSION_<EXPR> const& expr)
-    {
-        *this = *this + expr;
-        return *this;
-    }
+
     
-   /***********************************************************************************************
-    * RowMajorMatrix<T>& operator-= (_EXPRESSION_<EXPR> const&)
-    *
-    * Subtraction assignment (by matrix expression)
-    *
-    * Parameters:
-    *     expr              Matrix expression
-    * Returns:
-    *     RowMajorMatrix    reference to self
-    ***********************************************************************************************/
-    template<class T>
-    template<typename EXPR>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator-= (_EXPRESSION_<EXPR> const& expr)
-    {
-        *this = *this - expr;
-        return *this;
-    }
+
     
-   /***********************************************************************************************
-    * RowMajorMatrix<T>& operator*= (_EXPRESSION_<EXPR> const&)
-    *
-    * Multiplication assignment (by matrix expression)
-    *
-    * Parameters:
-    *     expr              Matrix expression
-    * Returns:
-    *     RowMajorMatrix    reference to self
-    ***********************************************************************************************/
-    template<class T>
-    template<typename EXPR>
-    RowMajorMatrix<T>& RowMajorMatrix<T>::operator*= (_EXPRESSION_<EXPR> const& expr)
-    {
-        *this = *this * expr;
-        return *this;
-    } 
+ 
 
 
 
    /***********************************************************************************************
-    *  void copy(const _MATRIX_<MAT_T>&)
+    *  void copy(MAT const&)
     * 
     * Copy contents of generic matrix to instance RowMajorMatrix. Allocates new RowMajorMatrix if 
     * it is not already allocated.
     * 
     * Template Parameters:
-    *     MAT_T        Matrix type
+    *     MAT          Matrix type
     * 
     * Parameters:
     *     mat          Matrix
     * 
     ***********************************************************************************************/ 
     template<class T>
-    template<typename MAT>
-    void RowMajorMatrix<T>::copy(const _MATRIX_<MAT>& mat)
+    template<MatrixType MAT>
+    void RowMajorMatrix<T>::copy(MAT const& mat)
     {
         const index_t block = 32;//block_size(); // change later
         const index_t M = mat.rows();
@@ -661,7 +610,7 @@ namespace matl
             #ifdef MATL_DIMENSION_CHECK
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
-                std::cerr << "Error in 'void RowMajorMatrix<T>::copy() (const Matrix<MAT_T>&)'"
+                std::cerr << "Error in 'void RowMajorMatrix<T>::copy() (MAT const&)'"
                         << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" << this->cols_
                         << " incompatible with Matrix with dimensions " << mat.rows()
                         << "x" << mat.cols() 
@@ -676,8 +625,8 @@ namespace matl
         for (index_t ii=1; ii<(M+1); ii+=block)
             for (index_t jj=1; jj<(N+1); jj+=block)
             {
-                const index_t istop = branchless_min(ii+block, M+1);
-                const index_t jstop = branchless_min(jj+block, N+1);
+                const index_t istop = std::min(ii+block, M+1);
+                const index_t jstop = std::min(jj+block, N+1);
                 for (index_t i=ii; i!=istop; ++i)
                     for (index_t j=jj; j!=jstop; ++j)
                         (*this)(i,j) = mat(i,j);
@@ -875,28 +824,7 @@ namespace matl
     *=============================================================================================*/
 
 
-   /***********************************************************************************************
-    * void operator= (const T2)
-    * 
-    * Scalar data writing
-    * 
-    * Template Parameters:
-    *     T2      (implicit) scalar data type
-    * 
-    * Parameters:
-    *     val     Scalar value of all matrix elements
-    * 
-    * Returns:
-    ***********************************************************************************************/ 
-    template<class T1>
-    template<class T2, enable_if_scalar<T2> >
-    void RowMajorMatrix<T1>::operator= (const T2 val)
-    {
-        const index_t N = this->size();
-        for (index_t i = 0; i < N; ++i)
-            this->data_[i] = val;
-        return;    
-    }
+
 
 
    /***********************************************************************************************

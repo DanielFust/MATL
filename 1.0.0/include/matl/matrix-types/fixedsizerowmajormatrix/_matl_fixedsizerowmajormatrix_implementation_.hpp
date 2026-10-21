@@ -1,10 +1,10 @@
-#ifndef _MATL_FIXEDSIZEROWMAJORMATRIX_IMPLEMENTATION__HPP
-#define _MATL_FIXEDSIZEROWMAJORMATRIX_IMPLEMENTATION__HPP
+#ifndef MATL_FIXEDSIZEROWMAJORMATRIX_IMPLEMENTATION_HPP
+#define MATL_FIXEDSIZEROWMAJORMATRIX_IMPLEMENTATION_HPP
 
 namespace matl
 {
    /***********************************************************************************************
-    * FixedSizeRowMajorMatrix(_EXPRESSION_<EXPR> const&)
+    * FixedSizeRowMajorMatrix(EXPR const&)
     * 
     * Expression constructor. Evaluates the expression into the new matrix. The expression must
     * have dimensions M x N.
@@ -13,26 +13,26 @@ namespace matl
     *     expr           Expression to evaluate
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<typename EXPR>
-    FixedSizeRowMajorMatrix<T, M, N>::FixedSizeRowMajorMatrix(_EXPRESSION_<EXPR> const& expr)
+    template<ExpressionType EXPR>
+    FixedSizeRowMajorMatrix<T, M, N>::FixedSizeRowMajorMatrix(EXPR const& expr)
     {*this = expr;}
 
    /***********************************************************************************************
-    * FixedSizeRowMajorMatrix::operator= (_MATRIX_&)
+    * FixedSizeRowMajorMatrix::operator= (MAT const&)
     * 
     * General matrix copy.
     * 
     * Parameters:
-    *     _MATRIX_ mat        Matrix to copy
+    *     mat        Matrix to copy
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<typename MAT>
+    template<MatrixType MAT>
     FixedSizeRowMajorMatrix<T, M, N>&
-    FixedSizeRowMajorMatrix<T, M, N>::operator= (_MATRIX_<MAT>& mat)
+    FixedSizeRowMajorMatrix<T, M, N>::operator= (MAT const& mat)
     {
         #ifdef MATL_BOUNDS_CHECK
         if ((this->rows() != mat.rows())|| (this->cols() != mat.cols()))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (_MATRIX_&): Matrix dimensions do not match");
+            throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (MAT const&): Matrix dimensions do not match");
         #endif
         
         for (index_t i = 1; i<=M; i++)
@@ -43,28 +43,7 @@ namespace matl
     
 
    /***********************************************************************************************
-    * FixedSizeRowMajorMatrix::operator= (FixedSizeRowMajorMatrix&)
-    * 
-    * Matrix copy (FixedSizeRowMajorMatrix specialization).
-    * 
-    * Parameters:
-    *     FixedSizeRowMajorMatrix mat        Matrix to copy
-    ***********************************************************************************************/
-    template<class T, index_t M, index_t N>
-    FixedSizeRowMajorMatrix<T, M, N>& 
-    FixedSizeRowMajorMatrix<T, M, N>::operator= (FixedSizeRowMajorMatrix<T, M, N>& mat)
-    {
-        #ifdef MATL_BOUNDS_CHECK
-        if ((this->rows() != mat.rows())|| (this->cols() != mat.cols()))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (FixedSizeRowMajorMatrix&): Matrix dimensions do not match");
-        #endif
-        for(index_t i=0; i<SIZE; i++)
-            this->data_[i] = mat.data_[i];
-        return *this;
-    } 
-
-   /***********************************************************************************************
-    * FixedSizeRowMajorMatrix::operator= (RowMajorMatrix&)
+    * FixedSizeRowMajorMatrix::operator= (RowMajorMatrix<T2> const&)
     * 
     * Matrix copy (RowMajorMatrix specialization).
     * 
@@ -74,11 +53,11 @@ namespace matl
     template<class T, index_t M, index_t N>
     template<class T2>
     FixedSizeRowMajorMatrix<T, M, N>& 
-    FixedSizeRowMajorMatrix<T, M, N>::operator= (RowMajorMatrix<T2>& mat)
+    FixedSizeRowMajorMatrix<T, M, N>::operator= (RowMajorMatrix<T2> const& mat)
     {
         #ifdef MATL_BOUNDS_CHECK
         if ((this->rows() != mat.rows())|| (this->cols() != mat.cols()))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (RowMajorMatrix&): Matrix dimensions do not match");
+            throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (RowMajorMatrix const&): Matrix dimensions do not match");
         #endif
         for(index_t i=0; i<SIZE; i++)
             this->data_[i] = mat(i+1);
@@ -86,21 +65,21 @@ namespace matl
     } 
 
    /***********************************************************************************************
-    * FixedSizeRowMajorMatrix::operator= (_EXPRESSION_&)
+    * FixedSizeRowMajorMatrix::operator= (EXPR const&)
     *
     * Trigger expression evaluation to this matrix.
     *
     * Parameters:
-    *     _EXPRESSION_ expr      Matrix expression
+    *     expr      Matrix expression
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<typename EXPR>
+    template<ExpressionType EXPR>
     FixedSizeRowMajorMatrix<T, M, N>&
-    FixedSizeRowMajorMatrix<T, M, N>::operator=(_EXPRESSION_<EXPR> const& expression)
+    FixedSizeRowMajorMatrix<T, M, N>::operator=(EXPR const& expression)
     {
         #ifdef MATL_BOUNDS_CHECK
         if ((this->rows() != expression.rows())|| (this->cols() != expression.cols()))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (_EXPRESSION_&): Matrix dimensions do not match");
+            throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (EXPR const&): Matrix dimensions do not match");
         #endif
 
         // Check (at compile-time) if the evaluation is safe 
@@ -130,20 +109,20 @@ namespace matl
     
 
    /***********************************************************************************************
-    * FixedSizeRowMajorMatrix::copy(_MATRIX_)
+    * FixedSizeRowMajorMatrix::copy(MAT const&)
     *   
     * Copy contents of generic matrix to instance FixedSizeRowMajorMatrix. 
     * 
     * Parameters:
-    *     _MATRIX_ mat        Matrix to copy
+    *     mat        Matrix to copy
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<typename MAT>
-    void FixedSizeRowMajorMatrix<T, M, N>::copy(const _MATRIX_<MAT>& mat)
+    template<MatrixType MAT>
+    void FixedSizeRowMajorMatrix<T, M, N>::copy(MAT const& mat)
     {
         #ifdef MATL_BOUNDS_CHECK
         if ((this->rows() != mat.rows())|| (this->cols() != mat.cols()))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::copy(_MATRIX_): Matrix dimensions do not match");
+            throw std::out_of_range("FixedSizeRowMajorMatrix::copy(MAT const&): Matrix dimensions do not match");
         #endif
         
         for (index_t i = 1; i<=M; i++)
@@ -259,7 +238,7 @@ namespace matl
 
 
    /***********************************************************************************************
-    * FixedSizeRowMajorMatrix::operator= (T)
+    * FixedSizeRowMajorMatrix::operator= (S)
     * 
     * Scalar data writing.
     * 
@@ -267,11 +246,12 @@ namespace matl
     *     T val        Value to write
     ***********************************************************************************************/
     template<class T, index_t M, index_t N>
-    template<class T2, enable_if_scalar<T2> >
-    void FixedSizeRowMajorMatrix<T, M, N>::operator= (T2 val)
+    template<Scalar S>
+    FixedSizeRowMajorMatrix<T, M, N>& FixedSizeRowMajorMatrix<T, M, N>::operator= (S val)
     {
         for (index_t i = 1; i <= SIZE; i++)
             (*this)(i) = val;
+        return *this;
     }
      
 

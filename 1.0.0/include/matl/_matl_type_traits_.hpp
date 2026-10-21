@@ -1,147 +1,42 @@
 /**************************************************************************************************
  * File:   _matl_type_traits_.hpp
- * 
- * Description: Type traits for the MATL library.
+ *
+ * Description: Concepts and type traits for the MATL library.
+ *
+ * Every matrix and expression type describes itself with one specialization of detail::traits,
+ * defined next to the type (e.g. traits<RowMajorMatrix<T>> in the RowMajorMatrix prototype):
+ *
+ *     dtype           Element type
+ *     fixed_size      'true' if the dimensions are known at compile time
+ *     rows, cols      Dimensions when fixed_size, otherwise 0
+ *     storage_order   Order of the elements in memory (matrices), or the order in which an
+ *                     expression's elements are cheapest to visit
+ *
+ * Scalars have traits too, so that they can be used as expression operands: they are fixed-size
+ * and have no storage order of their own (StorageOrder::Any).
  **************************************************************************************************/
-#ifndef _MATL_TYPE_TRAITS__HPP
-#define _MATL_TYPE_TRAITS__HPP
-
-// Standard Library shortcuts/aliases
-namespace matl
-{
-    // Enable if Scalar shorthand
-    template<typename T>
-    using enable_if_scalar = typename std::enable_if<std::is_scalar<T>::value, bool>::type;
-
-    // Disable if Scalar shorthand
-    template<typename T>
-    using disable_if_scalar = typename std::enable_if<!std::is_scalar<T>::value, bool>::type;
-
-    // Enable if Integral shorthand
-    template<typename T>
-    using enable_if_integral = typename std::enable_if<std::is_integral<T>::value, bool>::type;
-
-    // Disable if Integral shorthand
-    template<typename T>
-    using disable_if_integral = typename std::enable_if<!std::is_integral<T>::value, bool>::type;
-
-
-    /******************* Type Promotion  *********************/
-
-    // Type promotion struct
-    template<typename... TYPES> struct promote;
-
-    // End of type promotion recursion
-    template<>  
-    struct promote<>
-    {typedef bool type;};
-
-    // General purpose type promotion
-    template<typename FIRST_TYPE, typename... OTHER_TYPES>
-    struct promote<FIRST_TYPE, OTHER_TYPES...> 
-    {typedef decltype(FIRST_TYPE() + typename promote<OTHER_TYPES...>::type()) type;};
-
-}
-
-// MATL Type Traits declarations
-#include "./type-traits/_matl_type_traits_declarations_.hpp"
+#ifndef MATL_TYPE_TRAITS_HPP
+#define MATL_TYPE_TRAITS_HPP
 
 namespace matl
 {
+    /****************************************** Concepts ******************************************/
 
-
-    /************ Elementwise Enable Disable shortcuts *************/
-
-    // Enable if elementwise shorthand
+    // Scalar: an arithmetic value (e.g. int, float, double)
     template<typename T>
-    using enable_if_elementwise = typename std::enable_if<is_elementwise<T>::value, bool>::type;
-
-    // Disable if elementwise shorthand
-    template<typename T>
-    using disable_if_elementwise = typename std::enable_if<!is_elementwise<T>::value, bool>::type;
-
-
-
-    /******************* Default Matrix Types  *********************/
-
-    // Default matrix type selector
-    template<class T, index_t ... DIMS> struct default_matrix_selector;
-
-    // Default matrix type selector specialization
-    template<class T>
-    struct default_matrix_selector<T>
-    {
-        typedef RowMajorMatrix<T> type;
-    };
-
-    // Default matrix type selector specialization
-    template<class T, index_t M, index_t N>
-    struct default_matrix_selector<T, M, N>
-    {
-        typedef FixedSizeRowMajorMatrix<T, M, N> type;
-    };
-
-
-    // Alias for default dynamic and fixed-size matrix types
-    template<class T, index_t ... DIMS>
-    using Matrix = typename default_matrix_selector<T,DIMS...>::type;
-
-
-
-    /****************** unqualified type casting ******************/
-    // Casts down to the unqualified type name of the MATL object even for multiple
-    // levels of inheritance.
-
-    // non-const specialization
-    template<typename T>
-    typename type_traits<T>::unqualified_type& unqualified_cast(T& obj)
-    {return static_cast<typename type_traits<T>::unqualified_type&>(obj);}
-
-    // const specialization
-    template<typename T>
-    typename type_traits<T>::unqualified_type const& unqualified_cast(T const& obj)
-    {return static_cast<typename type_traits<T>::unqualified_type const&>(obj);}
-
-
-
-    /*************** Concepts *******************/
-
-    // Scalar
-    template<class T>
-    concept Scalar = std::is_scalar<T>::value;
-
-    // Integer
-    template<class T>
-    concept Integer = std::is_integral<T>::value;
-
-    // FixedSize
-    template<typename T>
-    concept FixedSize = is_fixed_size<T>::value;
-
-    // MatrixAlgebraObject
-    template<typename T>
-    concept MatrixAlgebraObject = is_matrix_algebra_object<T>::value;
-
-    // Elementwise
-    template<typename T>
-    concept Elementwise = is_elementwise<T>::value && is_matrix_algebra_object<T>::value;
-
-    // NonElementwise
-    template<typename T>
-    concept NonElementwise = !is_elementwise<T>::value && is_matrix_algebra_object<T>::value;
-
-    // Detects matrix types: classes derived from _MATRIX_<MAT> for some MAT
-    namespace concept_detail
-    {
-        template<typename MAT>
-        std::true_type derives_from_matrix(_MATRIX_<MAT> const*);
-        std::false_type derives_from_matrix(...);
-    }
+    concept Scalar = std::is_arithmetic_v<T>;
 
     // MatrixType: a matrix (not an expression), ignoring references and cv-qualifiers
     template<typename T>
-    concept MatrixType = decltype(concept_detail::derives_from_matrix(
-                                      std::declval<std::remove_cvref_t<T> const*>()))::value;
+    concept MatrixType = std::derived_from< std::remove_cvref_t<T>, MatrixBase<std::remove_cvref_t<T>> >;
+
+    // ExpressionType: an expression (formula) built from matrices, expressions and scalars
+    template<typename T>
+    concept ExpressionType = std::derived_from< std::remove_cvref_t<T>, ExpressionBase<std::remove_cvref_t<T>> >;
+
+    // MatrixAlgebraObject: a matrix or an expression
+    template<typename T>
+    concept MatrixAlgebraObject = MatrixType<T> || ExpressionType<T>;
 
     // TemporaryMatrix: a deduced forwarding-reference type that binds a temporary (rvalue) matrix.
     // For 'template<TemporaryMatrix M> f(M&& m)', M is deduced as a non-reference type only for
@@ -151,13 +46,116 @@ namespace matl
 
     // Operand: anything that can appear in a matrix algebra expression (matrix, expression or scalar)
     template<typename T>
-    concept Operand = MatrixAlgebraObject<std::remove_cvref_t<T>> || Scalar<std::remove_cvref_t<T>>;
-
-} 
+    concept Operand = MatrixAlgebraObject<T> || Scalar<std::remove_cvref_t<T>>;
 
 
-/******************* Specializations  *********************/
-#include "./type-traits/_matl_type_traits_specializations_.hpp"
+    namespace detail
+    {
+        /************************************* Type traits ****************************************/
 
+        // Storage order of a matrix, or the order in which an expression is cheapest to visit
+        enum class StorageOrder
+        {
+            RowMajor,
+            ColMajor,
+            Mixed,      // operands with different storage orders
+            Any         // no storage order of its own (scalars)
+        };
+
+        // Storage order of an expression combining operands with storage orders a and b
+        constexpr StorageOrder combine(StorageOrder a, StorageOrder b)
+        {
+            if (a == StorageOrder::Any) return b;
+            if (b == StorageOrder::Any) return a;
+            return (a == b) ? a : StorageOrder::Mixed;
+        }
+
+        // Storage order of a transpose (element (i,j) of the transpose is element (j,i))
+        constexpr StorageOrder transposed(StorageOrder order)
+        {
+            if (order == StorageOrder::RowMajor) return StorageOrder::ColMajor;
+            if (order == StorageOrder::ColMajor) return StorageOrder::RowMajor;
+            return order;
+        }
+
+        // Traits of a matrix, expression or scalar (specialized next to each type)
+        template<typename T> struct traits;
+
+        // Scalars
+        template<Scalar S>
+        struct traits<S>
+        {
+            typedef S dtype;
+            static constexpr bool         fixed_size    = true;
+            static constexpr index_t      rows          = 0;
+            static constexpr index_t      cols          = 0;
+            static constexpr StorageOrder storage_order = StorageOrder::Any;
+        };
+
+        // Element type
+        template<typename T>
+        using dtype_t = typename traits< std::remove_cvref_t<T> >::dtype;
+
+        // Type promotion (the type of a sum of the given types, e.g. promote_t<int,double> = double)
+        template<typename FIRST, typename... OTHERS>
+        using promote_t = decltype( (std::declval<FIRST>() + ... + std::declval<OTHERS>()) );
+
+        // 'true' if A and B have the same storage order, so their elements can be visited together
+        // in storage order
+        template<typename A, typename B>
+        inline constexpr bool same_storage_order_v =
+            (traits<A>::storage_order == traits<B>::storage_order) &&
+            (traits<A>::storage_order == StorageOrder::RowMajor || traits<A>::storage_order == StorageOrder::ColMajor);
+
+        // Expression kinds (specialized in the expression type prototypes)
+        template<typename T> inline constexpr bool is_transpose_v = false;
+        template<typename T> inline constexpr bool is_product_v   = false;
+        template<typename T> inline constexpr bool is_owned_v     = false;
+
+        // How an expression stores an operand of type T: matrices by reference (so that a stored
+        // expression is a live formula), expressions and scalars by value
+        template<typename T>
+        using stored_t = std::conditional_t< MatrixType<T>, T const&, T >;
+
+
+        /*********************************** Default matrix types *********************************/
+
+        // Default matrix type: dynamic (no dimensions) or fixed-size (M x N)
+        template<class T, index_t ... DIMS> struct default_matrix;
+
+        template<class T>
+        struct default_matrix<T>
+        {typedef RowMajorMatrix<T> type;};
+
+        template<class T, index_t M, index_t N>
+        struct default_matrix<T, M, N>
+        {typedef FixedSizeRowMajorMatrix<T, M, N> type;};
+
+        // Matrix type that holds the value of T: T itself for matrices, otherwise the default
+        // (dynamic or fixed-size) matrix type with T's element type and dimensions
+        template<typename T>
+        struct result_matrix
+        {
+            typedef std::conditional_t< traits<T>::fixed_size,
+                                        FixedSizeRowMajorMatrix<dtype_t<T>, traits<T>::rows, traits<T>::cols>,
+                                        RowMajorMatrix<dtype_t<T>> > type;
+        };
+
+        template<MatrixType MAT>
+        struct result_matrix<MAT>
+        {typedef MAT type;};
+
+        template<typename T>
+        using result_matrix_t = typename result_matrix<T>::type;
+    }
+
+    // Default matrix types: Matrix<T> (dynamic) and Matrix<T,M,N> (fixed-size)
+    template<class T, index_t ... DIMS>
+    using Matrix = typename detail::default_matrix<T, DIMS...>::type;
+
+    // FixedSize: a matrix or expression whose dimensions are known at compile time
+    template<typename T>
+    concept FixedSize = MatrixAlgebraObject<T> && detail::traits< std::remove_cvref_t<T> >::fixed_size;
+}
 
 #endif
