@@ -11,7 +11,11 @@ TEST_DEPS   := $(TEST_SRC) tests/matl_test.hpp $(HEADERS)
 TEST_FLAGS  := -std=c++20 -O1 -g -Wall -Wextra -Werror
 SAN_FLAGS   := -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer
 
-.PHONY: test clean examples tests check check-sanitize
+# Benchmark settings (optimized, without MATL debug checks and trace output)
+BENCH_SRC   := $(wildcard benchmarks/*.cpp)
+BENCH_FLAGS := -std=c++20 -O2 -Wall -Wextra -Werror -DMATL_NO_DEBUG
+
+.PHONY: test clean examples tests check check-sanitize check-nodebug benchmarks bench
 
 # Build the example program
 test:
@@ -40,9 +44,28 @@ $(BUILD)/matl_tests_sanitize: $(TEST_DEPS)
 check: $(BUILD)/matl_tests
 	./$(BUILD)/matl_tests $(FILTER) > $(BUILD)/matl_tests.stdout.log
 
+# Run the test suite with MATL_NO_DEBUG (no bounds/dimension checks or trace output)
+$(BUILD)/matl_tests_nodebug: $(TEST_DEPS)
+	@mkdir -p $(BUILD)
+	$(CXX) $(TEST_FLAGS) -DMATL_NO_DEBUG $(TEST_SRC) $(INC) -I tests -o $@
+
+check-nodebug: $(BUILD)/matl_tests_nodebug
+	./$(BUILD)/matl_tests_nodebug $(FILTER)
+
 # Run the test suite with AddressSanitizer and UndefinedBehaviorSanitizer
 check-sanitize: $(BUILD)/matl_tests_sanitize
 	./$(BUILD)/matl_tests_sanitize $(FILTER) > $(BUILD)/matl_tests_sanitize.stdout.log
+
+# Build the benchmarks
+benchmarks: $(patsubst benchmarks/%.cpp,$(BUILD)/benchmarks/%,$(BENCH_SRC))
+
+$(BUILD)/benchmarks/%: benchmarks/%.cpp $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(BENCH_FLAGS) $< $(INC) -o $@
+
+# Build and run the benchmarks
+bench: benchmarks
+	@for b in $(patsubst benchmarks/%.cpp,$(BUILD)/benchmarks/%,$(BENCH_SRC)); do ./$$b; done
 
 clean:
 	rm -f test

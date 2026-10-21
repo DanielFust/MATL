@@ -1,10 +1,13 @@
 #ifndef MATL_HPP
 #define MATL_HPP
 
-// Debug Flags
+// Debug Flags (enabled by default; define MATL_NO_DEBUG before including matl.hpp to disable the
+// dimension and bounds checks and the MATL_DEBUG trace output, e.g. for benchmarks)
+#ifndef MATL_NO_DEBUG
 #define MATL_DIMENSION_CHECK
 #define MATL_BOUNDS_CHECK
 #define MATL_DEBUG
+#endif
 
 // Standard Library dependencies
 #include <type_traits>
