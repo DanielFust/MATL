@@ -27,6 +27,9 @@ namespace matl
         // std::deque::emplace_back does not invalidate references to existing elements.
         std::deque<ScratchContainer> scratch_;
 
+        // Stack-ordered memory for evaluation temporaries
+        TemporaryArena temporaries_;
+
       protected:  
         // Constructor
         MemoryManager();
@@ -96,6 +99,13 @@ namespace matl
         // Restore default settings
         void restore_defaults();
 
+        // Memory for evaluation temporaries (this thread's arena)
+        static TemporaryArena& temporary_arena();
+
+        // Are evaluation temporaries allocated from the arena? (MemoryManager enabled and
+        // CACHE_TEMPORARY_MATRICES set). Otherwise they are allocated on the heap.
+        static bool use_temporary_arena();
+
 
        /*******************************************************************************************
         * Procedures for allocating and deallocating matrices are defined as static member 
@@ -131,7 +141,8 @@ namespace matl
 
         /**************** Settings *****************/
 
-        // Cache temporary matrices
+        // Allocate the temporary matrices created during expression evaluation from a recycled,
+        // stack-ordered arena (see TemporaryArena) rather than the heap
         static inline thread_local bool    CACHE_TEMPORARY_MATRICES     = defaults::ENABLE_MEMORY_MANAGER;
 
         // Allocate matrices in scratch memory

@@ -66,8 +66,8 @@ D = A*B + transpose(C*A) - E;
   temporary.
 - Operands of a product that are expressions (e.g. `A + B` in `(A + B)*C`) are first evaluated
   into temporaries, because each of their elements is read many times.
-- Temporaries for dynamic matrices are allocated according to the `MemoryManager` settings;
-  temporaries for fixed-size matrices need no allocation.
+- Temporaries for fixed-size matrices are plain arrays and need no allocation. Temporaries for
+  dynamic matrices come from a recycled arena (see below).
 - Because products are computed before any element of the target is written, the target may
   appear anywhere inside them (`C = A*C + C`, `C = transpose(C*A)`). MATL also detects when the
   target is read in a way that would be overwritten too early (`C = A*C`, `C = C + transpose(C)`)
@@ -75,6 +75,37 @@ D = A*B + transpose(C*A) - E;
 
 A stored expression is re-evaluated each time it is assigned, so assigning an expression that
 contains a product to several matrices computes the product each time.
+
+### Memory for temporaries
+
+Temporaries are allocated from a per-thread `TemporaryArena`, a stack of preallocated memory
+that is reused by every assignment. Once the arena has grown to fit the temporaries of an
+expression, evaluating it makes **no heap allocations**. The arena grows automatically, and you
+can reserve memory up front so that even the first evaluation allocates nothing:
+
+```cpp
+MemoryManager::temporary_arena().reserve(64 * 1024 * 1024);    // bytes
+
+// Statistics
+MemoryManager::temporary_arena().bytes_in_use();      // 0 between assignments
+MemoryManager::temporary_arena().high_water_mark();   // peak bytes used by temporaries
+MemoryManager::temporary_arena().release_memory();    // return the arena's memory to the system
+```
+
+Set `MemoryManager::CACHE_TEMPORARY_MATRICES = false` to allocate temporaries on the heap
+instead. (`MemoryManager::ALLOCATE_MATRICES_IN_SCRATCH` is a separate setting that applies to
+long-lived matrices, not to evaluation temporaries.)
+
+`make bench` reports the time and heap allocations per assignment for several expressions,
+with and without the arena.
+
+## Debug checks
+
+`matl.hpp` enables dimension checks, bounds checks and `MATL_DEBUG` trace output by default.
+Define `MATL_NO_DEBUG` before including it (or compile with `-DMATL_NO_DEBUG`) to disable them,
+e.g. for benchmarks and production builds.
+
+## Indexing
 
 Matrices use **1-based indexing**: `A(1,1)` is the first element, and `A(i)` indexes elements in
 storage (row-major) order.
@@ -86,4 +117,6 @@ See [tests/README.md](tests/README.md). In short, from this directory:
 ```sh
 make check            # build and run the test suite
 make check-sanitize   # with AddressSanitizer and UndefinedBehaviorSanitizer
+make check-nodebug    # with MATL_NO_DEBUG
+make bench            # benchmarks
 ```

@@ -13,7 +13,9 @@
  *     constructed, and then reads elements of that temporary
  *
  * Evaluators live only for the duration of one assignment, so every temporary is released when
- * the assignment finishes, in the reverse order of allocation. Because all products are fully
+ * the assignment finishes, in the reverse order of allocation. Temporaries are held by
+ * EvaluationTemporary objects, which take their memory from this thread's TemporaryArena (see
+ * memory-management/temporary-arena) so that repeated evaluations recycle the same memory. Because all products are fully
  * computed before any element of the target is written, products nested inside an expression
  * never cause aliasing problems, even if they read the target matrix.
  *
@@ -44,22 +46,6 @@ namespace matl
 
 
    /***********************************************************************************************
-    * MAT temporary_matrix<MAT>(index_t rows, index_t cols)
-    *
-    * Creates a temporary matrix for intermediate results. Dynamic matrices are allocated
-    * according to the MemoryManager settings (scratch memory or the heap); fixed-size matrices
-    * need no allocation.
-    ***********************************************************************************************/
-    template<typename MAT>
-    MAT temporary_matrix(index_t rows, index_t cols)
-    {
-        MAT mat;
-        MemoryManager::allocate(mat, rows, cols);
-        return mat;
-    }
-
-
-   /***********************************************************************************************
     * is_owned_matrix<T>
     *
     * True for _OWNED_MATRIX_ expressions, which hold a complete matrix.
@@ -79,9 +65,26 @@ namespace matl
     * any other expression is first evaluated into a temporary matrix.
     ***********************************************************************************************/
     template<typename X>
+    class materialized_operand
+    {
+      private:
+        EvaluationTemporary<typename is_fixed_size<X>::matrix_type> temp_;
+
+      public:
+        typedef typename type_traits<X>::dtype dtype;
+
+        // Evaluate the expression into a temporary (a fresh matrix, so it is a safe target)
+        explicit materialized_operand(X const& expr) : temp_(expr.rows(), expr.cols())
+        {expr.eval(this->temp_.matrix());}
+
+        dtype operator() (index_t i, index_t j) const {return this->temp_.matrix()(i,j);}
+        dtype operator() (index_t i)            const {return this->temp_.matrix()(i);}
+    };
+
+    template<typename X>
     using product_operand_t = std::conditional_t< MatrixType<X> || is_owned_matrix<X>::value,
                                                   evaluator<X>,
-                                                  typename is_fixed_size<X>::matrix_type >;
+                                                  materialized_operand<X> >;
 
 
    /***********************************************************************************************

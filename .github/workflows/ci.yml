@@ -69,6 +69,12 @@ jobs:
       - name: Test suite (AddressSanitizer + UndefinedBehaviorSanitizer)
         run: make check-sanitize CXX=${{ matrix.cxx }}
 
+      - name: Test suite (MATL_NO_DEBUG)
+        run: make check-nodebug CXX=${{ matrix.cxx }}
+
+      - name: Build benchmarks
+        run: make benchmarks CXX=${{ matrix.cxx }}
+
       - name: Upload MATL debug output
         if: failure()
         uses: actions/upload-artifact@v4
