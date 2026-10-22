@@ -53,14 +53,8 @@ namespace matl
     {
         /************************************* Type traits ****************************************/
 
-        // Storage order of a matrix, or the order in which an expression is cheapest to visit
-        enum class StorageOrder
-        {
-            RowMajor,
-            ColMajor,
-            Mixed,      // operands with different storage orders
-            Any         // no storage order of its own (scalars)
-        };
+        // Storage order (declared in matl, see _matl_matrix_types_declarations_.hpp)
+        using StorageOrder = matl::StorageOrder;
 
         // Storage order of an expression combining operands with storage orders a and b
         constexpr StorageOrder combine(StorageOrder a, StorageOrder b)
@@ -131,14 +125,17 @@ namespace matl
         struct default_matrix<T, M, N>
         {typedef FixedSizeRowMajorMatrix<T, M, N> type;};
 
-        // Matrix type that holds the value of T: T itself for matrices, otherwise the default
-        // (dynamic or fixed-size) matrix type with T's element type and dimensions
+        // Matrix type that holds the value of T: T itself for matrices, otherwise a dynamic or
+        // fixed-size matrix with T's element type and dimensions, column-major if T is
+        // column-major and row-major otherwise
         template<typename T>
         struct result_matrix
         {
+            static constexpr StorageOrder order = (traits<T>::storage_order == StorageOrder::ColMajor)
+                                                  ? StorageOrder::ColMajor : StorageOrder::RowMajor;
             typedef std::conditional_t< traits<T>::fixed_size,
-                                        FixedSizeRowMajorMatrix<dtype_t<T>, traits<T>::rows, traits<T>::cols>,
-                                        RowMajorMatrix<dtype_t<T>> > type;
+                                        FixedSizeMatrix<dtype_t<T>, traits<T>::rows, traits<T>::cols, order>,
+                                        DynamicMatrix<dtype_t<T>, order> > type;
         };
 
         template<MatrixType MAT>

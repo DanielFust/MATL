@@ -1,3 +1,3 @@
 #include "./initializer-list/_matl_initializer_list_.hpp"
-#include "./rowmajormatrix/_matl_rowmajormatrix_implementation_.hpp"
-#include "./fixedsizerowmajormatrix/_matl_fixedsizerowmajormatrix_implementation_.hpp"
+#include "./dynamicmatrix/_matl_dynamicmatrix_implementation_.hpp"
+#include "./fixedsizematrix/_matl_fixedsizematrix_implementation_.hpp"

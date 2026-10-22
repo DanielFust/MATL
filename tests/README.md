@@ -40,6 +40,7 @@ the build.
 | `test_construction.cpp` | Initializer lists, `zeros` and `ones`, `operator<<` and `print` |
 | `test_functions.cpp` | Negation, elementwise math functions, `times`, `rdivide` and `pow`; dimensions, lifetimes and aliasing |
 | `test_reductions.cpp` | `sum`, `prod`, `mean`, `min`, `max`, `trace`, `dot` and the norms: expressions without temporaries, mixed storage orders, result types, empty matrices, dimension checks |
+| `test_column_major.cpp` | Column-major matrices: layout, Fortran-order external memory, every kind of operation across storage orders, conversions, aliasing |
 | `test_types.cpp` | Concepts, the expression types the operators build, traits (fixed sizes, storage order, element-type promotion), assignment forms, compile-time dimension checks |
 | `test_expression_lifetime.cpp` | Stored expressions (`auto e = ...`): ownership of sub-expressions and temporaries, live references to named matrices, initializing matrices from expressions |
 | `test_products.cpp` | The cache-blocked product kernel at sizes around its block boundaries, element types, expression operands, aliasing and fixed-size operands |
