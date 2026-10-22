@@ -61,7 +61,7 @@ namespace matl::expr
     {return this->mat_->size();}
 
    /***********************************************************************************************
-    * bool unsafe_evaluation_target(TARGET const&)
+    * bool unsafe_evaluation_target(detail::Footprint const&)
     *
     * The owned matrix is a separate object from any evaluation target, so evaluation is always
     * safe.
@@ -70,12 +70,11 @@ namespace matl::expr
     *     'false'
     ***********************************************************************************************/
     template<typename MAT>
-    template<MatrixType TARGET>
-    bool Owned<MAT>::unsafe_evaluation_target(TARGET const&) const
+    bool Owned<MAT>::unsafe_evaluation_target(detail::Footprint const&) const
     {return false;}
 
    /***********************************************************************************************
-    * bool references_address(void const*)
+    * bool reads(detail::Footprint const&)
     *
     * The owned matrix is a separate object from any evaluation target.
     *
@@ -83,7 +82,7 @@ namespace matl::expr
     *     'false'
     ***********************************************************************************************/
     template<typename MAT>
-    bool Owned<MAT>::references_address(void const*) const
+    bool Owned<MAT>::reads(detail::Footprint const&) const
     {return false;}
 
    /***********************************************************************************************
@@ -95,7 +94,7 @@ namespace matl::expr
     *     target       Target matrix
     ***********************************************************************************************/
     template<typename MAT>
-    template<MatrixType TARGET>
+    template<WritableMatrix TARGET>
     void Owned<MAT>::eval(TARGET& target) const
     {detail::assign_elementwise(target, *this);}
 }

@@ -42,6 +42,7 @@
 #include <memory>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>

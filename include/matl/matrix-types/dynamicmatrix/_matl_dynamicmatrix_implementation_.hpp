@@ -238,7 +238,7 @@ namespace matl
         #endif
 
         // Check (at compile-time) if the evaluation is safe 
-        if (expression.unsafe_evaluation_target(*this))
+        if (expression.unsafe_evaluation_target(detail::footprint(*this)))
         {
             // Evaluate into a temporary, then copy the result. The temporary's memory is
             // recycled (see EvaluationTemporary), so it is copied rather than moved, and this

@@ -85,14 +85,13 @@ namespace matl
             void check_dimensions() const;
 
             // Check if evaluation target is safe
-            template<MatrixType MAT>
-            bool unsafe_evaluation_target(MAT const&) const;
+            bool unsafe_evaluation_target(detail::Footprint const&) const;
 
-            // Check if expression references the matrix at the given address
-            bool references_address(void const*) const;
+            // Check if the expression reads memory that may hold elements of a target (see detail::Footprint)
+            bool reads(detail::Footprint const&) const;
 
             // Evaluate matrix multiplication to target matrix
-            template<MatrixType MAT>
+            template<WritableMatrix MAT>
             void eval(MAT&) const;
         };
     }

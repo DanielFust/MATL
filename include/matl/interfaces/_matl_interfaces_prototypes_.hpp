@@ -38,15 +38,17 @@ namespace matl
    /***********************************************************************************************
     * class ExpressionBase<EXPR>
     * 
-    * Base class of the MATL expression types (see expression-types). Every expression type
-    * provides:
+    * Base class of the MATL expression types (see expression-types) and of views (MatrixView).
+    * Every expression type provides:
     * 
     *     rows(), cols(), size()                   Dimensions of the result
-    *     unsafe_evaluation_target(target)         'true' if evaluating directly into the target
-    *                                              matrix would overwrite elements still to be read
-    *     references_address(address)              'true' if the expression reads the matrix at
-    *                                              the given address
-    *     eval(target)                             Evaluate the expression into the target matrix
+    *     unsafe_evaluation_target(footprint)      'true' if evaluating directly into the target
+    *                                              (a matrix or view, given by its footprint, see
+    *                                              detail::Footprint) would overwrite elements
+    *                                              still to be read
+    *     reads(footprint)                         'true' if the expression may read elements in
+    *                                              the given memory (see detail::Footprint)
+    *     eval(target)                             Evaluate the expression into the target
     * 
     * Template Parameters:
     *     EXPR      Expression type

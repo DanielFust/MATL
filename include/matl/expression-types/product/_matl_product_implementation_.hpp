@@ -25,7 +25,7 @@ namespace matl
         *                  unsafe_evaluation_target)
         *     product      Product expression
         *******************************************************************************************/
-        template<MatrixType MAT, typename LHS, typename RHS>
+        template<WritableMatrix MAT, typename LHS, typename RHS>
         void compute_product(MAT& target, expr::Product<LHS,RHS> const& product)
         {
             typedef typename expr::Product<LHS,RHS>::dtype dtype;
@@ -146,43 +146,43 @@ namespace matl
         }
 
        /*******************************************************************************************
-        * bool unsafe_evaluation_target(MAT const&)
+        * bool unsafe_evaluation_target(detail::Footprint const&)
         *
         * Check if computing the product directly into the target matrix would corrupt memory.
         *
-        * The product reads matrix operands directly while it writes the target, so it is unsafe
-        * if either operand IS the target (e.g. C = A*C). Expression operands are evaluated into
-        * temporaries before any element of the target is written, so they are always safe, even
-        * if they read the target (e.g. C = (A*C)*B or C = transpose(C)*B).
+        * The product reads matrix and view operands directly while it writes the target, so it is
+        * unsafe if either operand shares elements with the target (e.g. C = A*C, or
+        * C(all, range(1, 2)) = C * B). Expression operands are evaluated into temporaries before
+        * any element of the target is written, so they are always safe, even if they read the
+        * target (e.g. C = (A*C)*B or C = transpose(C)*B).
         *
         * Parameters:
-        *     target       Target matrix
+        *     target       Footprint of the target matrix or view
         * Returns:
         *     'true' if computing the product directly into the target would corrupt memory
         *     'false' otherwise
         *******************************************************************************************/
         template<typename LHS, typename RHS>
-        template<MatrixType MAT>
-        bool Product<LHS,RHS>::unsafe_evaluation_target(MAT const& target) const
+        bool Product<LHS,RHS>::unsafe_evaluation_target(detail::Footprint const& target) const
         {
             bool unsafe = false;
-            if constexpr (MatrixType<LHS>) unsafe = unsafe || detail::references(&target, this->lhs_);
-            if constexpr (MatrixType<RHS>) unsafe = unsafe || detail::references(&target, this->rhs_);
+            if constexpr (MatrixType<LHS> || detail::is_view_v<LHS>) unsafe = unsafe || detail::references(target, this->lhs_);
+            if constexpr (MatrixType<RHS> || detail::is_view_v<RHS>) unsafe = unsafe || detail::references(target, this->rhs_);
             return unsafe;
         }
 
        /*******************************************************************************************
-        * bool references_address(void const*)
+        * bool reads(detail::Footprint const&)
         *
-        * Check if the expression reads the matrix at the given address.
+        * Check if the expression may read elements of the target (see detail::Footprint).
         *
         * Parameters:
-        *     target       Address of the target matrix
+        *     target       Footprint of the target (where its elements are in memory)
         * Returns:
         *     'true' if the expression references the target matrix, 'false' otherwise
         *******************************************************************************************/
         template<typename LHS, typename RHS>
-        bool Product<LHS,RHS>::references_address(void const* target) const
+        bool Product<LHS,RHS>::reads(detail::Footprint const& target) const
         {return detail::references(target, this->lhs_) || detail::references(target, this->rhs_);}
 
        /*******************************************************************************************
@@ -194,7 +194,7 @@ namespace matl
         *     target       Target matrix (must be a safe evaluation target with matching dimensions)
         *******************************************************************************************/
         template<typename LHS, typename RHS>
-        template<MatrixType MAT>
+        template<WritableMatrix MAT>
         void Product<LHS,RHS>::eval(MAT& target) const
         {detail::compute_product(target, *this);}
     }

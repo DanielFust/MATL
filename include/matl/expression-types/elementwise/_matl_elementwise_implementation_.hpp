@@ -101,7 +101,7 @@ namespace matl
         }
 
        /*******************************************************************************************
-        * bool unsafe_evaluation_target(MAT const&)
+        * bool unsafe_evaluation_target(detail::Footprint const&)
         *
         * Check if evaluation of the expression directly to the target matrix would corrupt
         * memory. Elementwise evaluation is unsafe if the target is read through a transpose
@@ -109,31 +109,30 @@ namespace matl
         * overwritten), or if an operand is unsafe on its own.
         *
         * Parameters:
-        *     target       Target matrix
+        *     target       Footprint of the target matrix or view
         * Returns:
         *     'true' if evaluation directly to the target matrix would corrupt memory
         *     'false' otherwise
         *******************************************************************************************/
         template<typename OP, typename LHS, typename RHS>
-        template<MatrixType MAT>
-        bool Elementwise<OP,LHS,RHS>::unsafe_evaluation_target(MAT const& target) const
+        bool Elementwise<OP,LHS,RHS>::unsafe_evaluation_target(detail::Footprint const& target) const
         {
             return detail::unsafe_elementwise_operand(target, this->lhs_) ||
                    detail::unsafe_elementwise_operand(target, this->rhs_);
         }
 
        /*******************************************************************************************
-        * bool references_address(void const*)
+        * bool reads(detail::Footprint const&)
         *
-        * Check if the expression reads the matrix at the given address.
+        * Check if the expression may read elements of the target (see detail::Footprint).
         *
         * Parameters:
-        *     target       Address of the target matrix
+        *     target       Footprint of the target (where its elements are in memory)
         * Returns:
         *     'true' if the expression references the target matrix, 'false' otherwise
         *******************************************************************************************/
         template<typename OP, typename LHS, typename RHS>
-        bool Elementwise<OP,LHS,RHS>::references_address(void const* target) const
+        bool Elementwise<OP,LHS,RHS>::reads(detail::Footprint const& target) const
         {return detail::references(target, this->lhs_) || detail::references(target, this->rhs_);}
 
        /*******************************************************************************************
@@ -145,7 +144,7 @@ namespace matl
         *     target       Target matrix (must be a safe evaluation target with matching dimensions)
         *******************************************************************************************/
         template<typename OP, typename LHS, typename RHS>
-        template<MatrixType MAT>
+        template<WritableMatrix MAT>
         void Elementwise<OP,LHS,RHS>::eval(MAT& target) const
         {detail::assign_elementwise(target, *this);}
     }
