@@ -85,6 +85,22 @@ The rows of an initializer list must have the same length, and a fixed-size matr
 of its exact dimensions; both are always checked (`matl::dimension_error`). Assigning a list to
 an allocated matrix requires the same dimensions, like any assignment; `A = {}` empties `A`.
 
+## Elementwise operations
+
+| Operation | Meaning |
+| --- | --- |
+| `A + B`, `A - B`, `-A` | Sum, difference, negation |
+| `A * s`, `s * A`, `A / s`, `A + s`, `s - A`, ... | With a scalar `s`, elementwise |
+| `times(A, B)`, `rdivide(A, B)`, `pow(A, B)` | Elementwise product, quotient, power (MATLAB `.*`, `./`, `.^`); either operand may be a scalar, e.g. `pow(A, 2)`, `rdivide(1.0, A)` |
+| `abs`, `sqrt`, `cbrt`, `exp`, `log`, `log2`, `log10` | Elementwise math functions, as in `<cmath>` |
+| `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh` | |
+| `floor`, `ceil`, `round` | |
+| `A * B`, `transpose(A)` | Matrix product, transpose |
+
+All of them build expressions, so `R = sqrt(abs(A)) + 2.0 * times(A, B);` is evaluated in a single
+pass over `R`. The element type of the result follows the function, e.g. `sqrt` of an integer
+matrix has `double` elements.
+
 ## Expressions, values and lifetimes
 
 An arithmetic expression on matrices produces an *expression object* (a formula), not a matrix.

@@ -11,8 +11,13 @@ namespace matl
         struct Multiply;
         struct Divide;
 
+        struct Power;
+
         // Elementwise operation on two operands (matrices, expressions, or one scalar)
         template<typename OP, typename LHS, typename RHS> class Elementwise;
+
+        // Elementwise operation on one operand (-A, abs(A), sqrt(A), ...)
+        template<typename OP, typename MAO> class Unary;
 
         // Matrix product
         template<typename LHS, typename RHS> class Product;
