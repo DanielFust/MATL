@@ -162,9 +162,12 @@ Like a stored expression, a view is valid only while the matrix keeps its memory
 not be destroyed, moved from, or reallocated (e.g. by `A = {}`). A view of a temporary matrix,
 such as `ones<double>(3, 3)(all, 1)`, keeps the temporary alive. Views of const matrices and of
 temporaries are read-only. Views have the type `MatrixView<T, StorageOrder>` (with `const T` for
-read-only views); name them with `auto`. Because copying a view does not copy elements,
-`std::swap(v, w)` does not exchange the elements of two views; use a matrix in between
-(`Matrix<double> t = v; v = w; w = t;`).
+read-only views); name them with `auto`.
+
+`swap(v, w)` exchanges the elements of two views with the same dimensions, e.g.
+`swap(A(1, all), A(3, all))` swaps rows 1 and 3. Call it unqualified or as `matl::swap`:
+`std::swap(v, w)` would exchange copies of the views instead (copying a view does not copy
+elements), leaving both with `w`'s elements.
 
 **Assignments.** A view cannot be resized, so a value assigned to it must have its dimensions
 (checked with `MATL_DIMENSION_CHECK`). Indices outside the matrix are reported with

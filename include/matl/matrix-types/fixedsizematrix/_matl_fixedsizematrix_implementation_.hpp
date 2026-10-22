@@ -82,7 +82,7 @@ namespace matl
         #endif
 
         // Check (at compile-time) if the evaluation is safe 
-        if (expression.unsafe_evaluation_target(*this))
+        if (expression.unsafe_evaluation_target(detail::footprint(*this)))
         {
             // Use temporary matrix to store the result
             FixedSizeMatrix<T, M, N, ORDER> temp;

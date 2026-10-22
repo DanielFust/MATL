@@ -59,20 +59,19 @@ namespace matl
         {detail::check_dimensions(this->mat_);}
 
        /*******************************************************************************************
-        * bool unsafe_evaluation_target(MAT const&)
+        * bool unsafe_evaluation_target(detail::Footprint const&)
         *
         * Element (i,j) of the result depends only on element (i,j) of the operand, so evaluation
         * into the target is unsafe only if the operand reads the target through a transpose or is
         * unsafe itself (see detail::unsafe_elementwise_operand).
         *
         * Parameters:
-        *     target       Target matrix
+        *     target       Footprint of the target matrix or view
         * Returns:
         *     'true' if evaluation directly to the target matrix would corrupt memory
         *******************************************************************************************/
         template<typename OP, typename MAO>
-        template<WritableMatrix MAT>
-        bool Unary<OP,MAO>::unsafe_evaluation_target(MAT const& target) const
+        bool Unary<OP,MAO>::unsafe_evaluation_target(detail::Footprint const& target) const
         {return detail::unsafe_elementwise_operand(target, this->mat_);}
 
        /*******************************************************************************************

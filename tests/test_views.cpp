@@ -434,6 +434,49 @@ TEST_CASE("Views: no temporary when the target is read only at the positions it 
     CHECK(temporary_bytes([&] {A(range(2, 4), all) = A(range(1, 3), all);}) > 0ul);
 }
 
+/********************************************* swap ********************************************/
+
+TEST_CASE("Views: swap exchanges the elements of two views")
+{
+    M A = sequence<M>(4, 3);
+    Ref a = Ref::from(A);
+
+    swap(A(1, all), A(3, all));                                     // rows (temporary views)
+    CHECK_MATRIX_EQ(A, pick(a, {3, 2, 1, 4}, {1, 2, 3}));
+
+    A = sequence<M>(4, 3);
+    auto v = A(all, 1), w = A(all, 3);
+    using std::swap;
+    swap(v, w);                                                     // finds matl::swap, not std::swap
+    CHECK_MATRIX_EQ(A, pick(a, {1, 2, 3, 4}, {3, 2, 1}));
+    CHECK_MATRIX_EQ(v, pick(a, {1, 2, 3, 4}, {3}));                 // the views still view columns 1 and 3
+
+    // Different matrices with different storage orders
+    C B = random_matrix<C>(4, 5);
+    Ref b = Ref::from(B);
+    A = sequence<M>(4, 3);
+    matl::swap(A(all, 2), B(all, 5));
+    CHECK_MATRIX_EQ(A, put(a, {1, 2, 3, 4}, {2}, pick(b, {1, 2, 3, 4}, {5})));
+    CHECK_MATRIX_EQ(B, put(b, {1, 2, 3, 4}, {5}, pick(a, {1, 2, 3, 4}, {2})));
+}
+
+TEST_CASE("Views: swap of overlapping views, of a view with itself, and of other dimensions")
+{
+    M A = sequence<M>(3, 2);
+    Ref a = Ref::from(A);
+    swap(A(range(1, 2), all), A(range(2, 3), all));                // t = rows 1-2; rows 1-2 = rows 2-3; rows 2-3 = t
+    CHECK_MATRIX_EQ(A, pick(a, {2, 1, 2}, {1, 2}));
+
+    A = sequence<M>(3, 2);
+    swap(A(all, 1), A(all, 1));                                     // nothing to exchange
+    CHECK_MATRIX_EQ(A, a);
+
+    #ifdef MATL_DIMENSION_CHECK
+    CHECK_MATL_ERROR(dimension_error, swap(A(all, 1), A(1, all)));
+    #endif
+    CHECK(true);
+}
+
 /********************************* Temporaries and output ****************************************/
 
 TEST_CASE("Views: views of temporaries keep them alive")

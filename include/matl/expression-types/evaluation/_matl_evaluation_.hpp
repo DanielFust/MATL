@@ -80,7 +80,7 @@ namespace matl::detail
     }
 
    /***********************************************************************************************
-    * bool unsafe_operand(MAT const& target, X const& operand)
+    * bool unsafe_operand(Footprint const& target, X const& operand)
     *
     * Returns:
     *     'true' if evaluating the operand as part of an expression assigned directly to the target
@@ -94,21 +94,20 @@ namespace matl::detail
     *       Otherwise (e.g. a view of other rows of the target) it is unsafe.
     *     - Other expressions check their operands (see unsafe_evaluation_target).
     ***********************************************************************************************/
-    template<WritableMatrix MAT, typename X>
-    bool unsafe_operand(MAT const& target, X const& operand)
+    template<typename X>
+    bool unsafe_operand(Footprint const& target, X const& operand)
     {
         if constexpr (Scalar<X> || is_product_v<X>) return false;
         else if constexpr (MatrixType<X> || is_view_v<X>)
         {
-            const Footprint target_footprint  = footprint(target);
             const Footprint operand_footprint = footprint(operand);
-            return overlap(target_footprint, operand_footprint) && !same_elements(target_footprint, operand_footprint);
+            return overlap(target, operand_footprint) && !same_elements(target, operand_footprint);
         }
         else return operand.unsafe_evaluation_target(target);
     }
 
    /***********************************************************************************************
-    * bool unsafe_elementwise_operand(MAT const& target, X const& operand)
+    * bool unsafe_elementwise_operand(Footprint const& target, X const& operand)
     *
     * Returns:
     *     'true' if the operand makes an elementwise expression unsafe to evaluate directly into
@@ -116,10 +115,10 @@ namespace matl::detail
     *     (element (i,j) of the result would read element (j,i) of the target, which may already
     *     have been overwritten).
     ***********************************************************************************************/
-    template<WritableMatrix MAT, typename X>
-    bool unsafe_elementwise_operand(MAT const& target, X const& operand)
+    template<typename X>
+    bool unsafe_elementwise_operand(Footprint const& target, X const& operand)
     {
-        return (is_transpose_v<X> && references(footprint(target), operand)) || unsafe_operand(target, operand);
+        return (is_transpose_v<X> && references(target, operand)) || unsafe_operand(target, operand);
     }
 
 

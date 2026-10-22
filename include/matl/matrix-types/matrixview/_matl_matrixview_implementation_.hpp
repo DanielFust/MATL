@@ -33,9 +33,10 @@ namespace matl
                 else                         x.eval(to);
             };
 
+            const Footprint target_footprint = footprint(target);
             bool unsafe;
-            if constexpr (MatrixType<X>) unsafe = unsafe_operand(target, x);
-            else                         unsafe = x.unsafe_evaluation_target(target);
+            if constexpr (MatrixType<X>) unsafe = unsafe_operand(target_footprint, x);
+            else                         unsafe = x.unsafe_evaluation_target(target_footprint);
 
             if (unsafe)
             {
@@ -295,14 +296,13 @@ namespace matl
     }
 
    /***********************************************************************************************
-    * bool unsafe_evaluation_target(MAT const& target) const
+    * bool unsafe_evaluation_target(detail::Footprint const& target) const
     *
-    * Copying the view into the target is safe unless the view shares elements with the target
+    * Copying the view into the target (given by its footprint) is safe unless the view shares elements with the target
     * at other positions (see detail::unsafe_operand).
     ***********************************************************************************************/
     template<class T, StorageOrder ORDER>
-    template<WritableMatrix MAT>
-    bool MatrixView<T, ORDER>::unsafe_evaluation_target(MAT const& target) const
+    bool MatrixView<T, ORDER>::unsafe_evaluation_target(detail::Footprint const& target) const
     {return detail::unsafe_operand(target, *this);}
 
    /***********************************************************************************************
@@ -324,6 +324,71 @@ namespace matl
     template<WritableMatrix MAT>
     void MatrixView<T, ORDER>::eval(MAT& target) const
     {detail::assign_elementwise(target, *this);}
+
+
+    /*=============================================================================================*
+     *                                             SWAP
+     *=============================================================================================*/
+
+    namespace detail
+    {
+       /*******************************************************************************************
+        * void swap_views(MatrixView a, MatrixView b)
+        *
+        * Exchanges the elements of two views with the same dimensions (see swap). Views that do
+        * not share memory exchange their elements directly; overlapping views go through a
+        * temporary (t = a; a = b; b = t).
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER_A, StorageOrder ORDER_B>
+        void swap_views(MatrixView<T, ORDER_A> a, MatrixView<T, ORDER_B> b)
+        {
+            static_assert(!std::is_const_v<T>, "swap: a view of a const matrix is read-only");
+
+            const index_t M = a.rows();
+            const index_t N = a.cols();
+            #ifdef MATL_DIMENSION_CHECK
+            if ((M != b.rows()) || (N != b.cols()))
+                incompatible_dimensions("swap", M, N, b.rows(), b.cols());
+            #endif
+
+            const Footprint footprint_a = a.footprint();
+            const Footprint footprint_b = b.footprint();
+            if (same_elements(footprint_a, footprint_b)) return;
+
+            if (overlap(footprint_a, footprint_b))
+            {
+                EvaluationTemporary< DynamicMatrix<T, ORDER_A> > temp(M, N);
+                assign_elementwise(temp.matrix(), a);
+                a = b;
+                b = temp.matrix();
+                return;
+            }
+
+            // In the storage order of a
+            if constexpr (ORDER_A == StorageOrder::RowMajor)
+            {
+                for (index_t i = 1; i <= M; ++i)
+                    for (index_t j = 1; j <= N; ++j)
+                        std::swap(a(i,j), b(i,j));
+            }
+            else
+            {
+                for (index_t j = 1; j <= N; ++j)
+                    for (index_t i = 1; i <= M; ++i)
+                        std::swap(a(i,j), b(i,j));
+            }
+        }
+    }
+
+    // Two views of the same type (preferred to std::swap for 'using std::swap; swap(a, b);')
+    template<class T, StorageOrder ORDER>
+    void swap(MatrixView<T, ORDER>& a, MatrixView<T, ORDER>& b)
+    {detail::swap_views(a, b);}
+
+    // Any two views of the same element type, including temporaries: swap(A(1, all), A(3, all))
+    template<class T, StorageOrder ORDER_A, StorageOrder ORDER_B>
+    void swap(MatrixView<T, ORDER_A> a, MatrixView<T, ORDER_B> b)
+    {detail::swap_views(a, b);}
 
 
     namespace detail

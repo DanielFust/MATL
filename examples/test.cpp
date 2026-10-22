@@ -29,11 +29,10 @@ class DummyExpression : public matl::ExpressionBase<DummyExpression<T> >
     matl::index_t size() const {return rows_*cols_;}
 
     // Reads no matrices, so it is safe to evaluate into any target
-    template<matl::MatrixType MAT>
-    bool unsafe_evaluation_target(MAT const&) const {return false;}
-    bool references_address(void const*) const {return false;}
+    bool unsafe_evaluation_target(matl::detail::Footprint const&) const {return false;}
+    bool reads(matl::detail::Footprint const&) const {return false;}
 
-    template<matl::MatrixType MAT>
+    template<matl::WritableMatrix MAT>
     void eval(MAT& mat) const
     {
         for (matl::index_t i = 1; i <= rows_; i++)

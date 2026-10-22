@@ -146,7 +146,7 @@ namespace matl
         }
 
        /*******************************************************************************************
-        * bool unsafe_evaluation_target(MAT const&)
+        * bool unsafe_evaluation_target(detail::Footprint const&)
         *
         * Check if computing the product directly into the target matrix would corrupt memory.
         *
@@ -157,19 +157,17 @@ namespace matl
         * target (e.g. C = (A*C)*B or C = transpose(C)*B).
         *
         * Parameters:
-        *     target       Target matrix
+        *     target       Footprint of the target matrix or view
         * Returns:
         *     'true' if computing the product directly into the target would corrupt memory
         *     'false' otherwise
         *******************************************************************************************/
         template<typename LHS, typename RHS>
-        template<WritableMatrix MAT>
-        bool Product<LHS,RHS>::unsafe_evaluation_target(MAT const& target) const
+        bool Product<LHS,RHS>::unsafe_evaluation_target(detail::Footprint const& target) const
         {
-            const detail::Footprint target_footprint = detail::footprint(target);
             bool unsafe = false;
-            if constexpr (MatrixType<LHS> || detail::is_view_v<LHS>) unsafe = unsafe || detail::references(target_footprint, this->lhs_);
-            if constexpr (MatrixType<RHS> || detail::is_view_v<RHS>) unsafe = unsafe || detail::references(target_footprint, this->rhs_);
+            if constexpr (MatrixType<LHS> || detail::is_view_v<LHS>) unsafe = unsafe || detail::references(target, this->lhs_);
+            if constexpr (MatrixType<RHS> || detail::is_view_v<RHS>) unsafe = unsafe || detail::references(target, this->rhs_);
             return unsafe;
         }
 

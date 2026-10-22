@@ -54,8 +54,7 @@ namespace matl
             MAT const& matrix() const;
 
             // Check if evaluation target is safe
-            template<WritableMatrix TARGET>
-            bool unsafe_evaluation_target(TARGET const&) const;
+            bool unsafe_evaluation_target(detail::Footprint const&) const;
 
             // Check if the expression reads memory that may hold elements of a target (see detail::Footprint)
             bool reads(detail::Footprint const&) const;

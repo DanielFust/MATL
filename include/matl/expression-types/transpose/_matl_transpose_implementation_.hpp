@@ -70,19 +70,18 @@ namespace matl::expr
     {detail::check_dimensions(this->mat_);}
 
    /***********************************************************************************************
-    * bool unsafe_evaluation_target(MAT const&)
+    * bool unsafe_evaluation_target(detail::Footprint const&)
     *
     * Check if evaluation of the expression directly to the target matrix would corrupt memory.
     *
     * Parameters:
-    *     target       Target matrix
+    *     target       Footprint of the target matrix or view
     * Returns:
     *     'true' if evaluation directly to the target matrix would corrupt memory
     *     'false' otherwise
     ***********************************************************************************************/
     template<typename MAO>
-    template<WritableMatrix MAT>
-    bool Transpose<MAO>::unsafe_evaluation_target(MAT const& target) const
+    bool Transpose<MAO>::unsafe_evaluation_target(detail::Footprint const& target) const
     {
         // Transposing the target itself is safe (A = transpose(A): eval swaps the elements in
         // pairs), but a matrix or view that shares elements with the target at other positions

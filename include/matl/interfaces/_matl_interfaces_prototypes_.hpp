@@ -42,8 +42,9 @@ namespace matl
     * Every expression type provides:
     * 
     *     rows(), cols(), size()                   Dimensions of the result
-    *     unsafe_evaluation_target(target)         'true' if evaluating directly into the target
-    *                                              (a matrix or view) would overwrite elements
+    *     unsafe_evaluation_target(footprint)      'true' if evaluating directly into the target
+    *                                              (a matrix or view, given by its footprint, see
+    *                                              detail::Footprint) would overwrite elements
     *                                              still to be read
     *     reads(footprint)                         'true' if the expression may read elements in
     *                                              the given memory (see detail::Footprint)

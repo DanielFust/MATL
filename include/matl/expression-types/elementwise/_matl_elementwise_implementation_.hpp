@@ -101,7 +101,7 @@ namespace matl
         }
 
        /*******************************************************************************************
-        * bool unsafe_evaluation_target(MAT const&)
+        * bool unsafe_evaluation_target(detail::Footprint const&)
         *
         * Check if evaluation of the expression directly to the target matrix would corrupt
         * memory. Elementwise evaluation is unsafe if the target is read through a transpose
@@ -109,14 +109,13 @@ namespace matl
         * overwritten), or if an operand is unsafe on its own.
         *
         * Parameters:
-        *     target       Target matrix
+        *     target       Footprint of the target matrix or view
         * Returns:
         *     'true' if evaluation directly to the target matrix would corrupt memory
         *     'false' otherwise
         *******************************************************************************************/
         template<typename OP, typename LHS, typename RHS>
-        template<WritableMatrix MAT>
-        bool Elementwise<OP,LHS,RHS>::unsafe_evaluation_target(MAT const& target) const
+        bool Elementwise<OP,LHS,RHS>::unsafe_evaluation_target(detail::Footprint const& target) const
         {
             return detail::unsafe_elementwise_operand(target, this->lhs_) ||
                    detail::unsafe_elementwise_operand(target, this->rhs_);

@@ -110,20 +110,25 @@ namespace matl
                    (a.cols <= 1 || a.col_stride == b.col_stride);
         }
 
-        // Footprint of a matrix or view
+        // Footprint of a matrix or view. Only the address and dimensions are read, not the
+        // elements. The parameter is a forwarding reference so that an assignment target is
+        // passed as non-const: GCC's -Wmaybe-uninitialized assumes a function reads an object
+        // passed by const reference, and a fixed-size target is uninitialized before its first
+        // assignment (Matrix<double, 3, 3> F; F = A + B;).
         template<typename X>
-        Footprint footprint(X const& x)
+        Footprint footprint(X&& x)
         {
-            if constexpr (is_view_v<X>)
+            typedef std::remove_cvref_t<X> type;
+            if constexpr (is_view_v<type>)
                 return x.footprint();
             else
             {
-                const std::ptrdiff_t size = sizeof(dtype_t<X>);
-                const bool row_major = (traits<X>::storage_order == StorageOrder::RowMajor);
+                const std::ptrdiff_t size = sizeof(dtype_t<type>);
+                const bool row_major = (traits<type>::storage_order == StorageOrder::RowMajor);
                 return Footprint{reinterpret_cast<std::uintptr_t>(x.data()), x.rows(), x.cols(),
                                  row_major ? static_cast<std::ptrdiff_t>(x.cols()) * size : size,
                                  row_major ? size : static_cast<std::ptrdiff_t>(x.rows()) * size,
-                                 sizeof(dtype_t<X>)};
+                                 sizeof(dtype_t<type>)};
             }
         }
 
@@ -272,8 +277,7 @@ namespace matl
         detail::Footprint footprint() const;
 
         // Check if evaluating the view into the target would overwrite elements still to be read
-        template<WritableMatrix MAT>
-        bool unsafe_evaluation_target(MAT const&) const;
+        bool unsafe_evaluation_target(detail::Footprint const&) const;
 
         // Check if the view shares memory with the given footprint
         bool reads(detail::Footprint const&) const;
@@ -282,5 +286,25 @@ namespace matl
         template<WritableMatrix MAT>
         void eval(MAT&) const;
     };
+
+
+   /***********************************************************************************************
+    * swap(a, b)
+    *
+    * Exchanges the elements of two views with the same dimensions, e.g. two rows:
+    *
+    *     swap(A(1, all), A(3, all));
+    *
+    * std::swap(a, b) would instead exchange copies of the views (copying a view does not copy
+    * elements), leaving both with b's elements, so call swap unqualified or as matl::swap. The
+    * overload for two views of the same type is found instead of std::swap by
+    * 'using std::swap; swap(a, b);'. If the views overlap, the result is that of t = a; a = b;
+    * b = t.
+    ***********************************************************************************************/
+    template<class T, StorageOrder ORDER>
+    void swap(MatrixView<T, ORDER>& a, MatrixView<T, ORDER>& b);
+
+    template<class T, StorageOrder ORDER_A, StorageOrder ORDER_B>
+    void swap(MatrixView<T, ORDER_A> a, MatrixView<T, ORDER_B> b);
 }
 #endif

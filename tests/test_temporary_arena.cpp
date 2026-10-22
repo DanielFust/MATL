@@ -66,7 +66,7 @@ namespace arena_test
         index_t rows() const {return rows_;}
         index_t cols() const {return cols_;}
         index_t size() const {return rows_ * cols_;}
-        template<WritableMatrix MAT> bool unsafe_evaluation_target(MAT const&) const {return false;}
+        bool unsafe_evaluation_target(detail::Footprint const&) const {return false;}
         bool reads(detail::Footprint const&) const {return false;}
         template<WritableMatrix MAT> void eval(MAT&) const {throw std::runtime_error("evaluation failed");}
     };
