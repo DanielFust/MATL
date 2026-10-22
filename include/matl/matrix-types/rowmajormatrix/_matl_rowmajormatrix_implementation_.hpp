@@ -136,6 +136,31 @@ namespace matl
     {*this = expr;}
 
    /***********************************************************************************************
+    * RowMajorMatrix(matrix_rows<T>)
+    * 
+    * Initializer-list constructor: one inner list per row, e.g.
+    * 
+    *     Matrix<double> A = {{1, 2, 3},
+    *                         {4, 5, 6}};      // 2x3
+    * 
+    * The rows must have the same length (always checked; reported as matl::dimension_error).
+    * 
+    * Parameters:
+    *     rows           Rows of the matrix
+    ***********************************************************************************************/ 
+    template<class T>
+    RowMajorMatrix<T>::RowMajorMatrix(matrix_rows<T> rows) : rows_(0), 
+                                                            cols_(0),
+                                                            data_(nullptr),
+                                                            external_mem_(false)
+    {
+        index_t M, N;
+        detail::initializer_list_dimensions(rows, M, N);
+        allocate(*this, M, N);
+        detail::copy_initializer_list(*this, rows);
+    }
+
+   /***********************************************************************************************
     * RowMajorMatrix(RowMajorMatrix<T>&&)
     * 
     * Move constructor. Takes the other matrix's data without copying (externally owned memory
@@ -324,6 +349,39 @@ namespace matl
         // Check for self assignment (copy checks the dimensions)
         if (this != &mat) this->copy(mat);
 
+        return *this;
+    }
+
+
+
+   /***********************************************************************************************
+    *  RowMajorMatrix<T>& operator=(matrix_rows<T>)
+    * 
+    * Initializer-list assignment, one inner list per row: A = {{1, 2}, {3, 4}}. An empty matrix is
+    * allocated to the size of the list; otherwise the list must have the matrix's dimensions.
+    * A = {} empties the matrix. The dimensions are always checked (reported as
+    * matl::dimension_error).
+    * 
+    * Parameters:
+    *     rows        Rows of the matrix
+    ***********************************************************************************************/
+    template<class T>
+    RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (matrix_rows<T> rows)
+    {
+        if (rows.size() == 0)
+        {
+            deallocate(*this);
+            return *this;
+        }
+
+        index_t M, N;
+        detail::initializer_list_dimensions(rows, M, N);
+        if (this->size() == 0)
+            allocate(*this, M, N);
+        else if ((M != this->rows_) || (N != this->cols_))
+            detail::assignment_dimensions(this->rows_, this->cols_, M, N);
+
+        detail::copy_initializer_list(*this, rows);
         return *this;
     }
 

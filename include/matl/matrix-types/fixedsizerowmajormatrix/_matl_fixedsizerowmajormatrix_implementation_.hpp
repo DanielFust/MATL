@@ -26,6 +26,39 @@ namespace matl
     } 
 
    /***********************************************************************************************
+    * FixedSizeRowMajorMatrix(matrix_rows<T>), operator= (matrix_rows<T>)
+    *
+    * Initializer-list construction and assignment, one inner list per row, e.g.
+    *
+    *     Matrix<double, 2, 3> F = {{1, 2, 3},
+    *                               {4, 5, 6}};
+    *
+    * The list must have M rows of N elements (always checked; reported as matl::dimension_error).
+    ***********************************************************************************************/
+    template<class T, index_t M, index_t N>
+    FixedSizeRowMajorMatrix<T, M, N>::FixedSizeRowMajorMatrix(matrix_rows<T> rows)
+    {this->copy_rows(rows);}
+
+    template<class T, index_t M, index_t N>
+    FixedSizeRowMajorMatrix<T, M, N>& FixedSizeRowMajorMatrix<T, M, N>::operator= (matrix_rows<T> rows)
+    {
+        this->copy_rows(rows);
+        return *this;
+    }
+
+    template<class T, index_t M, index_t N>
+    void FixedSizeRowMajorMatrix<T, M, N>::copy_rows(matrix_rows<T> rows)
+    {
+        index_t rows_in_list, cols_in_list;
+        detail::initializer_list_dimensions(rows, rows_in_list, cols_in_list);
+        if ((rows_in_list != M) || (cols_in_list != N))
+            detail::raise<dimension_error>("cannot initialize a " + detail::dimensions(M, N) +
+                                           " fixed-size matrix from a " +
+                                           detail::dimensions(rows_in_list, cols_in_list) + " initializer list");
+        detail::copy_initializer_list(*this, rows);
+    }
+
+   /***********************************************************************************************
     * void assign_expression(EXPR const&)
     *
     * Evaluates an expression into this matrix (used by the expression constructor and

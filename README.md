@@ -60,6 +60,31 @@ Most vendor HPC compilers are based on LLVM (Intel oneAPI `icpx`, HPE/Cray CCE, 
 IBM Open XL); recent versions support the features MATL uses. The minimum versions above are the
 ones verified by CI.
 
+## Creating and printing matrices
+
+```cpp
+Matrix<double> A(3, 4);                   // 3x4 dynamic matrix (elements uninitialized)
+Matrix<double, 2, 2> F;                   // 2x2 fixed-size matrix
+
+Matrix<double> B = {{1, 2, 3},            // from an initializer list, one inner list per row
+                    {4, 5, 6}};
+F = {{1, 0}, {0, 1}};                     // assignment works the same way
+
+auto Z = zeros<double>(3, 4);             // also ones<T>, eye<T>; (n) gives n x n
+auto I = eye<double, 3>();                // fixed-size forms: <T, M, N>() and <T, N>()
+A = 2.0;                                  // set every element
+
+std::cout << B << '\n';                   // rows on separate lines, columns aligned:
+                                          // 1  2  3
+                                          // 4  5  6
+std::cout << std::setprecision(3) << B / 3.0 << '\n';   // expressions too; stream formatting applies
+print(B);                                 // the same, to std::cout, with a newline
+```
+
+The rows of an initializer list must have the same length, and a fixed-size matrix needs a list
+of its exact dimensions; both are always checked (`matl::dimension_error`). Assigning a list to
+an allocated matrix requires the same dimensions, like any assignment; `A = {}` empties `A`.
+
 ## Expressions, values and lifetimes
 
 An arithmetic expression on matrices produces an *expression object* (a formula), not a matrix.
