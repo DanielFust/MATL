@@ -1,0 +1,7 @@
+# MATL benchmarks (build with -DMATL_BUILD_BENCHMARKS=ON, in a Release build)
+file(GLOB MATL_BENCHMARK_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+foreach(source IN LISTS MATL_BENCHMARK_SOURCES)
+    get_filename_component(name "${source}" NAME_WE)
+    add_executable(${name} "${source}")
+    target_link_libraries(${name} PRIVATE matl::matl matl_warnings)
+endforeach()
