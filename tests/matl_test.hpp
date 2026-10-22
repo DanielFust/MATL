@@ -9,6 +9,8 @@
  *   CHECK_EQ(a, b)                  Equality check that prints both values on failure
  *   CHECK_THROWS(expr)              Checks that expr throws any exception
  *   CHECK_THROWS_AS(expr, type)     Checks that expr throws the given exception type
+ *   CHECK_MATL_ERROR(type, stmts)   Checks that the statements report a MATL error: throw 'type'
+ *                                   by default, or terminate the process with MATL_ABORT_ON_ERROR
  *   CHECK_ABORTS(statements)        Checks that the statements terminate the process (run in a
  *                                   forked child process, so the test runner survives)
  *   CHECK_MATRIX_EQ(mat, ref)       Compares a MATL matrix element-by-element against a
@@ -263,6 +265,18 @@ namespace matl_test
     do { if (!matl_test::terminates([&]() { __VA_ARGS__; }))                                    \
              matl_test::report_failure(__FILE__, __LINE__, "CHECK_ABORTS(" #__VA_ARGS__ ")");   \
     } while (0)
+
+// MATL errors throw by default and abort with MATL_ABORT_ON_ERROR (see MATL_THROWS_ON_ERROR)
+#if MATL_THROWS_ON_ERROR
+#define CHECK_MATL_ERROR(type, ...)                                                             \
+    do { bool matl_threw_ = false;                                                              \
+         try { __VA_ARGS__; } catch (type const&) { matl_threw_ = true; } catch (...) {}      \
+         if (!matl_threw_)                                                                      \
+             matl_test::report_failure(__FILE__, __LINE__, "CHECK_MATL_ERROR(" #type ", " #__VA_ARGS__ ")"); \
+    } while (0)
+#else
+#define CHECK_MATL_ERROR(type, ...) CHECK_ABORTS(__VA_ARGS__)
+#endif
 
 #define CHECK_MATRIX_EQ(mat, ref)                                                               \
     do { std::string matl_why_;                                                                 \

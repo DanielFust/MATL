@@ -16,9 +16,9 @@ namespace matl
     FixedSizeRowMajorMatrix<T, M, N>& 
     FixedSizeRowMajorMatrix<T, M, N>::operator= (RowMajorMatrix<T2> const& mat)
     {
-        #ifdef MATL_BOUNDS_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if ((this->rows() != mat.rows())|| (this->cols() != mat.cols()))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator= (RowMajorMatrix const&): Matrix dimensions do not match");
+            detail::assignment_dimensions(M, N, mat.rows(), mat.cols());
         #endif
         for(index_t i=0; i<SIZE; i++)
             this->data_[i] = mat(i+1);
@@ -43,9 +43,9 @@ namespace matl
         detail::check_dimensions(expression);
         #endif
 
-        #ifdef MATL_BOUNDS_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if ((this->rows() != expression.rows())|| (this->cols() != expression.cols()))
-            throw std::out_of_range("FixedSizeRowMajorMatrix: expression dimensions do not match");
+            detail::assignment_dimensions(M, N, expression.rows(), expression.cols());
         #endif
 
         // Check (at compile-time) if the evaluation is safe 
@@ -85,9 +85,9 @@ namespace matl
     template<MatrixType MAT>
     void FixedSizeRowMajorMatrix<T, M, N>::copy_matrix(MAT const& mat)
     {
-        #ifdef MATL_BOUNDS_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if ((this->rows() != mat.rows())|| (this->cols() != mat.cols()))
-            throw std::out_of_range("FixedSizeRowMajorMatrix: copied matrix dimensions do not match");
+            detail::assignment_dimensions(M, N, mat.rows(), mat.cols());
         #endif
         
         for (index_t i = 1; i<=M; i++)
@@ -108,7 +108,7 @@ namespace matl
     {
         #ifdef MATL_BOUNDS_CHECK
         if ((i < 1) || (i > SIZE))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator() (index_t): Index out of range");
+            detail::index_out_of_range(i, SIZE);
         #endif
         return this->data_[i-1];
     }
@@ -127,7 +127,7 @@ namespace matl
     {
         #ifdef MATL_BOUNDS_CHECK
         if ((i < 1) || (i > M) || (j < 1) || (j > N))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator() (index_t, index_t): Index out of range");
+            detail::index_out_of_range(i, j, M, N);
         #endif
         return this->data_[(i-1)*N + (j-1)];
     } 
@@ -145,7 +145,7 @@ namespace matl
     {
         #ifdef MATL_BOUNDS_CHECK
         if ((i < 1) || (i > SIZE))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator() (index_t): Index out of range");
+            detail::index_out_of_range(i, SIZE);
         #endif
         return this->data_[i-1];
     } 
@@ -164,7 +164,7 @@ namespace matl
     {
         #ifdef MATL_BOUNDS_CHECK
         if ((i < 1) || (i > M) || (j < 1) || (j > N))
-            throw std::out_of_range("FixedSizeRowMajorMatrix::operator() (index_t, index_t): Index out of range");
+            detail::index_out_of_range(i, j, M, N);
         #endif
         return this->data_[(i-1)*N + (j-1)];
     }
@@ -228,7 +228,7 @@ namespace matl
     * seamless polymorphism when using mixed matrix types. Because the size of the matrix is 
     * constant and determined at compile time, it cannot be altered. This function checks that
     * the requested size is the same as the size of the matrix and returns if it is. If the
-    * requested size is different, an error is thrown.
+    * requested size is different, a matl::dimension_error is reported (see _matl_errors_.hpp).
     *
     * Parameters:
     *     matrix        FixedSizeRowMajorMatrix object
@@ -239,7 +239,8 @@ namespace matl
     void allocate(FixedSizeRowMajorMatrix<T, M, N>& /*matrix*/, index_t rows, index_t cols)
     {
         if (rows != M || cols != N)
-            throw std::runtime_error("allocate(FixedSizeRowMajorMatrix<T, M, N>&, index_t, index_t):  Requested size does not match fixed size of matrix.");
+            detail::raise<dimension_error>("cannot allocate a " + detail::dimensions(M, N) + " fixed-size matrix as " +
+                                           detail::dimensions(rows, cols));
     }
 }
 #endif

@@ -85,7 +85,7 @@ namespace matl
         * void check_dimensions() const
         *
         * Checks the operands (recursively), then that matrix operands have the same dimensions.
-        * Aborts with an error message otherwise (see detail::check_dimensions).
+        * Reports a matl::dimension_error otherwise.
         *******************************************************************************************/
         template<typename OP, typename LHS, typename RHS>
         void Elementwise<OP,LHS,RHS>::check_dimensions() const
@@ -95,7 +95,7 @@ namespace matl
 
             if constexpr (!Scalar<LHS> && !Scalar<RHS>)
                 if ((this->lhs_.rows() != this->rhs_.rows()) || (this->lhs_.cols() != this->rhs_.cols()))
-                    detail::dimension_error("elementwise operation",
+                    detail::incompatible_dimensions("elementwise operation",
                                             this->lhs_.rows(), this->lhs_.cols(),
                                             this->rhs_.rows(), this->rhs_.cols());
         }

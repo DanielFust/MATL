@@ -140,7 +140,7 @@ TEST_CASE("Memory: allocate and deallocate")
 TEST_CASE("Memory: fixed-size allocate rejects mismatched dimensions")
 {
     FixedSizeRowMajorMatrix<double, 2, 2> F;
-    CHECK_THROWS_AS(allocate(F, 3, 3), std::runtime_error);
+    CHECK_MATL_ERROR(dimension_error, allocate(F, 3, 3));
     allocate(F, 2, 2);                        // matching dimensions are accepted
 }
 

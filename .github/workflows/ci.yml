@@ -68,6 +68,12 @@ jobs:
       - name: Test suite (MATL_NO_DEBUG)
         run: make check-nodebug CXX=${{ matrix.cxx }}
 
+      - name: Test suite (MATL_ABORT_ON_ERROR)
+        run: make check-abort CXX=${{ matrix.cxx }}
+
+      - name: Build without exceptions (-fno-exceptions)
+        run: make check-noexceptions CXX=${{ matrix.cxx }}
+
       - name: Build benchmarks
         run: make benchmarks CXX=${{ matrix.cxx }}
 

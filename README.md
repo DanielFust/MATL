@@ -202,9 +202,9 @@ auto p = A * B;    // OK: 2x3 * 3x2
 The concepts `SizesMatch<A, B>` and `InnerSizesMatch<A, B>` express these rules. When a dimension
 is only known at run time (dynamic matrices, or a mix of fixed-size and dynamic operands), the
 check happens when the expression is assigned, if dimension checks are enabled (see below):
-operands of different sizes, or a product with different inner dimensions, print an error and
-abort. Because the check runs at assignment, it also catches a stored expression whose matrices
-were reallocated after it was built.
+operands of different sizes, or a product with different inner dimensions, are reported as a
+`matl::dimension_error` (see Errors). Because the check runs at assignment, it also catches a
+stored expression whose matrices were reallocated after it was built.
 
 ## Debug checks
 
@@ -222,6 +222,31 @@ are always on.
 
 Define `MATL_DEBUG` to print a trace of internal calls (assignments, allocations) to stdout. It is
 off by default.
+
+## Errors
+
+MATL reports the errors it detects by throwing an exception:
+
+| Exception | Derived from | Reported when |
+| --- | --- | --- |
+| `matl::dimension_error` | `std::invalid_argument` | Operands, or an assignment target, have incompatible dimensions |
+| `matl::index_error` | `std::out_of_range` | An element index is out of range (indices are 1-based) |
+| `std::logic_error` | | The `TemporaryArena` is misused (e.g. releasing a block twice) |
+
+```cpp
+try { R = A + B; }
+catch (matl::dimension_error const& e) { std::cerr << e.what() << '\n'; }
+// incompatible matrix dimensions in elementwise operation: 2x2 and 3x3
+```
+
+Define `MATL_ABORT_ON_ERROR` to print the message and call `std::abort()` instead, which stops at
+the faulty statement under a debugger. MATL also aborts when it is compiled without exceptions
+(e.g. `-fno-exceptions`). `MATL_THROWS_ON_ERROR` is `1` when errors throw and `0` when they abort.
+
+Most of these errors are found by the debug checks above, so they indicate a programming error;
+a program would normally catch them only to log context or shut down cleanly. A caught error
+leaves MATL in a usable state: the temporaries of the failed evaluation are released (the target
+of a failed assignment may be partly written).
 
 ## Performance
 
