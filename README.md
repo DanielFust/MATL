@@ -192,7 +192,7 @@ with and without the arena.
 
 | Namespace | Contents |
 | --- | --- |
-| `matl` | Everything you use directly: matrix types (`Matrix`, `RowMajorMatrix`, `FixedSizeRowMajorMatrix`), operators, `transpose`, `eye`, `allocate`/`deallocate`, `MemoryManager`, and the concepts below |
+| `matl` | Everything you use directly: matrix types (see Storage order), operators and functions, `allocate`/`deallocate`, `MemoryManager`, and the concepts below |
 | `matl::expr` | Expression types, i.e. what `auto e = A + B;` holds: `Elementwise<Op, L, R>` (every `+`, `-`, and `*` or `/` by a scalar), `Product<L, R>`, `Transpose<M>`, `Owned<M>` |
 | `matl::detail` | Implementation details (evaluators, traits); not part of the interface |
 
@@ -223,14 +223,39 @@ double trace(MAT const& A)
 The operators only accept MATL matrices, expressions and arithmetic scalars, so a misuse such as
 `A + "text"` is reported as an unsatisfied constraint rather than an error inside the library.
 
+## Storage order
+
+Matrices store their elements row by row (row-major, the default) or column by column
+(column-major, as in Fortran, LAPACK and MATLAB):
+
+| Type | Dimensions | Storage order |
+| --- | --- | --- |
+| `Matrix<T>` = `RowMajorMatrix<T>` | run time | row-major |
+| `ColMajorMatrix<T>` | run time | column-major |
+| `Matrix<T, M, N>` = `FixedSizeRowMajorMatrix<T, M, N>` | compile time | row-major |
+| `FixedSizeColMajorMatrix<T, M, N>` | compile time | column-major |
+
+These are aliases of two class templates, `DynamicMatrix<T, StorageOrder>` and
+`FixedSizeMatrix<T, M, N, StorageOrder>` (the names compiler messages show). Both storage orders
+are used the same way: `A(i,j)` is row `i`, column `j`, initializer lists give the rows, and
+matrices of either order can be mixed freely in expressions and assignments. Only the single
+index `A(i)` and external memory follow the storage order.
+
+Column-major matrices are mainly useful for exchanging data with Fortran or LAPACK without
+copying, e.g. wrapping an array a Fortran routine filled:
+
+```cpp
+ColMajorMatrix<double> A(m, n, fortran_array);   // A(i,j) is fortran_array(i,j)
+```
+
 ## Matrix memory
 
-A `RowMajorMatrix` owns its data, which it allocates on the heap. Copies are deep, and moves
+A matrix owns its data, which it allocates on the heap. Copies are deep, and moves
 transfer the data without copying it.
 
 A matrix can also use memory that you own, e.g. to place many matrices in one contiguous block
 or to wrap a buffer received through MPI. The matrix reads and writes the buffer in place (in
-row-major order) and never frees it, so the buffer must outlive the matrix:
+its storage order) and never frees it, so the buffer must outlive the matrix:
 
 ```cpp
 std::vector<double> block(2 * 16);
@@ -332,7 +357,7 @@ The kernel's block sizes are in `detail::product_blocking` (`_matl_product_kerne
 ## Indexing
 
 Matrices use **1-based indexing**: `A(1,1)` is the first element, and `A(i)` indexes elements in
-storage (row-major) order.
+storage order (along the rows for a row-major matrix, down the columns for a column-major one).
 
 ## Tests
 

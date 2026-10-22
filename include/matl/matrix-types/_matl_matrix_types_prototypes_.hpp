@@ -1,2 +1,2 @@
-#include "./rowmajormatrix/_matl_rowmajormatrix_prototype_.hpp"
-#include "./fixedsizerowmajormatrix/_matl_fixedsizerowmajormatrix_prototype_.hpp"
+#include "./dynamicmatrix/_matl_dynamicmatrix_prototype_.hpp"
+#include "./fixedsizematrix/_matl_fixedsizematrix_prototype_.hpp"

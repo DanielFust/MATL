@@ -1,31 +1,48 @@
-#ifndef MATL_FIXEDSIZEROWMAJORMATRIX_PROTOTYPE_HPP
-#define MATL_FIXEDSIZEROWMAJORMATRIX_PROTOTYPE_HPP
+#ifndef MATL_FIXEDSIZEMATRIX_PROTOTYPE_HPP
+#define MATL_FIXEDSIZEMATRIX_PROTOTYPE_HPP
 
 namespace matl 
 {
     namespace detail
     {
-        // Traits of FixedSizeRowMajorMatrix (see _matl_type_traits_.hpp)
-        template<class T, index_t M, index_t N>
-        struct traits< FixedSizeRowMajorMatrix<T, M, N> >
+        // Traits of FixedSizeMatrix (see _matl_type_traits_.hpp)
+        template<class T, index_t M, index_t N, StorageOrder ORDER>
+        struct traits< FixedSizeMatrix<T, M, N, ORDER> >
         {
             typedef T dtype;
             static constexpr bool         fixed_size    = true;
             static constexpr index_t      rows          = M;
             static constexpr index_t      cols          = N;
-            static constexpr StorageOrder storage_order = StorageOrder::RowMajor;
+            static constexpr StorageOrder storage_order = ORDER;
         };
     }
 
    /***********************************************************************************************
-    * class FixedSizeRowMajorMatrix
+    * class FixedSizeMatrix<T, M, N, ORDER>
     * 
-    * Fixed size row major matrix class. This class is an interface for raw arrays, with size
-    * MxN known at compile time, which are treated as matrices with row-major ordering.
+    * Matrix whose dimensions M x N are known at compile time. The elements are stored in the
+    * object itself (no heap memory), row by row (StorageOrder::RowMajor) or column by column
+    * (StorageOrder::ColMajor). Usually named through the aliases FixedSizeMatrix<T,M,N>
+    * (= Matrix<T,M,N>) and FixedSizeColMajorMatrix<T,M,N>.
+    *
+    * Template Arguments:
+    *     T         Matrix data type
+    *     M, N      Number of rows and columns
+    *     ORDER     Storage order (RowMajor or ColMajor)
     **********************************************************************************************/
-    template<class T, index_t M, index_t N>
-    class FixedSizeRowMajorMatrix : public MatrixBase< FixedSizeRowMajorMatrix<T, M, N> >
+    template<class T, index_t M, index_t N, StorageOrder ORDER>
+    class FixedSizeMatrix : public MatrixBase< FixedSizeMatrix<T, M, N, ORDER> >
     {
+        static_assert(ORDER == StorageOrder::RowMajor || ORDER == StorageOrder::ColMajor,
+                      "FixedSizeMatrix: the storage order must be RowMajor or ColMajor");
+
+        // Position of element (i,j) (1-based) in the data array
+        static constexpr index_t offset(index_t i, index_t j)
+        {
+            if constexpr (ORDER == StorageOrder::RowMajor) return N * (i - 1) + (j - 1);
+            else                                           return M * (j - 1) + (i - 1);
+        }
+
       private:
 
         // Matrix data
@@ -48,13 +65,13 @@ namespace matl
         /********************* Constructors *********************/
 
         // Default constructor (elements are uninitialized)
-        FixedSizeRowMajorMatrix() = default;
+        FixedSizeMatrix() = default;
 
         // Copy constructor
-        FixedSizeRowMajorMatrix(FixedSizeRowMajorMatrix const&) = default;
+        FixedSizeMatrix(FixedSizeMatrix const&) = default;
 
         // Initializer-list constructor, one inner list per row (must be M rows of N elements)
-        FixedSizeRowMajorMatrix(matrix_rows<T>);
+        FixedSizeMatrix(matrix_rows<T>);
 
         // The members constrained by SizesMatch below accept only matrices and expressions that
         // can have dimensions M x N (others do not compile; dynamic dimensions are checked at run
@@ -64,31 +81,31 @@ namespace matl
 
         // Expression constructor (evaluates the expression; implicit, so that
         // 'Matrix<double,M,N> m = A + B;' evaluates to a new matrix)
-        template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix, EXPR>
-        FixedSizeRowMajorMatrix(EXPR const& expr) {this->assign_expression(expr);}
+        template<ExpressionType EXPR> requires SizesMatch<FixedSizeMatrix, EXPR>
+        FixedSizeMatrix(EXPR const& expr) {this->assign_expression(expr);}
 
         /**************** Assignment & Copying *****************/
         
         // Matrix copy (general)
-        template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix, MAT>
-        FixedSizeRowMajorMatrix& operator= (MAT const& mat) {this->copy_matrix(mat); return *this;}
+        template<MatrixType MAT> requires SizesMatch<FixedSizeMatrix, MAT>
+        FixedSizeMatrix& operator= (MAT const& mat) {this->copy_matrix(mat); return *this;}
 
-        // Matrix copy (FixedSizeRowMajorMatrix specialization)
-        FixedSizeRowMajorMatrix& operator= (FixedSizeRowMajorMatrix const&) = default;
+        // Matrix copy (FixedSizeMatrix specialization)
+        FixedSizeMatrix& operator= (FixedSizeMatrix const&) = default;
 
         // Initializer-list assignment, one inner list per row (must be M rows of N elements)
-        FixedSizeRowMajorMatrix& operator= (matrix_rows<T>);
+        FixedSizeMatrix& operator= (matrix_rows<T>);
 
-        // Matrix copy (RowMajorMatrix specialization)
+        // Matrix copy (DynamicMatrix with the same storage order: copied in storage order)
         template<class T2>
-        FixedSizeRowMajorMatrix& operator= (RowMajorMatrix<T2> const&);
+        FixedSizeMatrix& operator= (DynamicMatrix<T2, ORDER> const&);
 
         // Expression evaluation trigger
-        template<ExpressionType EXPR> requires SizesMatch<FixedSizeRowMajorMatrix, EXPR>
-        FixedSizeRowMajorMatrix& operator=(EXPR const& expr) {this->assign_expression(expr); return *this;}
+        template<ExpressionType EXPR> requires SizesMatch<FixedSizeMatrix, EXPR>
+        FixedSizeMatrix& operator=(EXPR const& expr) {this->assign_expression(expr); return *this;}
 
         // Copy 
-        template<MatrixType MAT> requires SizesMatch<FixedSizeRowMajorMatrix, MAT>
+        template<MatrixType MAT> requires SizesMatch<FixedSizeMatrix, MAT>
         void copy(MAT const& mat) {this->copy_matrix(mat);}
 
 
@@ -119,7 +136,7 @@ namespace matl
 
         // Scalar assignment (sets every element)
         template<Scalar S>
-        FixedSizeRowMajorMatrix& operator= (S val);
+        FixedSizeMatrix& operator= (S val);
 
       private:
 
@@ -136,7 +153,7 @@ namespace matl
     }; 
 
     // Fixed-size matrix "allocation" (checks the requested dimensions match the fixed size)
-    template<class T, index_t M, index_t N>
-    void allocate(FixedSizeRowMajorMatrix<T, M, N>&, index_t, index_t);
+    template<class T, index_t M, index_t N, StorageOrder ORDER>
+    void allocate(FixedSizeMatrix<T, M, N, ORDER>&, index_t, index_t);
 }
 #endif

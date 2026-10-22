@@ -68,20 +68,20 @@ namespace matl::detail
 
 
    /***********************************************************************************************
-    * class EvaluationTemporary<RowMajorMatrix<T>>
+    * class EvaluationTemporary<DynamicMatrix<T, ORDER>>
     *
     * Dynamic temporaries take their memory from a TemporaryBlock (arena or heap) and view it as a
-    * RowMajorMatrix with external memory. Used for element types that may live in raw memory
+    * DynamicMatrix with external memory. Used for element types that may live in raw memory
     * (trivially copyable, with alignment no stricter than the arena's); other element types use
     * the general case.
     ***********************************************************************************************/
-    template<class T>
+    template<class T, StorageOrder ORDER>
     requires (std::is_trivially_copyable_v<T> && alignof(T) <= TemporaryArena::ALIGNMENT)
-    class EvaluationTemporary< RowMajorMatrix<T> >
+    class EvaluationTemporary< DynamicMatrix<T, ORDER> >
     {
       private:
-        TemporaryBlock    block_;
-        RowMajorMatrix<T> mat_;
+        TemporaryBlock          block_;
+        DynamicMatrix<T, ORDER> mat_;
 
       public:
         EvaluationTemporary(index_t rows, index_t cols) :
@@ -92,8 +92,8 @@ namespace matl::detail
         EvaluationTemporary(EvaluationTemporary const&) = delete;
         EvaluationTemporary& operator=(EvaluationTemporary const&) = delete;
 
-        RowMajorMatrix<T>&       matrix()       {return this->mat_;}
-        RowMajorMatrix<T> const& matrix() const {return this->mat_;}
+        DynamicMatrix<T, ORDER>&       matrix()       {return this->mat_;}
+        DynamicMatrix<T, ORDER> const& matrix() const {return this->mat_;}
     };
 }
 #endif

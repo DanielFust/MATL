@@ -1,31 +1,42 @@
+#ifndef MATL_DYNAMICMATRIX_PROTOTYPE_HPP
+#define MATL_DYNAMICMATRIX_PROTOTYPE_HPP
 namespace matl
 {
     namespace detail
     {
-        // Traits of RowMajorMatrix (see _matl_type_traits_.hpp)
-        template<class T>
-        struct traits< RowMajorMatrix<T> >
+        // Traits of DynamicMatrix (see _matl_type_traits_.hpp)
+        template<class T, StorageOrder ORDER>
+        struct traits< DynamicMatrix<T, ORDER> >
         {
             typedef T dtype;
             static constexpr bool         fixed_size    = false;
             static constexpr index_t      rows          = 0;
             static constexpr index_t      cols          = 0;
-            static constexpr StorageOrder storage_order = StorageOrder::RowMajor;
+            static constexpr StorageOrder storage_order = ORDER;
         };
     }
 
    /***********************************************************************************************
-    * class RowMajorMatrix
+    * class DynamicMatrix<T, ORDER>
     * 
-    * Row major matrix class. The matrix owns its data (allocated on the heap), unless it was
-    * constructed over externally owned memory, which it uses but never deletes.
+    * Matrix whose dimensions are set at run time. The matrix owns its data (allocated on the heap),
+    * unless it was constructed over externally owned memory, which it uses but never deletes.
+    * Usually named through the aliases RowMajorMatrix<T> (= Matrix<T>) and ColMajorMatrix<T>.
+    * 
+    * The elements are stored row by row (StorageOrder::RowMajor) or column by column
+    * (StorageOrder::ColMajor). Element access is the same for both: A(i,j) is row i, column j.
+    * The single index A(i) runs through the elements in storage order.
     * 
     * Template Arguments:
-    *     T     Matrix data type     
+    *     T         Matrix data type     
+    *     ORDER     Storage order (RowMajor or ColMajor)
     ***********************************************************************************************/ 
-    template<class T>
-    class RowMajorMatrix : public MatrixBase< RowMajorMatrix<T> >
+    template<class T, StorageOrder ORDER>
+    class DynamicMatrix : public MatrixBase< DynamicMatrix<T, ORDER> >
     {
+        static_assert(ORDER == StorageOrder::RowMajor || ORDER == StorageOrder::ColMajor,
+                      "DynamicMatrix: the storage order must be RowMajor or ColMajor");
+
       private:
         index_t rows_;
         index_t cols_;
@@ -34,6 +45,13 @@ namespace matl
         // Is the memory externally owned (used, but not deleted, by the matrix)
         bool    external_mem_;
 
+        // Position of element (i,j) (1-based) in the data array
+        index_t offset(index_t i, index_t j) const
+        {
+            if constexpr (ORDER == StorageOrder::RowMajor) return this->cols_ * (i - 1) + (j - 1);
+            else                                           return this->rows_ * (j - 1) + (i - 1);
+        }
+
       public:
         
         typedef T dtype;
@@ -41,98 +59,98 @@ namespace matl
         /********************* Constructors *********************/
         
         // Default constructor
-        RowMajorMatrix();
+        DynamicMatrix();
 
         // Sized constructor
-        RowMajorMatrix(index_t, index_t);
+        DynamicMatrix(index_t, index_t);
 
-        // Preallocated constructor
-        RowMajorMatrix(index_t, index_t, T*);
+        // Preallocated constructor (rows*cols elements in the matrix's storage order)
+        DynamicMatrix(index_t, index_t, T*);
 
         // Initializer-list constructor, one inner list per row: Matrix<double> A = {{1, 2}, {3, 4}};
-        RowMajorMatrix(matrix_rows<T>);
+        DynamicMatrix(matrix_rows<T>);
 
         // Copy constructor (General matrix)
         template<MatrixType MAT>
-        RowMajorMatrix(MAT const&);
+        DynamicMatrix(MAT const&);
 
         // Copy constructor (Same type)
-        RowMajorMatrix(RowMajorMatrix<T> const&);
+        DynamicMatrix(DynamicMatrix const&);
 
         // Expression constructor (evaluates the expression; implicit, so that
         // 'Matrix<double> m = A + B;' evaluates to a new matrix)
         template<ExpressionType EXPR>
-        RowMajorMatrix(EXPR const&);
+        DynamicMatrix(EXPR const&);
 
         // Move constructor
-        RowMajorMatrix(RowMajorMatrix<T>&&) noexcept;
+        DynamicMatrix(DynamicMatrix&&) noexcept;
 
         // Destructor
-        ~RowMajorMatrix();
+        ~DynamicMatrix();
 
         /************* Assignment and Copying ******************/
 
         // Expression execution trigger
         template<ExpressionType EXPR>
-        RowMajorMatrix<T>& operator= (EXPR const&);
+        DynamicMatrix& operator= (EXPR const&);
 
 
-        // RowMajorMatrix move assignment
-        RowMajorMatrix<T>& operator= (RowMajorMatrix<T>&&) noexcept;
+        // Move assignment
+        DynamicMatrix& operator= (DynamicMatrix&&) noexcept;
 
-        // RowMajorMatrix copy assignment (same type)
-        RowMajorMatrix<T>& operator= (RowMajorMatrix<T> const&);
+        // Copy assignment (same type)
+        DynamicMatrix& operator= (DynamicMatrix const&);
 
         // Initializer-list assignment (A = {} empties the matrix)
-        RowMajorMatrix<T>& operator= (matrix_rows<T>);
+        DynamicMatrix& operator= (matrix_rows<T>);
 
-        // Copy assignment for RowMajorMatrix of another element type
+        // Copy assignment for a DynamicMatrix of another element type (same storage order)
         template<class T2>
-        RowMajorMatrix<T>& operator= (RowMajorMatrix<T2> const&);
+        DynamicMatrix& operator= (DynamicMatrix<T2, ORDER> const&);
 
         // Copy assignment for General Matrix
         template<MatrixType MAT>
-        RowMajorMatrix<T>& operator= (MAT const&);
+        DynamicMatrix& operator= (MAT const&);
 
         // Scalar assignment (sets every element)
         template<Scalar S>
-        RowMajorMatrix<T>& operator= (S);
+        DynamicMatrix& operator= (S);
 
         // Addition assignment (by scalar)
         template<Scalar S>
-        RowMajorMatrix<T>& operator+= (S);
+        DynamicMatrix& operator+= (S);
 
         // Subtraction assignment (by scalar)
         template<Scalar S>
-        RowMajorMatrix<T>& operator-= (S);
+        DynamicMatrix& operator-= (S);
 
         // Multiplication assignment (by scalar)
         template<Scalar S>
-        RowMajorMatrix<T>& operator*= (S);
+        DynamicMatrix& operator*= (S);
 
         // Division assignment (by scalar)
         template<Scalar S>
-        RowMajorMatrix<T>& operator/= (S);
+        DynamicMatrix& operator/= (S);
 
         // Addition assignment (by matrix or expression)
         template<MatrixAlgebraObject MAO>
-        RowMajorMatrix<T>& operator+= (MAO const&);
+        DynamicMatrix& operator+= (MAO const&);
 
         // Subtraction assignment (by matrix or expression)
         template<MatrixAlgebraObject MAO>
-        RowMajorMatrix<T>& operator-= (MAO const&);
+        DynamicMatrix& operator-= (MAO const&);
 
         // Multiplication assignment (matrix product, by matrix or expression)
         template<MatrixAlgebraObject MAO>
-        RowMajorMatrix<T>& operator*= (MAO const&);
+        DynamicMatrix& operator*= (MAO const&);
 
         // General matrix copy
         template<MatrixType MAT>
         void copy(MAT const&);
 
-        // RowMajorMatrix copy
+        // Copy of a DynamicMatrix with the same storage order (element by element in storage order)
         template<class T2>
-        void copy(const RowMajorMatrix<T2>&);
+        void copy(DynamicMatrix<T2, ORDER> const&);
 
         /********************* Data Access *********************/
 
@@ -171,12 +189,12 @@ namespace matl
         // Is the memory externally owned (not deleted by the matrix)
         bool external_mem() const;
 
-        // RowMajorMatrix types of other element types (to copy their data)
-        template<class U> friend class RowMajorMatrix;
+        // DynamicMatrix types of other element types and storage orders (to copy their data)
+        template<class U, StorageOrder O> friend class DynamicMatrix;
 
         // Allocation and deallocation of the matrix data
-        template<class U> friend void allocate(RowMajorMatrix<U>&, index_t, index_t);
-        template<class U> friend void deallocate(RowMajorMatrix<U>&);
+        template<class U, StorageOrder O> friend void allocate(DynamicMatrix<U, O>&, index_t, index_t);
+        template<class U, StorageOrder O> friend void deallocate(DynamicMatrix<U, O>&);
     };
 
 
@@ -189,10 +207,11 @@ namespace matl
     ***********************************************************************************************/
 
     // Matrix allocation
-    template<class T>
-    void allocate(RowMajorMatrix<T>&, index_t, index_t);
+    template<class T, StorageOrder ORDER>
+    void allocate(DynamicMatrix<T, ORDER>&, index_t, index_t);
 
     // Matrix deallocation
-    template<class T>
-    void deallocate(RowMajorMatrix<T>&);
+    template<class T, StorageOrder ORDER>
+    void deallocate(DynamicMatrix<T, ORDER>&);
 }
+#endif
