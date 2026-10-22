@@ -206,12 +206,7 @@ namespace matl
         if (  ((this->rows_ != expression.rows()) || (this->cols_ != expression.cols()))
             && (this->size() != 0) ) 
         {
-            std::cerr << "Error in 'void RowMajorMatrix<T>::operator= (EXPR const& expression)'"
-                      << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" << this->cols_
-                      << " incompatible with expression with dimensions " << expression.rows()
-                      << "x" << expression.cols() 
-                      << std::endl;
-            abort();          
+            detail::assignment_dimensions(this->rows_, this->cols_, expression.rows(), expression.cols());
         }    
         #endif
 
@@ -260,18 +255,13 @@ namespace matl
         std::cout << "RowMajorMatrix<T>& RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&&)" 
                     << std::endl;
         #endif
+        // A matrix over external memory keeps its buffer, so the data is copied into it and the
+        // dimensions must match. Otherwise the matrix takes the other matrix's data, whatever its
+        // size (as when matrices are moved around in a std::vector). This function is noexcept,
+        // so a dimension error here terminates the program.
         #ifdef MATL_DIMENSION_CHECK
-        if (this->data_ != nullptr)
-            if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
-            {
-                std::cerr << "Error in 'void RowMajorMatrix<T>::operator= (RowMajorMatrix<T>&&)'"
-                        << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" 
-                        << this->cols_
-                        << " incompatible with Matrix with dimensions " << mat.rows()
-                        << "x" << mat.cols() 
-                        << std::endl;
-                abort();          
-            }    
+        if (this->external_mem_ && ((this->rows_ != mat.rows()) || (this->cols_ != mat.cols())))
+            detail::assignment_dimensions(this->rows_, this->cols_, mat.rows(), mat.cols());
         #endif
 
         // Check for self assignment
@@ -358,13 +348,7 @@ namespace matl
         if (this->data_ != nullptr)
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
-                std::cerr << "Error in 'void RowMajorMatrix<T>::operator= (RowMajorMatrix<T2> const&)'"
-                            << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" 
-                            << this->cols_
-                            << " incompatible with RowMajorMatrix with dimensions " << mat.rows()
-                            << "x" << mat.cols() 
-                            << std::endl;
-                abort();          
+                detail::assignment_dimensions(this->rows_, this->cols_, mat.rows(), mat.cols());
             }    
         #endif
 
@@ -399,14 +383,7 @@ namespace matl
         if (this->data_ != nullptr)
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
-                std::cerr << "Error in 'void RowMajorMatrix<T>::operator= "
-                            << "(MAT const& mat)'"
-                            << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" 
-                            << this->cols_
-                            << " incompatible with Matrix with dimensions " << mat.rows()
-                            << "x" << mat.cols() 
-                            << std::endl;
-                abort();          
+                detail::assignment_dimensions(this->rows_, this->cols_, mat.rows(), mat.cols());
             }    
         #endif
 
@@ -612,12 +589,7 @@ namespace matl
             #ifdef MATL_DIMENSION_CHECK
             if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
             {
-                std::cerr << "Error in 'void RowMajorMatrix<T>::copy() (MAT const&)'"
-                        << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" << this->cols_
-                        << " incompatible with Matrix with dimensions " << mat.rows()
-                        << "x" << mat.cols() 
-                        << std::endl;
-                abort();          
+                detail::assignment_dimensions(this->rows_, this->cols_, mat.rows(), mat.cols());
             }    
             #endif
         }
@@ -671,12 +643,7 @@ namespace matl
         #ifdef MATL_DIMENSION_CHECK
         if ( (this->rows_ != mat.rows()) || (this->cols_ != mat.cols()) )
         {
-            std::cerr << "Error in 'void RowMajorMatrix<T>::copy() (const RowMajorMatrix<T2>&)'"
-                    << "\n    RowMajorMatrix with dimensions " << this->rows_ << "x" << this->cols_
-                    << " incompatible with Matrix with dimensions " << mat.rows()
-                    << "x" << mat.cols() 
-                    << std::endl;
-            abort();          
+            detail::assignment_dimensions(this->rows_, this->cols_, mat.rows(), mat.cols());
         }    
         #endif
         
@@ -713,10 +680,7 @@ namespace matl
         #ifdef MATL_BOUNDS_CHECK
         if ((i<1)||(i>this->size()))
         {
-            std::cerr << "\nError in 'inline T RowMajorMatrix<T>::operator() (unsigned long i) const' : "
-                      << "\n    Index i=" << i << " out of bounds of matrix"
-                         " with size " << this->size() << std::endl;
-            abort();          
+            detail::index_out_of_range(i, this->size());
         }
         #endif
 
@@ -743,11 +707,7 @@ namespace matl
         #ifdef MATL_BOUNDS_CHECK
         if ( ((i<1)||(i>this->rows())) || ((j<1)||(j>this->cols())) )
         {
-            std::cerr << "\nError in 'inline T RowMajorMatrix<T>::operator() (unsigned long, unsigned " 
-                      << "long) const' : "
-                      << "\n    Index pair i=" << i << ", j=" << j << " out of bounds of matrix"
-                         " with dimensions " << this->rows() << "x" << this->cols() << std::endl;
-            abort();          
+            detail::index_out_of_range(i, j, this->rows(), this->cols());
         }
         #endif
 
@@ -774,10 +734,7 @@ namespace matl
         #ifdef MATL_BOUNDS_CHECK
         if ((i<1)||(i>this->size()))
         {
-            std::cerr << "\nError in 'inline T& RowMajorMatrix<T>::operator() (unsigned long i)' : "
-                      << "\n    Index i=" << i << " out of bounds of matrix"
-                      << " with size " << this->size() << std::endl;
-            abort();          
+            detail::index_out_of_range(i, this->size());
         }
         #endif
         return this->data_[i-1];
@@ -804,11 +761,7 @@ namespace matl
         #ifdef MATL_BOUNDS_CHECK
         if ( ( (i<1)||(i>this->rows()) ) || ( (j<1)||(j>this->cols()) ) )
         {
-            std::cerr << "\nError in 'inline T& RowMajorMatrix<T>::operator() (unsigned long, unsigned "
-                         "long)' : "
-                      << "\n    Index pair i=" << i << ", j=" << j << " out of bounds of matrix"
-                         " with dimensions " << this->rows() << "x" << this->cols() << std::endl;
-            abort();          
+            detail::index_out_of_range(i, j, this->rows(), this->cols());
         }
         #endif
 

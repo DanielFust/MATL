@@ -17,6 +17,9 @@
 // Define MATL_NO_DEBUG to disable them in any build, or define a check's macro before including
 // matl.hpp to keep it in a release build. Dimensions known at compile time are always checked.
 //
+// Errors throw matl::dimension_error or matl::index_error; define MATL_ABORT_ON_ERROR to print the
+// message and abort instead (see matl/errors/_matl_errors_.hpp).
+//
 // MATL_DEBUG (off by default) prints a trace of internal calls (assignments, allocations) to
 // stdout. Define it before including matl.hpp to enable it.
 #if !defined(NDEBUG) && !defined(MATL_NO_DEBUG)
@@ -38,7 +41,9 @@
 #include <vector>
 #include <memory>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
+#include <string>
 
 // Namespace type definitions and settings
 namespace matl
@@ -59,6 +64,9 @@ namespace matl
     // Set block size for cache blocking
     //const size_t BLOCK_SIZE = 1024;
 }
+
+// Error reporting (exceptions, or abort with MATL_ABORT_ON_ERROR or without exceptions)
+#include "./matl/errors/_matl_errors_.hpp"
 
 // Forward class and operator declarations
 #include "./matl/_matl_declarations_.hpp" 

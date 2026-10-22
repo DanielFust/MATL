@@ -161,9 +161,9 @@ TEST_CASE("TemporaryArena: invalid release is an error")
     TemporaryArena arena;
     std::byte* a = arena.allocate(16);
     std::byte not_from_arena[16];
-    CHECK_THROWS_AS(arena.release(not_from_arena), std::logic_error);
+    CHECK_MATL_ERROR(std::logic_error, arena.release(not_from_arena));
     arena.release(a);
-    CHECK_THROWS_AS(arena.release(a), std::logic_error);   // double release
+    CHECK_MATL_ERROR(std::logic_error, arena.release(a));   // double release
 }
 
 TEST_CASE("TemporaryArena: reserve, statistics and release_memory")
@@ -176,7 +176,7 @@ TEST_CASE("TemporaryArena: reserve, statistics and release_memory")
     std::byte* b = arena.allocate(1 << 19);
     CHECK_EQ(arena.capacity(), reserved);         // fits in the reservation
     CHECK_EQ(arena.high_water_mark(), index_t(1 << 20));
-    CHECK_THROWS_AS(arena.release_memory(), std::logic_error);  // still in use
+    CHECK_MATL_ERROR(std::logic_error, arena.release_memory());  // still in use
     arena.release(b);
     arena.release(a);
     arena.reset_high_water_mark();

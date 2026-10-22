@@ -112,26 +112,13 @@ namespace matl::detail
 
 
    /***********************************************************************************************
-    * void dimension_error(operation, rows1, cols1, rows2, cols2)
-    *
-    * Reports operands with incompatible dimensions and aborts, as the other dimension checks of
-    * dynamic matrices do (see MATL_DIMENSION_CHECK).
-    ***********************************************************************************************/
-    [[noreturn]] inline void dimension_error(char const* operation, index_t rows1, index_t cols1,
-                                             index_t rows2, index_t cols2)
-    {
-        std::cerr << "Error: incompatible matrix dimensions in " << operation << ": "
-                  << rows1 << "x" << cols1 << " and " << rows2 << "x" << cols2 << std::endl;
-        abort();
-    }
-
-   /***********************************************************************************************
     * void check_dimensions(X const& operand)
     *
     * Checks that the dimensions of every operation in an expression fit (the operands of an
     * elementwise operation have the same dimensions; the inner dimensions of a product agree).
     * Expressions check their operands recursively. Matrices, scalars and expression types without
-    * a check_dimensions() method have nothing to check.
+    * a check_dimensions() method have nothing to check. Errors are reported as matl::dimension_error
+    * (see _matl_errors_.hpp).
     *
     * Dimensions known at compile time are already checked by the operators (see SizesMatch). This
     * run-time check covers dynamic dimensions, including matrices that were reallocated after a

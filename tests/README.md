@@ -8,14 +8,17 @@ From the repository root:
 make check                      # build and run the test suite
 make check-sanitize             # same, with AddressSanitizer + UndefinedBehaviorSanitizer
 make check-nodebug              # same, with MATL_NO_DEBUG (run-time debug checks compiled out)
+make check-abort                # same, with MATL_ABORT_ON_ERROR (errors abort instead of throwing)
+make check-noexceptions         # check that MATL compiles with -fno-exceptions and errors abort
 make check FILTER=Transpose     # run only test cases whose name contains "Transpose"
 make check CXX=clang++          # choose a compiler (default: g++)
 ./build/matl_tests --list       # list all test case names
 ```
 
 With CMake, the suite is built when MATL is the top-level project (or with
-`-DMATL_BUILD_TESTS=ON`), and `ctest` runs it twice: with the run-time checks enabled (even in a
-Release build) and with `MATL_NO_DEBUG`. `tests/install/` is a small project that checks an
+`-DMATL_BUILD_TESTS=ON`), and `ctest` runs it three times: with the run-time checks enabled (even
+in a Release build), with `MATL_ABORT_ON_ERROR`, and with `MATL_NO_DEBUG`; it also runs the
+`-fno-exceptions` program. `tests/install/` is a small project that checks an
 installed MATL can be found with `find_package(matl)`; CI builds it after `cmake --install`.
 
 Test results are printed to stderr. The test builds enable MATL's run-time checks (they define
@@ -40,7 +43,8 @@ the build.
 | `test_temporary_arena.cpp` | TemporaryArena (stack order, growth, out-of-order release) and the exact temporaries each kind of assignment uses |
 | `test_heap_allocations.cpp` | Counts heap allocations: none during evaluation once the arena has grown. Replaces the global `operator new` for the test program (counting only inside an explicit window) |
 | `test_memory_manager.cpp` | Matrix memory ownership (heap and external buffers), `allocate`/`deallocate`, MemoryManager settings, per-thread arenas |
-| `test_errors.cpp` | Run-time bounds and dimension checks, including operands of different sizes (`abort()` for dynamic matrices and expressions, exceptions for fixed-size matrices) |
+| `test_errors.cpp` | Error reporting: run-time bounds and dimension checks (including operands of different sizes), exception types and messages, recovery after a caught error |
+| `no_exceptions/main.cpp` | A separate program built with `-fno-exceptions`: MATL compiles, and errors abort |
 | `test_randomized.cpp` | Random sizes and contents (fixed seed) compared against the reference implementation |
 
 Each test file is a separate translation unit, so the build also verifies that `matl.hpp` can be
@@ -71,6 +75,7 @@ TEST_CASE("Expressions: my new case")
 | `CHECK_EQ(a, b)` | Equality, printing both values on failure |
 | `CHECK_THROWS(expr)` / `CHECK_THROWS_AS(expr, type)` | Expect an exception |
 | `CHECK_ABORTS(statements)` | Expect the process to terminate (runs in a forked child) |
+| `CHECK_MATL_ERROR(type, statements)` | Expect a MATL error: the exception `type`, or termination with `MATL_ABORT_ON_ERROR` |
 | `CHECK_MATRIX_EQ(mat, ref)` | Compare a MATL matrix element-by-element with a `Ref` |
 
 Note that MATL only sizes a matrix automatically when it is empty: assigning a result of a

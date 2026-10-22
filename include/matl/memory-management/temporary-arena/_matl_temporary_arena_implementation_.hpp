@@ -93,7 +93,7 @@ namespace matl
         index_t k = this->records_.size();
         while (k > 0 && this->records_[k-1].ptr != ptr) --k;
         if (k == 0 || this->records_[k-1].released)
-            throw std::logic_error("TemporaryArena::release(std::byte*): pointer is not an allocated block");
+            detail::raise<std::logic_error>("TemporaryArena::release(std::byte*): pointer is not an allocated block");
 
         Record& record = this->records_[k-1];
         record.released      = true;
@@ -149,7 +149,7 @@ namespace matl
     inline void TemporaryArena::release_memory()
     {
         if (!this->records_.empty())
-            throw std::logic_error("TemporaryArena::release_memory(): temporaries are still in use");
+            detail::raise<std::logic_error>("TemporaryArena::release_memory(): temporaries are still in use");
         this->chunks_.clear();
         this->chunks_.shrink_to_fit();
         this->current_ = 0;

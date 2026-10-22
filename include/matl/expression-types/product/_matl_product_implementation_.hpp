@@ -131,8 +131,7 @@ namespace matl
         * void check_dimensions() const
         *
         * Checks the operands (recursively), then that the number of columns of the left operand
-        * equals the number of rows of the right operand. Aborts with an error message otherwise
-        * (see detail::check_dimensions).
+        * equals the number of rows of the right operand. Reports a matl::dimension_error otherwise.
         *******************************************************************************************/
         template<typename LHS, typename RHS>
         void Product<LHS,RHS>::check_dimensions() const
@@ -141,7 +140,7 @@ namespace matl
             detail::check_dimensions(this->rhs_);
 
             if (this->lhs_.cols() != this->rhs_.rows())
-                detail::dimension_error("matrix product (columns of the left operand must equal rows of the right operand)",
+                detail::incompatible_dimensions("matrix product (columns of the left operand must equal rows of the right operand)",
                                         this->lhs_.rows(), this->lhs_.cols(),
                                         this->rhs_.rows(), this->rhs_.cols());
         }

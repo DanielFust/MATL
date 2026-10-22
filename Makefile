@@ -15,7 +15,7 @@ SAN_FLAGS   := -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno
 BENCH_SRC   := $(wildcard benchmarks/*.cpp)
 BENCH_FLAGS := -std=c++20 -O2 -Wall -Wextra -Werror -DNDEBUG
 
-.PHONY: test clean examples tests check check-sanitize check-nodebug benchmarks bench
+.PHONY: test clean examples tests check check-sanitize check-nodebug check-abort check-noexceptions benchmarks bench
 
 # Build the example program (same as 'make examples'; the program is build/examples/test)
 test: examples
@@ -50,6 +50,22 @@ $(BUILD)/matl_tests_nodebug: $(TEST_DEPS)
 
 check-nodebug: $(BUILD)/matl_tests_nodebug
 	./$(BUILD)/matl_tests_nodebug $(FILTER)
+
+# Run the test suite with MATL_ABORT_ON_ERROR (errors abort instead of throwing)
+$(BUILD)/matl_tests_abort: $(TEST_DEPS)
+	@mkdir -p $(BUILD)
+	$(CXX) $(TEST_FLAGS) -DMATL_ABORT_ON_ERROR $(TEST_SRC) $(INC) -I tests -o $@
+
+check-abort: $(BUILD)/matl_tests_abort
+	./$(BUILD)/matl_tests_abort $(FILTER)
+
+# Check that MATL compiles without exceptions, and that errors then abort
+$(BUILD)/no_exceptions: tests/no_exceptions/main.cpp $(HEADERS)
+	@mkdir -p $(BUILD)
+	$(CXX) $(TEST_FLAGS) -fno-exceptions $< $(INC) -o $@
+
+check-noexceptions: $(BUILD)/no_exceptions
+	./$(BUILD)/no_exceptions
 
 # Run the test suite with AddressSanitizer and UndefinedBehaviorSanitizer (and the MATL_DEBUG
 # trace enabled, so that the trace code is compiled and exercised; its output goes to a log file)

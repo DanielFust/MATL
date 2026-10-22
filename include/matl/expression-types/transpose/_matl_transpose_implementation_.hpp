@@ -118,9 +118,9 @@ namespace matl::expr
         const index_t M = target.rows();
         const index_t N = target.cols();
 
-        #ifdef MATL_BOUNDS_CHECK
+        #ifdef MATL_DIMENSION_CHECK
         if ((M != this->mat_.cols()) || (N != this->mat_.rows()))
-            throw std::out_of_range("Matrix transpose expression: target matrix dimensions do not match");
+            detail::assignment_dimensions(M, N, this->mat_.cols(), this->mat_.rows());
         #endif
 
         // Evaluator of the operand. Any products in the operand are computed here, before any
