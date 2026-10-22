@@ -30,9 +30,10 @@ namespace matl
         * void for_each_element(mao, f)
         *
         * Calls f(value) for every element of a matrix or expression. When the expression has one
-        * storage order, elements are visited in storage order (single index); when its operands
-        * have different storage orders (e.g. A + transpose(B)), by (row, column), because a
-        * single index then refers to different elements of the operands.
+        * storage order, elements are visited in storage order: with a single index if it allows
+        * one (see linear_index_v), otherwise (views) by (row, column). When its operands have
+        * different storage orders (e.g. A + transpose(B)), elements are visited row by row,
+        * because a single index then refers to different elements of the operands.
         *******************************************************************************************/
         template<MatrixAlgebraObject MAO, typename F>
         void for_each_element(MAO const& mao, F&& f)
@@ -41,16 +42,22 @@ namespace matl
             check_dimensions(mao);
             #endif
             const evaluator<MAO> source(mao);
+            const index_t M = mao.rows();
+            const index_t N = mao.cols();
             constexpr StorageOrder order = traits<MAO>::storage_order;
-            if constexpr (order == StorageOrder::RowMajor || order == StorageOrder::ColMajor)
+            if constexpr ((order == StorageOrder::RowMajor || order == StorageOrder::ColMajor) && linear_index_v<MAO>)
             {
-                const index_t N = mao.size();
-                for (index_t i = 1; i <= N; ++i) f(source(i));
+                const index_t K = mao.size();
+                for (index_t k = 1; k <= K; ++k) f(source(k));
+            }
+            else if constexpr (order == StorageOrder::ColMajor)
+            {
+                for (index_t j = 1; j <= N; ++j)
+                    for (index_t i = 1; i <= M; ++i)
+                        f(source(i, j));
             }
             else
             {
-                const index_t M = mao.rows();
-                const index_t N = mao.cols();
                 for (index_t i = 1; i <= M; ++i)
                     for (index_t j = 1; j <= N; ++j)
                         f(source(i, j));

@@ -6,3 +6,6 @@
 #include "./memory-management/_matl_memory_management_implementations_.hpp"
 #include "./matrix-types/_matl_matrix_types_implementations_.hpp"
 #include "./expression-types/_matl_expression_types_implementations_.hpp"
+
+// Views read and write through the evaluation routines, so they are implemented after them
+#include "./matrix-types/matrixview/_matl_matrixview_implementation_.hpp"

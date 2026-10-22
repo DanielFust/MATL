@@ -7,7 +7,8 @@
  * happens only when an expression is assigned to a matrix. The assignment builds a tree of
  * evaluator objects that mirrors the expression tree:
  *
- *   - evaluator<MATRIX> reads elements of a matrix directly
+ *   - evaluator<MATRIX> reads elements of a matrix directly, and evaluator<MatrixView> elements
+ *     of a view (see matrix-types/matrixview)
  *   - evaluator<SCALAR> returns the scalar for every element
  *   - evaluators of elementwise expressions combine the elements of their child evaluators
  *   - evaluator<expr::Product> computes the product into a temporary matrix when it is
@@ -65,17 +66,17 @@ namespace matl::detail
 
 
    /***********************************************************************************************
-    * bool references(void const* target, X const& operand)
+    * bool references(Footprint const& target, X const& operand)
     *
     * Returns:
-    *     'true' if the operand is, or reads, the matrix at address 'target'
+    *     'true' if the operand reads memory that may hold elements of the target (see Footprint)
     ***********************************************************************************************/
     template<typename X>
-    bool references(void const* target, X const& operand)
+    bool references(Footprint const& target, X const& operand)
     {
-        if constexpr (Scalar<X>)          return false;
-        else if constexpr (MatrixType<X>) return static_cast<void const*>(&operand) == target;
-        else                              return operand.references_address(target);
+        if constexpr (Scalar<X>)                          return false;
+        else if constexpr (MatrixType<X> || is_view_v<X>) return overlap(target, footprint(operand));
+        else                                              return operand.reads(target);
     }
 
    /***********************************************************************************************
@@ -83,16 +84,27 @@ namespace matl::detail
     *
     * Returns:
     *     'true' if evaluating the operand as part of an expression assigned directly to the target
-    *     matrix would overwrite elements of the target that the operand still has to read.
-    *     Scalars and matrices are always safe on their own, and so are products, which are
-    *     computed into a temporary (see evaluator<expr::Product>) before any element of the
-    *     target is written.
+    *     would overwrite elements of the target that the operand still has to read.
+    *
+    *     - Scalars are always safe, and so are products, which are computed into a temporary (see
+    *       evaluator<expr::Product>) before any element of the target is written.
+    *     - A matrix or view is read element by element at the position that is being written. It
+    *       is safe if it shares no elements with the target, or if its element (i,j) is the
+    *       target's element (i,j) (e.g. A = A + B: each element is read before it is written).
+    *       Otherwise (e.g. a view of other rows of the target) it is unsafe.
+    *     - Other expressions check their operands (see unsafe_evaluation_target).
     ***********************************************************************************************/
-    template<MatrixType MAT, typename X>
+    template<WritableMatrix MAT, typename X>
     bool unsafe_operand(MAT const& target, X const& operand)
     {
-        if constexpr (Scalar<X> || MatrixType<X> || is_product_v<X>) return false;
-        else                                                       return operand.unsafe_evaluation_target(target);
+        if constexpr (Scalar<X> || is_product_v<X>) return false;
+        else if constexpr (MatrixType<X> || is_view_v<X>)
+        {
+            const Footprint target_footprint  = footprint(target);
+            const Footprint operand_footprint = footprint(operand);
+            return overlap(target_footprint, operand_footprint) && !same_elements(target_footprint, operand_footprint);
+        }
+        else return operand.unsafe_evaluation_target(target);
     }
 
    /***********************************************************************************************
@@ -100,14 +112,14 @@ namespace matl::detail
     *
     * Returns:
     *     'true' if the operand makes an elementwise expression unsafe to evaluate directly into
-    *     the target matrix: either it is unsafe on its own, or it reads the target through a
-    *     transpose (element (i,j) of the result would read element (j,i) of the target, which
-    *     may already have been overwritten).
+    *     the target: either it is unsafe on its own, or it reads the target through a transpose
+    *     (element (i,j) of the result would read element (j,i) of the target, which may already
+    *     have been overwritten).
     ***********************************************************************************************/
-    template<MatrixType MAT, typename X>
+    template<WritableMatrix MAT, typename X>
     bool unsafe_elementwise_operand(MAT const& target, X const& operand)
     {
-        return (is_transpose_v<X> && references(&target, operand)) || unsafe_operand(target, operand);
+        return (is_transpose_v<X> && references(footprint(target), operand)) || unsafe_operand(target, operand);
     }
 
 
@@ -164,7 +176,7 @@ namespace matl::detail
     * any other expression is first evaluated into a temporary matrix.
     ***********************************************************************************************/
     template<typename X>
-    using product_operand_t = std::conditional_t< MatrixType<X> || is_owned_v<X>,
+    using product_operand_t = std::conditional_t< MatrixType<X> || is_view_v<X> || is_owned_v<X>,
                                                   evaluator<X>,
                                                   materialized_operand<X> >;
 
@@ -183,28 +195,44 @@ namespace matl::detail
    /***********************************************************************************************
     * void assign_elementwise(MAT& target, EXPR const& expr)
     *
-    * Evaluates an elementwise expression into the target matrix. Elements are visited in storage
-    * order when the target and the expression share a storage order, and in tiles otherwise (see
-    * TILE).
+    * Evaluates an elementwise expression into the target (a matrix or a view). Elements are
+    * visited in storage order when the target and the expression share a storage order (with a
+    * single index when both allow it, see linear_index_v), and in tiles otherwise (see TILE).
     *
     * The caller is responsible for ensuring the target is a safe evaluation target (see
     * unsafe_evaluation_target) and has the dimensions of the expression.
     ***********************************************************************************************/
-    template<MatrixType MAT, typename EXPR>
+    template<WritableMatrix MAT, typename EXPR>
     void assign_elementwise(MAT& target, EXPR const& expr)
     {
         const evaluator<EXPR> source(expr);
+        const index_t M = expr.rows();
+        const index_t N = expr.cols();
 
-        if constexpr (same_storage_order_v<MAT, EXPR>)
+        if constexpr (same_storage_order_v<MAT, EXPR> && linear_index_v<MAT> && linear_index_v<EXPR>)
         {
-            const index_t N = expr.size();
-            for (index_t i = 1; i <= N; ++i)
-                target(i) = source(i);
+            const index_t K = expr.size();
+            for (index_t k = 1; k <= K; ++k)
+                target(k) = source(k);
+        }
+        else if constexpr (same_storage_order_v<MAT, EXPR>)
+        {
+            // Storage order by (row, column): row by row, or column by column
+            if constexpr (traits<MAT>::storage_order == StorageOrder::RowMajor)
+            {
+                for (index_t i = 1; i <= M; ++i)
+                    for (index_t j = 1; j <= N; ++j)
+                        target(i,j) = source(i,j);
+            }
+            else
+            {
+                for (index_t j = 1; j <= N; ++j)
+                    for (index_t i = 1; i <= M; ++i)
+                        target(i,j) = source(i,j);
+            }
         }
         else
         {
-            const index_t M = expr.rows();
-            const index_t N = expr.cols();
             for (index_t ii = 1; ii <= M; ii += TILE)
             {
                 const index_t imax = std::min(ii + TILE - 1, M);

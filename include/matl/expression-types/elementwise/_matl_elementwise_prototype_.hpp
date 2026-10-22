@@ -68,6 +68,10 @@ namespace matl
             static constexpr StorageOrder storage_order = combine(traits<LHS>::storage_order,
                                                                   traits<RHS>::storage_order);
         };
+
+        // Single-index access (see linear_index_v) if both operands have it
+        template<typename OP, typename LHS, typename RHS>
+        inline constexpr bool linear_index_v< expr::Elementwise<OP, LHS, RHS> > = linear_index_v<LHS> && linear_index_v<RHS>;
     }
 
     namespace expr
@@ -137,14 +141,14 @@ namespace matl
             void check_dimensions() const;
 
             // Check if evaluation target is safe
-            template<MatrixType MAT>
+            template<WritableMatrix MAT>
             bool unsafe_evaluation_target(MAT const&) const;
 
-            // Check if expression references the matrix at the given address
-            bool references_address(void const*) const;
+            // Check if the expression reads memory that may hold elements of a target (see detail::Footprint)
+            bool reads(detail::Footprint const&) const;
 
             // Evaluate the expression to the target matrix
-            template<MatrixType MAT>
+            template<WritableMatrix MAT>
             void eval(MAT&) const;
         };
     }

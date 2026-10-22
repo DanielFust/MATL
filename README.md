@@ -117,6 +117,67 @@ scalar for the whole matrix. Expressions are reduced element by element without 
 matrix, e.g. `max(abs(A - B))` reads `A` and `B` once. `mean` and `norm_fro` of an integer matrix
 are `double`; `mean`, `min` and `max` of an empty matrix are reported as `matl::dimension_error`.
 
+## Views
+
+A view selects rows and columns of a matrix without copying them. Reading a view reads the
+matrix, and assigning to a view writes into it:
+
+```cpp
+A(range(1, 3), all)          // rows 1 to 3                    MATLAB: A(1:3, :)
+A(all, 2)                    // column 2                       MATLAB: A(:, 2)
+A(4, range(2, last))         // row 4, columns 2 to the end    MATLAB: A(4, 2:end)
+A(range(1, 2, last), all)    // every other row                MATLAB: A(1:2:end, :)
+A(range(last, -1, 1), all)   // the rows in reverse order      MATLAB: A(end:-1:1, :)
+
+A(all, 1) = 0.0;                         // sets column 1 of A to 0
+A(range(1, 3), range(1, 3)) = B * C;     // a product written into a block of A
+A(1, all) += 2.0 * A(2, all);            // a row operation
+double s = sum(A(all, 2));               // a view works anywhere a matrix does
+double x = A(last, last);                // last also works for single elements
+```
+
+| Index | Selects | MATLAB |
+| --- | --- | --- |
+| `i` | row or column `i` | `i` |
+| `all` | every row or column | `:` |
+| `range(first, last)` | `first`, `first+1`, ..., `last` | `first:last` |
+| `range(first, step, last)` | `first`, `first+step`, ..., up to `last` (the step may be negative) | `first:step:last` |
+| `last`, `last - k` | the last row or column, the `k`-th before it | `end`, `end-k` |
+
+Ranges include their last index, as in MATLAB, and a range whose step points away from its last
+index is empty: `range(k + 1, last)` selects nothing when `k` is the last index. A view can be
+indexed again (`v(range(1, 2), all)` selects from the view), and a view of a row or column
+vector can be indexed with one index, `A(all, j)(i)`.
+
+**A view refers to the matrix.** Copying a view gives another view of the same elements. To copy
+the elements, make a matrix:
+
+```cpp
+auto v = A(all, 1);              // v is a view of column 1 of A
+v = 0.0;                         // writes column 1 of A
+Matrix<double> c = A(all, 1);    // c is a new matrix holding a copy of column 1
+```
+
+Like a stored expression, a view is valid only while the matrix keeps its memory: the matrix must
+not be destroyed, moved from, or reallocated (e.g. by `A = {}`). A view of a temporary matrix,
+such as `ones<double>(3, 3)(all, 1)`, keeps the temporary alive. Views of const matrices and of
+temporaries are read-only. Views have the type `MatrixView<T, StorageOrder>` (with `const T` for
+read-only views); name them with `auto`. Because copying a view does not copy elements,
+`std::swap(v, w)` does not exchange the elements of two views; use a matrix in between
+(`Matrix<double> t = v; v = w; w = t;`).
+
+**Assignments.** A view cannot be resized, so a value assigned to it must have its dimensions
+(checked with `MATL_DIMENSION_CHECK`). Indices outside the matrix are reported with
+`MATL_BOUNDS_CHECK`, and a step of 0 is always reported. An assignment may read the elements it
+writes, e.g. `A(range(2, last), all) = A(range(1, last - 1), all)` shifts the rows down: when the
+target shares elements with a value it reads at other positions, the value is evaluated into a
+temporary first. Assignments that read each element only where they write it, such as
+`v = 2.0 * v + B`, need no temporary.
+
+**Performance.** Products read views directly, without copying them. Elementwise operations visit
+a view's elements in the matrix's storage order, so a block of rows of a row-major matrix (or of
+columns of a column-major one) is read sequentially.
+
 ## Expressions, values and lifetimes
 
 An arithmetic expression on matrices produces an *expression object* (a formula), not a matrix.
@@ -267,7 +328,8 @@ A = B * 2.0;                                         // result written into the 
 Assigning to such a matrix (including move assignment) copies the values into the buffer. A copy
 of it owns its own data. `allocate(A, rows, cols)` and `deallocate(A)` allocate a matrix on the
 heap and release its memory; for a matrix over external memory, `deallocate` only stops using
-the buffer.
+the buffer. `A.data()` points to a matrix's elements in storage order, e.g. to pass the matrix to
+a C or Fortran library.
 
 ## Dimension checks
 
@@ -358,6 +420,8 @@ The kernel's block sizes are in `detail::product_blocking` (`_matl_product_kerne
 
 Matrices use **1-based indexing**: `A(1,1)` is the first element, and `A(i)` indexes elements in
 storage order (along the rows for a row-major matrix, down the columns for a column-major one).
+`last` stands for the last row or column, as MATLAB's `end` does: `A(last, 1)`, `A(2, last - 1)`.
+Rows, columns and blocks are selected with views (see [Views](#views)).
 
 ## Tests
 

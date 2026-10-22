@@ -42,6 +42,7 @@ the build.
 | `test_reductions.cpp` | `sum`, `prod`, `mean`, `min`, `max`, `trace`, `dot` and the norms: expressions without temporaries, mixed storage orders, result types, empty matrices, dimension checks |
 | `test_column_major.cpp` | Column-major matrices: layout, Fortran-order external memory, every kind of operation across storage orders, conversions, aliasing |
 | `test_types.cpp` | Concepts, the expression types the operators build, traits (fixed sizes, storage order, element-type promotion), assignment forms, compile-time dimension checks |
+| `test_views.cpp` | Views with `range`, `all` and `last`: selecting and writing rows, columns, blocks and steps, views in expressions, products and reductions, views of views, column-major and fixed-size matrices, assignments that overlap what they read, views of temporaries, errors |
 | `test_expression_lifetime.cpp` | Stored expressions (`auto e = ...`): ownership of sub-expressions and temporaries, live references to named matrices, initializing matrices from expressions |
 | `test_products.cpp` | The cache-blocked product kernel at sizes around its block boundaries, element types, expression operands, aliasing and fixed-size operands |
 | `test_temporary_arena.cpp` | TemporaryArena (stack order, growth, out-of-order release) and the exact temporaries each kind of assignment uses |

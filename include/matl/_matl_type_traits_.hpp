@@ -106,6 +106,17 @@ namespace matl
         template<typename T> inline constexpr bool is_product_v   = false;
         template<typename T> inline constexpr bool is_owned_v     = false;
 
+        // Views (specialized in the MatrixView prototype): any view, and views that can be written
+        // to (views of non-const matrices)
+        template<typename T> inline constexpr bool is_view_v          = false;
+        template<typename T> inline constexpr bool is_writable_view_v = false;
+
+        // 'true' if the elements can be read with a single index in storage order, A(k). Matrices,
+        // scalars and expressions of them can; views cannot (their elements are not contiguous),
+        // so neither can expressions that contain a view. Specialized for views and for the
+        // expression types whose operands decide it.
+        template<typename T> inline constexpr bool linear_index_v = true;
+
         // How an expression stores an operand of type T: matrices by reference (so that a stored
         // expression is a live formula), expressions and scalars by value
         template<typename T>
@@ -153,6 +164,11 @@ namespace matl
     // FixedSize: a matrix or expression whose dimensions are known at compile time
     template<typename T>
     concept FixedSize = MatrixAlgebraObject<T> && detail::traits< std::remove_cvref_t<T> >::fixed_size;
+
+    // WritableMatrix: a target that expressions can be evaluated into (a matrix, or a view of a
+    // non-const matrix)
+    template<typename T>
+    concept WritableMatrix = MatrixType<T> || detail::is_writable_view_v< std::remove_cvref_t<T> >;
 
 
     /************************************* Dimension concepts *************************************/

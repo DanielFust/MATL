@@ -25,6 +25,9 @@ namespace matl
     template<class T, index_t M, index_t N> using FixedSizeRowMajorMatrix = FixedSizeMatrix<T, M, N, StorageOrder::RowMajor>;
     template<class T, index_t M, index_t N> using FixedSizeColMajorMatrix = FixedSizeMatrix<T, M, N, StorageOrder::ColMajor>;
 
+    // View of rows and columns of a matrix (T is const for views of const matrices)
+    template<class T, StorageOrder ORDER> class MatrixView;
+
     // Rows of a matrix, as a nested initializer list (e.g. {{1, 2}, {3, 4}})
     template<class T>
     using matrix_rows = std::initializer_list< std::initializer_list<T> >;

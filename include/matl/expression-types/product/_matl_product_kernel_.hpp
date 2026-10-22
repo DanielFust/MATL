@@ -219,7 +219,7 @@ namespace matl::detail
     *     lhs, rhs     Operands (matrices or evaluated operands, see product_operand_t)
     *     M, N, K      Dimensions
     ***********************************************************************************************/
-    template<typename T, MatrixType MAT, typename LHS, typename RHS>
+    template<typename T, WritableMatrix MAT, typename LHS, typename RHS>
     void blocked_product(MAT& target, LHS const& lhs, RHS const& rhs, index_t M, index_t N, index_t K)
     {
         constexpr index_t MR = product_blocking<T>::MR;

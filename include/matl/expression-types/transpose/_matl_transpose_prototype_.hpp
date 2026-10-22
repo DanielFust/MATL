@@ -27,6 +27,10 @@ namespace matl
 
         template<typename MAO>
         inline constexpr bool is_transpose_v< expr::Transpose<MAO> > = true;
+
+        // Single-index access (see linear_index_v) if the operand has it
+        template<typename MAO>
+        inline constexpr bool linear_index_v< expr::Transpose<MAO> > = linear_index_v<MAO>;
     }
 
     namespace expr
@@ -77,14 +81,14 @@ namespace matl
             void check_dimensions() const;
 
             // Check if evaluation target is safe
-            template<MatrixType MAT>
+            template<WritableMatrix MAT>
             bool unsafe_evaluation_target(MAT const&) const;
 
-            // Check if expression references the matrix at the given address
-            bool references_address(void const*) const;
+            // Check if the expression reads memory that may hold elements of a target (see detail::Footprint)
+            bool reads(detail::Footprint const&) const;
 
             // Evaluate the expression to the target matrix
-            template<MatrixType MAT>
+            template<WritableMatrix MAT>
             void eval(MAT&) const;
         };
     }

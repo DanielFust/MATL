@@ -52,6 +52,13 @@ namespace matl
             else                                           return this->rows_ * (j - 1) + (i - 1);
         }
 
+        // Elements from one row to the next, and from one column to the next (for views)
+        std::ptrdiff_t row_stride() const
+        {return (ORDER == StorageOrder::RowMajor) ? static_cast<std::ptrdiff_t>(this->cols_) : 1;}
+
+        std::ptrdiff_t col_stride() const
+        {return (ORDER == StorageOrder::RowMajor) ? 1 : static_cast<std::ptrdiff_t>(this->rows_);}
+
       public:
         
         typedef T dtype;
@@ -165,6 +172,42 @@ namespace matl
 
         // Double index accessor
         dtype& operator() (index_t, index_t);
+
+        // Element access with last: A(last, 1), A(2, last - 1) (ref-qualified like the views
+        // below, so that the overloads are distinguished on every compiler)
+        template<typename R, typename C> requires detail::ElementIndices<R, C>
+        dtype& operator() (R const& r, C const& c) &
+        {return (*this)(detail::element_index(r, this->rows_), detail::element_index(c, this->cols_));}
+
+        template<typename R, typename C> requires detail::ElementIndices<R, C>
+        dtype operator() (R const& r, C const& c) const&
+        {return (*this)(detail::element_index(r, this->rows_), detail::element_index(c, this->cols_));}
+
+        // Views of rows and columns (see MatrixView): A(range(1, 3), all), A(all, 2), ...
+        template<typename R, typename C> requires detail::ViewIndices<R, C>
+        MatrixView<T, ORDER> operator() (R const& r, C const& c) &
+        {return detail::make_view<ORDER>(this->data_, this->rows_, this->cols_, this->row_stride(), this->col_stride(), r, c);}
+
+        // Read-only view of a const matrix
+        template<typename R, typename C> requires detail::ViewIndices<R, C>
+        MatrixView<const T, ORDER> operator() (R const& r, C const& c) const&
+        {
+            return detail::make_view<ORDER>(static_cast<const T*>(this->data_), this->rows_, this->cols_,
+                                            this->row_stride(), this->col_stride(), r, c);
+        }
+
+        // Read-only view of a temporary matrix, which the view keeps alive
+        template<typename R, typename C> requires detail::ViewIndices<R, C>
+        MatrixView<const T, ORDER> operator() (R const& r, C const& c) &&
+        {
+            const auto owner = std::make_shared<const DynamicMatrix>(std::move(*this));
+            return detail::make_view<ORDER>(owner->data(), owner->rows(), owner->cols(),
+                                            owner->row_stride(), owner->col_stride(), r, c, owner);
+        }
+
+        // Elements in storage order (e.g. to pass the matrix to a C or Fortran library)
+        T*       data()       {return this->data_;}
+        T const* data() const {return this->data_;}
 
         /********************** Utilities **********************/
 

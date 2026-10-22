@@ -54,14 +54,14 @@ namespace matl
             MAT const& matrix() const;
 
             // Check if evaluation target is safe
-            template<MatrixType TARGET>
+            template<WritableMatrix TARGET>
             bool unsafe_evaluation_target(TARGET const&) const;
 
-            // Check if expression references the matrix at the given address
-            bool references_address(void const*) const;
+            // Check if the expression reads memory that may hold elements of a target (see detail::Footprint)
+            bool reads(detail::Footprint const&) const;
 
             // Evaluate the expression to the target matrix
-            template<MatrixType TARGET>
+            template<WritableMatrix TARGET>
             void eval(TARGET&) const;
 
             // Get the number of rows

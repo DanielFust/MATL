@@ -81,26 +81,29 @@ namespace matl::expr
     *     'false' otherwise
     ***********************************************************************************************/
     template<typename MAO>
-    template<MatrixType MAT>
+    template<WritableMatrix MAT>
     bool Transpose<MAO>::unsafe_evaluation_target(MAT const& target) const
     {
-        // Pure transpose expressions are safe (see eval), however, arithmetic expressions
-        // involving the transpose of the target matrix are not.
+        // Transposing the target itself is safe (A = transpose(A): eval swaps the elements in
+        // pairs), but a matrix or view that shares elements with the target at other positions
+        // is not (e.g. a view of other rows of the target), and neither are unsafe expressions.
+        // (Arithmetic on the transpose of the target is checked by the elementwise expression,
+        // see detail::unsafe_elementwise_operand.)
         return detail::unsafe_operand(target, this->mat_);
     }
 
    /***********************************************************************************************
-    * bool references_address(void const*)
+    * bool reads(detail::Footprint const&)
     *
-    * Check if the expression reads the matrix at the given address.
+    * Check if the expression may read elements of the target (see detail::Footprint).
     *
     * Parameters:
-    *     target       Address of the target matrix
+    *     target       Footprint of the target (where its elements are in memory)
     * Returns:
     *     'true' if the expression references the target matrix, 'false' otherwise
     ***********************************************************************************************/
     template<typename MAO>
-    bool Transpose<MAO>::references_address(void const* target) const
+    bool Transpose<MAO>::reads(detail::Footprint const& target) const
     {return detail::references(target, this->mat_);}
 
    /***********************************************************************************************
@@ -112,7 +115,7 @@ namespace matl::expr
     *     target       Target matrix (must have the dimensions of the transpose)
     ***********************************************************************************************/
     template<typename MAO>
-    template<MatrixType MAT>
+    template<WritableMatrix MAT>
     void Transpose<MAO>::eval(MAT& target) const
     {
         const index_t M = target.rows();
@@ -131,11 +134,12 @@ namespace matl::expr
 
         // Square matrices that read the target (e.g. A = transpose(A) or A = transpose(A+A)):
         // elements (i,j) and (j,i) are evaluated simultaneously. Element (i,j) of an elementwise
-        // operand depends only on element (i,j) of its matrices, so reading both elements of the
-        // pair before writing either is memory safe. The pairs are visited in tiles on and above
+        // operand depends only on element (i,j) of its matrices (a safe target, see
+        // unsafe_evaluation_target, shares elements with the operand only at the same positions),
+        // so reading both elements of the pair before writing either is memory safe. The pairs are visited in tiles on and above
         // the diagonal, so that the rows of one tile and the columns of its mirror tile stay in
         // cache.
-        if ((M == N) && this->references_address(&target))
+        if ((M == N) && this->reads(detail::footprint(target)))
         {
             for (index_t ii = 1; ii <= M; ii += TILE)
             {
@@ -159,7 +163,8 @@ namespace matl::expr
         }
         // Transposing flips the storage order, so a target with the opposite storage order of the
         // operand can be filled in storage order
-        else if constexpr (detail::same_storage_order_v<MAT, Transpose>)
+        else if constexpr (detail::same_storage_order_v<MAT, Transpose> &&
+                           detail::linear_index_v<MAT> && detail::linear_index_v<Transpose>)
         {
             const index_t K = this->size();
             for (index_t i = 1; i <= K; i++)
