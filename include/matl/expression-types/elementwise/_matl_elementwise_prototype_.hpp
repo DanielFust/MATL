@@ -39,6 +39,12 @@ namespace matl
             template<typename A, typename B>
             static constexpr auto apply(A a, B b) {return a / b;}
         };
+
+        struct Power
+        {
+            template<typename A, typename B>
+            static auto apply(A a, B b) {return std::pow(a, b);}
+        };
     }
 
     namespace detail
@@ -55,7 +61,7 @@ namespace matl
             // Operand that determines the dimensions
             typedef std::conditional_t<Scalar<LHS>, RHS, LHS> shape_type;
 
-            typedef promote_t< dtype_t<LHS>, dtype_t<RHS> > dtype;
+            typedef decltype(OP::apply(std::declval<dtype_t<LHS>>(), std::declval<dtype_t<RHS>>())) dtype;
             static constexpr bool         fixed_size    = traits<LHS>::fixed_size && traits<RHS>::fixed_size;
             static constexpr index_t      rows          = fixed_size ? traits<shape_type>::rows : 0;
             static constexpr index_t      cols          = fixed_size ? traits<shape_type>::cols : 0;
@@ -84,7 +90,7 @@ namespace matl
         * assigned to a matrix, which evaluates it through detail::evaluator<Elementwise>.
         *
         * Template Parameters:
-        *     OP         Operation (Add, Subtract, Multiply or Divide)
+        *     OP         Operation (Add, Subtract, Multiply, Divide or Power)
         *     LHS        Left operand type (matrix, expression or scalar)
         *     RHS        Right operand type (matrix, expression or scalar)
         *******************************************************************************************/

@@ -40,6 +40,7 @@
 #include <complex>
 #include <vector>
 #include <memory>
+#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
