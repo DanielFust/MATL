@@ -39,6 +39,7 @@ the build.
 | `test_evaluation.cpp` | Deferred evaluation: nested products read current operand values, no allocation until assignment, temporaries released afterwards, aliasing with deferred products |
 | `test_construction.cpp` | Initializer lists, `zeros` and `ones`, `operator<<` and `print` |
 | `test_functions.cpp` | Negation, elementwise math functions, `times`, `rdivide` and `pow`; dimensions, lifetimes and aliasing |
+| `test_reductions.cpp` | `sum`, `prod`, `mean`, `min`, `max`, `trace`, `dot` and the norms: expressions without temporaries, mixed storage orders, result types, empty matrices, dimension checks |
 | `test_types.cpp` | Concepts, the expression types the operators build, traits (fixed sizes, storage order, element-type promotion), assignment forms, compile-time dimension checks |
 | `test_expression_lifetime.cpp` | Stored expressions (`auto e = ...`): ownership of sub-expressions and temporaries, live references to named matrices, initializing matrices from expressions |
 | `test_products.cpp` | The cache-blocked product kernel at sizes around its block boundaries, element types, expression operands, aliasing and fixed-size operands |

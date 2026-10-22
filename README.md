@@ -101,6 +101,22 @@ All of them build expressions, so `R = sqrt(abs(A)) + 2.0 * times(A, B);` is eva
 pass over `R`. The element type of the result follows the function, e.g. `sqrt` of an integer
 matrix has `double` elements.
 
+## Reductions
+
+| Function | Result |
+| --- | --- |
+| `sum(A)`, `prod(A)`, `mean(A)` | Sum, product and mean of all the elements |
+| `min(A)`, `max(A)` | Smallest and largest element |
+| `trace(A)` | Sum of the diagonal (`A` square) |
+| `dot(A, B)` | Sum of the elementwise products; for vectors, the dot product |
+| `norm_fro(A)` | Frobenius norm (for vectors, the Euclidean 2-norm) |
+| `norm_1(A)`, `norm_inf(A)` | Largest absolute column sum, largest absolute row sum |
+
+Unlike MATLAB, where `sum(A)` of a matrix gives the column sums, each of these gives a single
+scalar for the whole matrix. Expressions are reduced element by element without a temporary
+matrix, e.g. `max(abs(A - B))` reads `A` and `B` once. `mean` and `norm_fro` of an integer matrix
+are `double`; `mean`, `min` and `max` of an empty matrix are reported as `matl::dimension_error`.
+
 ## Expressions, values and lifetimes
 
 An arithmetic expression on matrices produces an *expression object* (a formula), not a matrix.
