@@ -3,3 +3,4 @@
 #include "./eye/_matl_eye_specializations_.hpp"
 #include "./zeros/_matl_zeros_specializations_.hpp"
 #include "./ones/_matl_ones_specializations_.hpp"
+#include "./reductions/_matl_reductions_.hpp"
