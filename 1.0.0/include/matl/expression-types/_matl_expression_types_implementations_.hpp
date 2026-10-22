@@ -1,5 +1,6 @@
 #include "./evaluation/_matl_evaluation_.hpp"
 #include "./elementwise/_matl_elementwise_implementation_.hpp"
+#include "./product/_matl_product_kernel_.hpp"
 #include "./product/_matl_product_implementation_.hpp"
 #include "./transpose/_matl_transpose_implementation_.hpp"
 #include "./owned/_matl_owned_implementation_.hpp"

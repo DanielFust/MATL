@@ -7,14 +7,15 @@ From the `1.0.0/` directory:
 ```sh
 make check                      # build and run the test suite
 make check-sanitize             # same, with AddressSanitizer + UndefinedBehaviorSanitizer
-make check-nodebug              # same, with MATL_NO_DEBUG (debug checks compiled out)
+make check-nodebug              # same, with MATL_NO_DEBUG (run-time debug checks compiled out)
 make check FILTER=Transpose     # run only test cases whose name contains "Transpose"
 make check CXX=clang++          # choose a compiler (default: g++)
 ./build/matl_tests --list       # list all test case names
 ```
 
-Test results are printed to stderr. Trace output from `MATL_DEBUG` (which `matl.hpp` currently
-enables by default) goes to stdout, which the Makefile writes to `build/matl_tests.stdout.log`.
+Test results are printed to stderr. The test builds enable MATL's run-time checks (they define
+neither `NDEBUG` nor `MATL_NO_DEBUG`). The sanitizer build also enables the `MATL_DEBUG` trace
+output, which goes to stdout; the Makefile writes it to `build/matl_tests_sanitize.stdout.log`.
 
 The tests are compiled with `-Wall -Wextra -Werror`, so new compiler warnings in the library fail
 the build.
@@ -30,6 +31,7 @@ the build.
 | `test_evaluation.cpp` | Deferred evaluation: nested products read current operand values, no allocation until assignment, temporaries released afterwards, aliasing with deferred products |
 | `test_types.cpp` | Concepts, the expression types the operators build, traits (fixed sizes, storage order, element-type promotion), assignment forms, compile-time dimension checks |
 | `test_expression_lifetime.cpp` | Stored expressions (`auto e = ...`): ownership of sub-expressions and temporaries, live references to named matrices, initializing matrices from expressions |
+| `test_products.cpp` | The cache-blocked product kernel at sizes around its block boundaries, element types, expression operands, aliasing and fixed-size operands |
 | `test_temporary_arena.cpp` | TemporaryArena (stack order, growth, out-of-order release) and the exact temporaries each kind of assignment uses |
 | `test_heap_allocations.cpp` | Counts heap allocations: none during evaluation once the arena has grown. Replaces the global `operator new` for the test program (counting only inside an explicit window) |
 | `test_memory_manager.cpp` | Matrix memory ownership (heap and external buffers), `allocate`/`deallocate`, MemoryManager settings, per-thread arenas |

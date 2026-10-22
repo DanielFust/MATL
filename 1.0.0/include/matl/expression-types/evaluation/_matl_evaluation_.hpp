@@ -183,11 +183,22 @@ namespace matl::detail
 
 
    /***********************************************************************************************
+    * TILE
+    *
+    * When elements are written in one storage order and read in the other (e.g. a row-major
+    * target and a transposed operand), they are visited in TILE x TILE tiles: the rows and columns
+    * of a tile both stay in cache, whereas visiting whole rows would read the operand one cache
+    * line per element. (16 measured best: larger tiles of power-of-two sized matrices map their
+    * columns to too few cache sets.)
+    ***********************************************************************************************/
+    inline constexpr index_t TILE = 16;
+
+   /***********************************************************************************************
     * void assign_elementwise(MAT& target, EXPR const& expr)
     *
     * Evaluates an elementwise expression into the target matrix. Elements are visited in storage
-    * order when the target and the expression share a storage order, and by (row, column)
-    * otherwise.
+    * order when the target and the expression share a storage order, and in tiles otherwise (see
+    * TILE).
     *
     * The caller is responsible for ensuring the target is a safe evaluation target (see
     * unsafe_evaluation_target) and has the dimensions of the expression.
@@ -207,9 +218,17 @@ namespace matl::detail
         {
             const index_t M = expr.rows();
             const index_t N = expr.cols();
-            for (index_t i = 1; i <= M; ++i)
-                for (index_t j = 1; j <= N; ++j)
-                    target(i,j) = source(i,j);
+            for (index_t ii = 1; ii <= M; ii += TILE)
+            {
+                const index_t imax = std::min(ii + TILE - 1, M);
+                for (index_t jj = 1; jj <= N; jj += TILE)
+                {
+                    const index_t jmax = std::min(jj + TILE - 1, N);
+                    for (index_t i = ii; i <= imax; ++i)
+                        for (index_t j = jj; j <= jmax; ++j)
+                            target(i,j) = source(i,j);
+                }
+            }
         }
     }
 }

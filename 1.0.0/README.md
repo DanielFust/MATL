@@ -175,10 +175,44 @@ were reallocated after it was built.
 
 ## Debug checks
 
-`matl.hpp` enables run-time dimension checks (`MATL_DIMENSION_CHECK`), bounds checks
-(`MATL_BOUNDS_CHECK`) and `MATL_DEBUG` trace output by default. Define `MATL_NO_DEBUG` before
-including it (or compile with `-DMATL_NO_DEBUG`) to disable them, e.g. for benchmarks and
-production builds. Compile-time dimension checks are always on.
+Like `assert`, MATL's run-time checks are enabled unless `NDEBUG` is defined, so debug builds
+check and release builds (`-DNDEBUG`, the default of CMake's Release configuration) do not:
+
+| Macro | Checks |
+| --- | --- |
+| `MATL_BOUNDS_CHECK` | Indices of element access |
+| `MATL_DIMENSION_CHECK` | Dimensions of assignments and of the operations in an expression |
+
+Define `MATL_NO_DEBUG` to disable the checks in any build, or define one of the macros above
+before including `matl.hpp` to keep that check in a release build. Compile-time dimension checks
+are always on.
+
+Define `MATL_DEBUG` to print a trace of internal calls (assignments, allocations) to stdout. It is
+off by default.
+
+## Performance
+
+Matrix products use a cache-blocked kernel in the structure of GotoBLAS/BLIS: blocks of the
+operands are packed into contiguous buffers (taken from the temporary arena, so they make no heap
+allocations) and multiplied in small tiles held in SIMD registers. Small products (below about
+10x10x10) use a simple loop, which is faster there. Each element of a product is still the sum of
+its products in increasing order, so without fused multiply-add (FMA) instructions blocking
+gives exactly the result of a simple loop. When FMA is available (e.g. `-march=native` on recent
+x86, or ARM), compilers fuse multiplications and additions by default; results may then differ
+from a simple loop in the last bits. Compile with `-ffp-contract=off` to disable fusion.
+
+Elementwise expressions are evaluated in a single pass, at the speed of a hand-written loop.
+Transposes, and expressions mixing storage orders, are evaluated in small tiles so that both
+the rows and the columns being accessed stay in cache.
+
+Compile with optimization and for your processor's vector instructions for the best performance,
+e.g. `-O3 -march=native` (GCC, Clang) — products use 32-byte AVX vectors when they are enabled,
+and 16-byte vectors (SSE2, NEON) otherwise. On the development machine (Intel i9-9880H), a
+1024x1024 double-precision product runs at about 15 GFLOP/s with `-O2` and about 27 GFLOP/s with
+`-O3 -march=native`, compared with 1.4 GFLOP/s for the simple loop. `make bench` builds and runs
+the benchmarks in `benchmarks/`.
+
+The kernel's block sizes are in `detail::product_blocking` (`_matl_product_kernel_.hpp`).
 
 ## Indexing
 

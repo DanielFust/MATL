@@ -127,23 +127,33 @@ namespace matl::expr
         // element of the target is written.
         const detail::evaluator<MAO> source(this->mat_);
 
-        // Special case for square matrices: elements (i,j) and (j,i) are evaluated simultaneously.
-        //
-        // This covers cases in which the target matrix appears in the expression
-        // (e.g. A = transpose(A+A)): element (i,j) of an elementwise operand depends only on
-        // element (i,j) of its matrices, so reading both elements of the pair before writing
-        // either is memory safe.
-        if (M==N)
+        constexpr index_t TILE = detail::TILE;
+
+        // Square matrices that read the target (e.g. A = transpose(A) or A = transpose(A+A)):
+        // elements (i,j) and (j,i) are evaluated simultaneously. Element (i,j) of an elementwise
+        // operand depends only on element (i,j) of its matrices, so reading both elements of the
+        // pair before writing either is memory safe. The pairs are visited in tiles on and above
+        // the diagonal, so that the rows of one tile and the columns of its mirror tile stay in
+        // cache.
+        if ((M == N) && this->references_address(&target))
         {
-            for (index_t i = 1; i <= M; i++)
+            for (index_t ii = 1; ii <= M; ii += TILE)
             {
-                target(i,i) = source(i,i);
-                for (index_t j = i+1; j <= N; j++)
+                const index_t imax = std::min(ii + TILE - 1, M);
+                for (index_t jj = ii; jj <= M; jj += TILE)
                 {
-                    const dtype source_ij = source(i,j);
-                    const dtype source_ji = source(j,i);
-                    target(i,j) = source_ji;
-                    target(j,i) = source_ij;
+                    const index_t jmax = std::min(jj + TILE - 1, M);
+                    for (index_t i = ii; i <= imax; i++)
+                    {
+                        if (jj == ii) target(i,i) = source(i,i);
+                        for (index_t j = std::max(jj, i+1); j <= jmax; j++)
+                        {
+                            const dtype source_ij = source(i,j);
+                            const dtype source_ji = source(j,i);
+                            target(i,j) = source_ji;
+                            target(j,i) = source_ij;
+                        }
+                    }
                 }
             }
         }
@@ -157,9 +167,18 @@ namespace matl::expr
         }
         else
         {
-            for (index_t i = 1; i <= M; i++)
-                for (index_t j = 1; j <= N; j++)
-                    target(i,j) = source(j,i);
+            // Visit the elements in tiles (see detail::TILE)
+            for (index_t ii = 1; ii <= M; ii += TILE)
+            {
+                const index_t imax = std::min(ii + TILE - 1, M);
+                for (index_t jj = 1; jj <= N; jj += TILE)
+                {
+                    const index_t jmax = std::min(jj + TILE - 1, N);
+                    for (index_t i = ii; i <= imax; i++)
+                        for (index_t j = jj; j <= jmax; j++)
+                            target(i,j) = source(j,i);
+                }
+            }
         }
     }
 
