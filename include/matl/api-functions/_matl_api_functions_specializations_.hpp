@@ -1,4 +1,5 @@
-
 #include "./print/_matl_print_specializations_.hpp"
+#include "./stream/_matl_stream_specializations_.hpp"
 #include "./eye/_matl_eye_specializations_.hpp"
 #include "./zeros/_matl_zeros_specializations_.hpp"
+#include "./ones/_matl_ones_specializations_.hpp"

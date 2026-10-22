@@ -53,6 +53,9 @@ namespace matl
         // Copy constructor
         FixedSizeRowMajorMatrix(FixedSizeRowMajorMatrix const&) = default;
 
+        // Initializer-list constructor, one inner list per row (must be M rows of N elements)
+        FixedSizeRowMajorMatrix(matrix_rows<T>);
+
         // The members constrained by SizesMatch below accept only matrices and expressions that
         // can have dimensions M x N (others do not compile; dynamic dimensions are checked at run
         // time). They are defined here and forward to the out-of-line assign_expression and
@@ -72,6 +75,9 @@ namespace matl
 
         // Matrix copy (FixedSizeRowMajorMatrix specialization)
         FixedSizeRowMajorMatrix& operator= (FixedSizeRowMajorMatrix const&) = default;
+
+        // Initializer-list assignment, one inner list per row (must be M rows of N elements)
+        FixedSizeRowMajorMatrix& operator= (matrix_rows<T>);
 
         // Matrix copy (RowMajorMatrix specialization)
         template<class T2>
@@ -124,6 +130,9 @@ namespace matl
         // Copy the elements of a matrix with the same dimensions
         template<MatrixType MAT>
         void copy_matrix(MAT const&);
+
+        // Copy the elements of an initializer list with the same dimensions
+        void copy_rows(matrix_rows<T>);
     }; 
 
     // Fixed-size matrix "allocation" (checks the requested dimensions match the fixed size)

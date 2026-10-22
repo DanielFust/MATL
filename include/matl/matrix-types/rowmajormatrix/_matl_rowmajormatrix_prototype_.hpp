@@ -49,6 +49,9 @@ namespace matl
         // Preallocated constructor
         RowMajorMatrix(index_t, index_t, T*);
 
+        // Initializer-list constructor, one inner list per row: Matrix<double> A = {{1, 2}, {3, 4}};
+        RowMajorMatrix(matrix_rows<T>);
+
         // Copy constructor (General matrix)
         template<MatrixType MAT>
         RowMajorMatrix(MAT const&);
@@ -79,6 +82,9 @@ namespace matl
 
         // RowMajorMatrix copy assignment (same type)
         RowMajorMatrix<T>& operator= (RowMajorMatrix<T> const&);
+
+        // Initializer-list assignment (A = {} empties the matrix)
+        RowMajorMatrix<T>& operator= (matrix_rows<T>);
 
         // Copy assignment for RowMajorMatrix of another element type
         template<class T2>

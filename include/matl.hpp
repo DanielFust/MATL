@@ -43,6 +43,8 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <initializer_list>
+#include <sstream>
 #include <string>
 
 // Namespace type definitions and settings
