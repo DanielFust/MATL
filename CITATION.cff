@@ -1,0 +1,24 @@
+# Citation metadata for MATL (https://citation-file-format.github.io). GitHub shows a
+# "Cite this repository" button generated from this file.
+cff-version: 1.2.0
+message: "If you use MATL in your research, please cite it using the metadata below."
+type: software
+title: "MATL: Matrix Algebra Template Library"
+abstract: >-
+  MATL is a header-only C++20 library for dense matrix algebra with syntax close to
+  the mathematics. Expressions are evaluated lazily with expression templates, matrix
+  products use a cache-blocked SIMD kernel, and temporaries are recycled so that
+  repeated evaluations make no heap allocations.
+authors:
+  - family-names: Fust
+    given-names: Daniel
+version: 2.0.0
+license: BSD-3-Clause
+repository-code: "https://github.com/DanielFust/MATL"
+keywords:
+  - linear algebra
+  - matrix
+  - expression templates
+  - C++20
+  - header-only
+  - high-performance computing

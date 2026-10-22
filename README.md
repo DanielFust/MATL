@@ -270,3 +270,9 @@ cmake -S . -B build/cmake -DMATL_BUILD_BENCHMARKS=ON
 cmake --build build/cmake
 cd build/cmake && ctest
 ```
+
+## License and citation
+
+MATL is released under the [BSD 3-Clause License](LICENSE). If you use MATL in your research,
+please cite it: [CITATION.cff](CITATION.cff) has the citation metadata, and GitHub's
+"Cite this repository" button formats it (e.g. as BibTeX).
