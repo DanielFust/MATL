@@ -1,2 +1,17 @@
-# Build output from 'make examples', 'make check' and 'make check-sanitize'
-1.0.0/build/
+# Build output (Makefile and CMake)
+build/
+build-*/
+cmake-build-*/
+
+# Compiled programs and debug symbols
+*.o
+*.out
+*.exe
+*.dSYM/
+
+# Editor and operating-system files
+.DS_Store
+.vscode/
+.idea/
+*.code-workspace
+*.swp

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [simplified]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Minimum supported compilers (see 1.0.0/README.md)
+          # Minimum supported compilers (see README.md)
           - name: Linux GCC 10 (minimum)
             os: ubuntu-22.04
             cxx: g++-10
@@ -40,10 +40,6 @@ jobs:
           - name: macOS Apple Clang
             os: macos-latest
             cxx: clang++
-
-    defaults:
-      run:
-        working-directory: 1.0.0
 
     steps:
       - uses: actions/checkout@v4
@@ -75,10 +71,25 @@ jobs:
       - name: Build benchmarks
         run: make benchmarks CXX=${{ matrix.cxx }}
 
+      - name: CMake build and test
+        run: |
+          cmake -S . -B build/cmake -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+                -DMATL_BUILD_EXAMPLES=ON -DMATL_BUILD_BENCHMARKS=ON -DMATL_WARNINGS_AS_ERRORS=ON
+          cmake --build build/cmake --parallel 4
+          cd build/cmake && ctest --output-on-failure
+
+      - name: CMake install and find_package
+        run: |
+          cmake --install build/cmake --prefix "$PWD/build/install"
+          cmake -S tests/install -B build/install-test -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+                -DCMAKE_PREFIX_PATH="$PWD/build/install"
+          cmake --build build/install-test
+          ./build/install-test/matl_install_test
+
       - name: Upload MATL debug output
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: matl-test-logs-${{ matrix.os }}-${{ matrix.cxx }}
-          path: 1.0.0/build/*.log
+          path: build/*.log
           if-no-files-found: ignore
