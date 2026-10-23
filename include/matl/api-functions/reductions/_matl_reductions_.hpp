@@ -18,7 +18,9 @@
  * one scalar for the whole matrix.
  *
  * Expressions are reduced element by element without evaluating them into a temporary matrix
- * (products inside them are computed into temporaries, as in any evaluation).
+ * (products inside them are computed into temporaries, as in any evaluation). Large reductions run
+ * on several threads with OpenMP, and give the same result for any number of threads (see
+ * detail::reduce_elements).
  **************************************************************************************************/
 #ifndef MATL_REDUCTIONS_HPP
 #define MATL_REDUCTIONS_HPP
@@ -27,16 +29,52 @@ namespace matl
     namespace detail
     {
        /*******************************************************************************************
-        * void for_each_element(mao, f)
+        * T blocked_reduce(n, per_block, partial, combine, identity, work)
         *
-        * Calls f(value) for every element of a matrix or expression. When the expression has one
-        * storage order, elements are visited in storage order: with a single index if it allows
-        * one (see linear_index_v), otherwise (views) by (row, column). When its operands have
-        * different storage orders (e.g. A + transpose(B)), elements are visited row by row,
-        * because a single index then refers to different elements of the operands.
+        * A reduction over n items in fixed blocks: partial(first, last) reduces the items
+        * [first, last) of one block (from the identity), and the blocks' results are combined in
+        * order, combine(...combine(combine(identity, b1), b2)..., bk). The blocks are reduced in
+        * parallel when the work is large enough (see parallel_ranges); the result does not
+        * depend on the number of threads. The blocks' results are kept in the temporary arena,
+        * so a reduction makes no heap allocations.
         *******************************************************************************************/
-        template<MatrixAlgebraObject MAO, typename F>
-        void for_each_element(MAO const& mao, F&& f)
+        template<typename T, typename PARTIAL, typename COMBINE>
+        T blocked_reduce(index_t n, index_t per_block, PARTIAL const& partial, COMBINE const& combine,
+                         T identity, index_t work)
+        {
+            static_assert(std::is_trivially_copyable_v<T> && alignof(T) <= TemporaryArena::ALIGNMENT,
+                          "blocked_reduce: partial results are kept in the temporary arena");
+            if (n == 0) return identity;
+            per_block = std::max<index_t>(per_block, 1);
+            const index_t blocks = (n + per_block - 1) / per_block;
+            if (blocks == 1) return combine(identity, partial(index_t(0), n));
+
+            TemporaryBlock storage(blocks * sizeof(T));
+            T* const results = reinterpret_cast<T*>(storage.data());
+            parallel_ranges(blocks, work, [&](index_t first, index_t last)
+            {
+                for (index_t b = first; b < last; ++b)
+                    results[b] = partial(b * per_block, std::min(n, (b + 1) * per_block));
+            });
+            T result = identity;
+            for (index_t b = 0; b < blocks; ++b) result = combine(result, results[b]);
+            return result;
+        }
+
+       /*******************************************************************************************
+        * T reduce_elements(mao, identity, accumulate, combine)
+        *
+        * Reduces the elements of a matrix or expression: accumulate(a, x) adds element x to a
+        * partial result, and combine(a, b) joins two partial results. The elements are visited in
+        * storage order (with a single index if the expression allows one, see linear_index_v;
+        * otherwise by (row, column), row by row when the operands have different storage orders),
+        * in blocks of about REDUCTION_BLOCK elements (whole rows or columns for the (row, column)
+        * order). The blocks are reduced from the identity, in parallel with OpenMP, and combined
+        * in order, so the result does not depend on the number of threads (see
+        * _matl_parallel_.hpp).
+        *******************************************************************************************/
+        template<MatrixAlgebraObject MAO, typename T, typename ACCUMULATE, typename COMBINE>
+        T reduce_elements(MAO const& mao, T identity, ACCUMULATE const& accumulate, COMBINE const& combine)
         {
             #ifdef MATL_DIMENSION_CHECK
             check_dimensions(mao);
@@ -47,21 +85,58 @@ namespace matl
             constexpr StorageOrder order = traits<MAO>::storage_order;
             if constexpr ((order == StorageOrder::RowMajor || order == StorageOrder::ColMajor) && linear_index_v<MAO>)
             {
-                const index_t K = mao.size();
-                for (index_t k = 1; k <= K; ++k) f(source(k));
+                return blocked_reduce<T>(M * N, REDUCTION_BLOCK, [&](index_t first, index_t last)
+                {
+                    T a = identity;
+                    for (index_t k = first + 1; k <= last; ++k) a = accumulate(a, source(k));
+                    return a;
+                }, combine, identity, M * N);
             }
             else if constexpr (order == StorageOrder::ColMajor)
             {
-                for (index_t j = 1; j <= N; ++j)
-                    for (index_t i = 1; i <= M; ++i)
-                        f(source(i, j));
+                return blocked_reduce<T>(N, REDUCTION_BLOCK / std::max<index_t>(M, 1), [&](index_t first, index_t last)
+                {
+                    T a = identity;
+                    for (index_t j = first + 1; j <= last; ++j)
+                        for (index_t i = 1; i <= M; ++i) a = accumulate(a, source(i, j));
+                    return a;
+                }, combine, identity, M * N);
             }
             else
             {
-                for (index_t i = 1; i <= M; ++i)
-                    for (index_t j = 1; j <= N; ++j)
-                        f(source(i, j));
+                return blocked_reduce<T>(M, REDUCTION_BLOCK / std::max<index_t>(N, 1), [&](index_t first, index_t last)
+                {
+                    T a = identity;
+                    for (index_t i = first + 1; i <= last; ++i)
+                        for (index_t j = 1; j <= N; ++j) a = accumulate(a, source(i, j));
+                    return a;
+                }, combine, identity, M * N);
             }
+        }
+
+        // Partial result of min and max: the extreme value so far, if any element has been seen
+        // (the first element starts the search, as in a serial loop)
+        template<typename T>
+        struct extreme
+        {
+            bool any;
+            T    value;
+        };
+
+        // min (LESS = true) or max of the elements
+        template<bool LESS, MatrixAlgebraObject MAO>
+        dtype_t<MAO> extreme_element(MAO const& mao)
+        {
+            typedef dtype_t<MAO> T;
+            const auto better = [](T x, T than) {if constexpr (LESS) return x < than; else return than < x;};
+            const auto accumulate = [better](extreme<T> a, T x) {return (!a.any || better(x, a.value)) ? extreme<T>{true, x} : a;};
+            const auto combine = [better](extreme<T> a, extreme<T> b)
+            {
+                if (!b.any) return a;
+                if (!a.any) return b;
+                return better(b.value, a.value) ? b : a;
+            };
+            return reduce_elements(mao, extreme<T>{false, T{}}, accumulate, combine).value;
         }
 
         // Floating-point type for results that are not integers (mean, Frobenius norm)
@@ -85,18 +160,16 @@ namespace matl
     template<MatrixAlgebraObject MAO>
     detail::dtype_t<MAO> sum(MAO const& mao)
     {
-        detail::dtype_t<MAO> s = 0;
-        detail::for_each_element(mao, [&](auto x) {s += x;});
-        return s;
+        typedef detail::dtype_t<MAO> T;
+        return detail::reduce_elements(mao, T(0), [](T a, T x) {return T(a + x);}, [](T a, T b) {return T(a + b);});
     }
 
     // Product of all the elements (1 for an empty matrix)
     template<MatrixAlgebraObject MAO>
     detail::dtype_t<MAO> prod(MAO const& mao)
     {
-        detail::dtype_t<MAO> p = 1;
-        detail::for_each_element(mao, [&](auto x) {p *= x;});
-        return p;
+        typedef detail::dtype_t<MAO> T;
+        return detail::reduce_elements(mao, T(1), [](T a, T x) {return T(a * x);}, [](T a, T b) {return T(a * b);});
     }
 
     // Mean of all the elements (double for integer matrices)
@@ -105,8 +178,8 @@ namespace matl
     {
         typedef detail::real_t<detail::dtype_t<MAO>> real;
         if (mao.size() == 0) detail::empty_reduction("mean");
-        real s = 0;
-        detail::for_each_element(mao, [&](auto x) {s += static_cast<real>(x);});
+        const real s = detail::reduce_elements(mao, real(0), [](real a, auto x) {return a + static_cast<real>(x);},
+                                               [](real a, real b) {return a + b;});
         return s / static_cast<real>(mao.size());
     }
 
@@ -115,10 +188,7 @@ namespace matl
     detail::dtype_t<MAO> min(MAO const& mao)
     {
         if (mao.size() == 0) detail::empty_reduction("min");
-        detail::dtype_t<MAO> m{};
-        bool first = true;
-        detail::for_each_element(mao, [&](auto x) {if (first || x < m) m = x; first = false;});
-        return m;
+        return detail::extreme_element<true>(mao);
     }
 
     // Largest element
@@ -126,10 +196,7 @@ namespace matl
     detail::dtype_t<MAO> max(MAO const& mao)
     {
         if (mao.size() == 0) detail::empty_reduction("max");
-        detail::dtype_t<MAO> m{};
-        bool first = true;
-        detail::for_each_element(mao, [&](auto x) {if (first || m < x) m = x; first = false;});
-        return m;
+        return detail::extreme_element<false>(mao);
     }
 
     // Sum of the diagonal elements (the matrix must be square)
@@ -159,8 +226,9 @@ namespace matl
     detail::real_t<detail::dtype_t<MAO>> norm_fro(MAO const& mao)
     {
         typedef detail::real_t<detail::dtype_t<MAO>> real;
-        real s = 0;
-        detail::for_each_element(mao, [&](auto x) {s += static_cast<real>(x) * static_cast<real>(x);});
+        const real s = detail::reduce_elements(mao, real(0),
+                                               [](real a, auto x) {return a + static_cast<real>(x) * static_cast<real>(x);},
+                                               [](real a, real b) {return a + b;});
         return std::sqrt(s);
     }
 

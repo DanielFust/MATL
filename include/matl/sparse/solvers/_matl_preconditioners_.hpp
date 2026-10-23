@@ -81,7 +81,10 @@ namespace matl
         template<typename R, typename Z>
         void apply(R const& r, Z& z) const
         {
-            for (index_t i = 1; i <= this->size(); ++i) z(i, 1) = r(i, 1) * this->inverse_diagonal_[i - 1];
+            detail::parallel_ranges(this->size(), this->size(), [&](index_t first, index_t last)
+            {
+                for (index_t i = first + 1; i <= last; ++i) z(i, 1) = r(i, 1) * this->inverse_diagonal_[i - 1];
+            });
         }
     };
 
@@ -98,7 +101,8 @@ namespace matl
     * in one CSR matrix holding L below the diagonal and U on and above it. Every diagonal entry
     * of S must be stored; a zero pivot is reported as matl::singular_matrix_error.
     *
-    * apply(r, z) solves L U z = r by forward and back substitution on the pattern.
+    * apply(r, z) solves L U z = r by forward and back substitution on the pattern (serially: each
+ * row depends on the rows before it).
     ***********************************************************************************************/
     template<class T, class I = index_t>
     class ILU0Preconditioner

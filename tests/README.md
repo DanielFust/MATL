@@ -10,6 +10,7 @@ make check-sanitize             # same, with AddressSanitizer + UndefinedBehavio
 make check-nodebug              # same, with MATL_NO_DEBUG (run-time debug checks compiled out)
 make check-abort                # same, with MATL_ABORT_ON_ERROR (errors abort instead of throwing)
 make check-noexceptions         # check that MATL compiles with -fno-exceptions and errors abort
+make check-openmp               # with OpenMP, on 4 threads (GCC, or Clang with an OpenMP runtime)
 make check FILTER=Transpose     # run only test cases whose name contains "Transpose"
 make check CXX=clang++          # choose a compiler (default: g++)
 ./build/matl_tests --list       # list all test case names
@@ -35,6 +36,7 @@ the build.
 | `matl_test.hpp` | Test framework (macros below) and the naive reference implementation `matl_test::Ref` |
 | `test_main.cpp` | Test runner |
 | `test_matrix.cpp` | Construction, indexing, copy/move, scalar and compound assignment, `eye` |
+| `test_parallel.cpp` | Thread parallelism: ranges cover every item once, exceptions inside parallel loops are rethrown, results are bit for bit the same on 1 and 4 threads (reductions, elementwise evaluation, sparse products, CG), and MATL runs serially inside a caller's parallel region |
 | `test_expressions.cpp` | Elementwise, scalar, product and transpose expressions; aliasing; fixed-size and mixed operands |
 | `test_evaluation.cpp` | Deferred evaluation: nested products read current operand values, no allocation until assignment, temporaries released afterwards, aliasing with deferred products |
 | `test_construction.cpp` | Initializer lists, `zeros` and `ones`, `operator<<` and `print` |

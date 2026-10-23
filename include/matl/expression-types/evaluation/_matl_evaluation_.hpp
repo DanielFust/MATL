@@ -197,6 +197,7 @@ namespace matl::detail
     * Evaluates an elementwise expression into the target (a matrix or a view). Elements are
     * visited in storage order when the target and the expression share a storage order (with a
     * single index when both allow it, see linear_index_v), and in tiles otherwise (see TILE).
+    * Large evaluations run on several threads with OpenMP (see _matl_parallel_.hpp).
     *
     * The caller is responsible for ensuring the target is a safe evaluation target (see
     * unsafe_evaluation_target) and has the dimensions of the expression.
@@ -208,41 +209,56 @@ namespace matl::detail
         const index_t M = expr.rows();
         const index_t N = expr.cols();
 
+        // Each thread writes its own range of rows, columns or tiles (see parallel_ranges); the
+        // result does not depend on the number of threads
         if constexpr (same_storage_order_v<MAT, EXPR> && linear_index_v<MAT> && linear_index_v<EXPR>)
         {
             const index_t K = expr.size();
-            for (index_t k = 1; k <= K; ++k)
-                target(k) = source(k);
+            parallel_ranges(K, K, [&](index_t first, index_t last)
+            {
+                for (index_t k = first + 1; k <= last; ++k)
+                    target(k) = source(k);
+            });
         }
         else if constexpr (same_storage_order_v<MAT, EXPR>)
         {
             // Storage order by (row, column): row by row, or column by column
             if constexpr (traits<MAT>::storage_order == StorageOrder::RowMajor)
             {
-                for (index_t i = 1; i <= M; ++i)
-                    for (index_t j = 1; j <= N; ++j)
-                        target(i,j) = source(i,j);
+                parallel_ranges(M, M * N, [&](index_t first, index_t last)
+                {
+                    for (index_t i = first + 1; i <= last; ++i)
+                        for (index_t j = 1; j <= N; ++j)
+                            target(i,j) = source(i,j);
+                });
             }
             else
             {
-                for (index_t j = 1; j <= N; ++j)
-                    for (index_t i = 1; i <= M; ++i)
-                        target(i,j) = source(i,j);
+                parallel_ranges(N, M * N, [&](index_t first, index_t last)
+                {
+                    for (index_t j = first + 1; j <= last; ++j)
+                        for (index_t i = 1; i <= M; ++i)
+                            target(i,j) = source(i,j);
+                });
             }
         }
         else
         {
-            for (index_t ii = 1; ii <= M; ii += TILE)
+            // Rows of tiles
+            parallel_ranges((M + TILE - 1) / TILE, M * N, [&](index_t first, index_t last)
             {
-                const index_t imax = std::min(ii + TILE - 1, M);
-                for (index_t jj = 1; jj <= N; jj += TILE)
+                for (index_t ii = first * TILE + 1; ii <= std::min(last * TILE, M); ii += TILE)
                 {
-                    const index_t jmax = std::min(jj + TILE - 1, N);
-                    for (index_t i = ii; i <= imax; ++i)
-                        for (index_t j = jj; j <= jmax; ++j)
-                            target(i,j) = source(i,j);
+                    const index_t imax = std::min(ii + TILE - 1, M);
+                    for (index_t jj = 1; jj <= N; jj += TILE)
+                    {
+                        const index_t jmax = std::min(jj + TILE - 1, N);
+                        for (index_t i = ii; i <= imax; ++i)
+                            for (index_t j = jj; j <= jmax; ++j)
+                                target(i,j) = source(i,j);
+                    }
                 }
-            }
+            });
         }
     }
 }

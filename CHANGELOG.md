@@ -3,6 +3,23 @@
 Notable changes to MATL, newest first. Version numbers follow [semantic versioning](https://semver.org):
 a new major version may require changes to code written for the previous one.
 
+## [Unreleased]
+
+### Added
+
+- **Threads (OpenMP):** compiled with `-fopenmp`, MATL runs elementwise evaluation, reductions,
+  sparse matrix times dense products and the Jacobi preconditioner on several threads (above about
+  65,000 elements of work, and never nested in a caller's parallel region). `MATL_NO_OPENMP` keeps
+  MATL serial. Exceptions inside parallel loops are rethrown after them. `make check-openmp` and
+  CTest (when OpenMP is found) run the test suite on 4 threads.
+
+### Changed
+
+- **Reductions are reproducible:** `sum`, `prod`, `mean`, `min`, `max`, `dot` and `norm_fro` add
+  their elements in fixed blocks of 4096, combined in order, so results are the same for any number
+  of threads. For more than 4096 elements, sums round slightly differently than in 2.2.0. Large
+  reductions keep their partial results in the temporary arena (no heap allocations).
+
 ## [2.2.0] - 2026-10-23
 
 Adds sparse matrices: storage and assembly, products with dense matrices, iterative solvers with
@@ -133,6 +150,7 @@ adds most of the library's features. Code written for 1.0.0 mostly compiles unch
 
 The original version, kept as the git tag `v1.0.0-backup`.
 
+[Unreleased]: https://github.com/DanielFust/MATL/compare/v2.2.0...HEAD
 [2.2.0]: https://github.com/DanielFust/MATL/releases/tag/v2.2.0
 [2.1.0]: https://github.com/DanielFust/MATL/releases/tag/v2.1.0
 [2.0.0]: https://github.com/DanielFust/MATL/releases/tag/v2.0.0

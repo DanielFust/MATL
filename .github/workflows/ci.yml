@@ -74,6 +74,12 @@ jobs:
       - name: Build without exceptions (-fno-exceptions)
         run: make check-noexceptions CXX=${{ matrix.cxx }}
 
+      # OpenMP: the GCC jobs (Apple Clang has no OpenMP runtime, and the Linux Clang images would
+      # need libomp)
+      - name: Test suite (OpenMP, 4 threads)
+        if: startsWith(matrix.cxx, 'g++')
+        run: make check-openmp CXX=${{ matrix.cxx }}
+
       - name: Build benchmarks
         run: make benchmarks CXX=${{ matrix.cxx }}
 

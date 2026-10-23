@@ -18,7 +18,7 @@ EXAMPLE_SRC   := $(wildcard examples/*.cpp)
 EXAMPLE_BIN   := $(patsubst examples/%.cpp,$(BUILD)/examples/%,$(EXAMPLE_SRC))
 EXAMPLE_FLAGS := -std=c++20 -O1 -g -Wall -Wextra -Werror
 
-.PHONY: test clean examples run-examples tests check check-sanitize check-nodebug check-abort check-noexceptions benchmarks bench
+.PHONY: test clean examples run-examples tests check check-sanitize check-nodebug check-abort check-noexceptions check-openmp benchmarks bench
 
 # Run the test suite (same as 'make check')
 test: check
@@ -65,6 +65,14 @@ $(BUILD)/matl_tests_abort: $(TEST_DEPS)
 
 check-abort: $(BUILD)/matl_tests_abort
 	./$(BUILD)/matl_tests_abort $(FILTER)
+
+# Run the test suite with OpenMP (-fopenmp; GCC, or Clang with an OpenMP runtime), on 4 threads
+$(BUILD)/matl_tests_openmp: $(TEST_DEPS)
+	@mkdir -p $(BUILD)
+	$(CXX) $(TEST_FLAGS) -fopenmp $(TEST_SRC) $(INC) -I tests -o $@
+
+check-openmp: $(BUILD)/matl_tests_openmp
+	OMP_NUM_THREADS=4 ./$(BUILD)/matl_tests_openmp $(FILTER) > $(BUILD)/matl_tests_openmp.stdout.log
 
 # Check that MATL compiles without exceptions, and that errors then abort
 $(BUILD)/no_exceptions: tests/no_exceptions/main.cpp $(HEADERS)

@@ -13,8 +13,9 @@
  * sparse matrix is referenced by the expression, so a stored expression reads its current values.
  *
  * Cost: one multiply-add per stored entry and column of x. S * x visits the rows of S
- * independently (the loop to run in parallel later); transpose(S) * x scatters into the rows of
- * the result.
+ * independently, and runs on several threads with OpenMP (see _matl_parallel_.hpp);
+ * transpose(S) * x scatters into the rows of the result, and runs serially (an explicit transpose,
+ * CSRMatrix St = transpose(S), makes St * x parallel).
  *
  * The dimensions are always checked (matl::dimension_error).
  **************************************************************************************************/
@@ -151,34 +152,48 @@ namespace matl
 
             if constexpr (!TRANSPOSED)
             {
-                if (K == 1)
+                // Rows are independent: with OpenMP, each thread computes a range of rows holding
+                // about the same number of stored entries (rows can differ in length)
+                const index_t nnz = s.nnz();
+                const auto by_entries = [offsets, nnz](index_t t, index_t threads)
                 {
-                    for (index_t i = 1; i <= M; ++i)
-                    {
-                        dtype sum = 0;
-                        for (I p = offsets[i - 1]; p < offsets[i]; ++p)
-                            sum += values[p] * x(static_cast<index_t>(columns[p]) + 1, 1);
-                        target(i, 1) = sum;
-                    }
-                }
-                else
+                    const I target = static_cast<I>(nnz / threads * t + std::min(t, nnz % threads));
+                    return static_cast<index_t>(std::lower_bound(offsets.begin(), offsets.end(), target) - offsets.begin());
+                };
+                parallel_ranges(M, nnz * K, [&](index_t first, index_t last)
                 {
-                    std::vector<dtype> row(K);
-                    for (index_t i = 1; i <= M; ++i)
+                    if (K == 1)
                     {
-                        std::fill(row.begin(), row.end(), dtype(0));
-                        for (I p = offsets[i - 1]; p < offsets[i]; ++p)
+                        for (index_t i = first + 1; i <= last; ++i)
                         {
-                            const T v = values[p];
-                            const index_t j = static_cast<index_t>(columns[p]) + 1;
-                            for (index_t c = 1; c <= K; ++c) row[c - 1] += v * x(j, c);
+                            dtype sum = 0;
+                            for (I p = offsets[i - 1]; p < offsets[i]; ++p)
+                                sum += values[p] * x(static_cast<index_t>(columns[p]) + 1, 1);
+                            target(i, 1) = sum;
                         }
-                        for (index_t c = 1; c <= K; ++c) target(i, c) = row[c - 1];
                     }
-                }
+                    else
+                    {
+                        std::vector<dtype> row(K);
+                        for (index_t i = first + 1; i <= last; ++i)
+                        {
+                            std::fill(row.begin(), row.end(), dtype(0));
+                            for (I p = offsets[i - 1]; p < offsets[i]; ++p)
+                            {
+                                const T v = values[p];
+                                const index_t j = static_cast<index_t>(columns[p]) + 1;
+                                for (index_t c = 1; c <= K; ++c) row[c - 1] += v * x(j, c);
+                            }
+                            for (index_t c = 1; c <= K; ++c) target(i, c) = row[c - 1];
+                        }
+                    }
+                }, by_entries);
             }
             else
             {
+                // Serial: the scattered updates of different rows of S would write the same rows
+                // of the result (form the transpose, CSRMatrix<T, I> St = transpose(S), for a
+                // product that runs in parallel)
                 for (index_t j = 1; j <= product.rows(); ++j)
                     for (index_t c = 1; c <= K; ++c) target(j, c) = dtype(0);
                 for (index_t i = 1; i <= M; ++i)

@@ -45,6 +45,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <initializer_list>
 #include <limits>
 #include <span>
@@ -73,6 +74,9 @@ namespace matl
 
 // Error reporting (exceptions, or abort with MATL_ABORT_ON_ERROR or without exceptions)
 #include "./matl/errors/_matl_errors_.hpp"
+
+// Thread parallelism with OpenMP (when compiled with -fopenmp; see matl/parallel/_matl_parallel_.hpp)
+#include "./matl/parallel/_matl_parallel_.hpp"
 
 // Forward class and operator declarations
 #include "./matl/_matl_declarations_.hpp" 
