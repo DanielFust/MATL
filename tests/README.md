@@ -50,6 +50,7 @@ the build.
 | `test_qr.cpp` | QR factorization and least squares: `Q R = A`, orthonormal `Q` and triangular `R` for tall, square and wide matrices (small and blocked, both storage orders), least-squares solutions (exact fits, normal-equation residuals, square systems against LU), products with `Q`, views, expressions, integer and `float` matrices, in place, condition estimates, rank deficiency and errors |
 | `test_temporary_arena.cpp` | TemporaryArena (stack order, growth, out-of-order release) and the exact temporaries each kind of assignment uses |
 | `test_heap_allocations.cpp` | Counts heap allocations: none during evaluation once the arena has grown. Replaces the global `operator new` for the test program (counting only inside an explicit window) |
+| `test_iterative.cpp` | Iterative solvers and preconditioners: CG, BiCGSTAB and GMRES on the 2D Laplacian and a nonsymmetric convection-diffusion matrix (against dense LU), Jacobi and ILU(0) (fewer iterations; exact for a tridiagonal matrix), restart lengths, dense matrices and operator functions, vector types, `float`, non-convergence, errors |
 | `test_memory_manager.cpp` | Matrix memory ownership (heap and external buffers), `allocate`/`deallocate`, MemoryManager settings, per-thread arenas |
 | `test_errors.cpp` | Error reporting: run-time bounds and dimension checks (including operands of different sizes), exception types and messages, recovery after a caught error |
 | `no_exceptions/main.cpp` | A separate program built with `-fno-exceptions`: MATL compiles, and errors abort |
