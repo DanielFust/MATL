@@ -101,7 +101,8 @@ namespace matl
             (traits<A>::storage_order == traits<B>::storage_order) &&
             (traits<A>::storage_order == StorageOrder::RowMajor || traits<A>::storage_order == StorageOrder::ColMajor);
 
-        // Expression kinds (specialized in the expression type prototypes)
+        // Expression kinds (specialized in the expression type prototypes; is_product_v also for
+        // sparse products, which are likewise computed into a temporary when nested)
         template<typename T> inline constexpr bool is_transpose_v = false;
         template<typename T> inline constexpr bool is_product_v   = false;
         template<typename T> inline constexpr bool is_owned_v     = false;
