@@ -13,6 +13,7 @@ they are best read in order:
 | [`06_polynomial_fit.cpp`](06_polynomial_fit.cpp) | An application: a least-squares polynomial fit with QR, compared with the normal equations (Cholesky), combining views, elementwise powers, products, condition estimates and reductions |
 | [`07_sparse_matrices.cpp`](07_sparse_matrices.cpp) | Sparse matrices: assembling 1D finite-element stiffness and mass matrices element by element, products with vectors, changing values in a fixed pattern, the CSR arrays, 32-bit indices |
 | [`08_iterative_solvers.cpp`](08_iterative_solvers.cpp) | Iterative solvers: the 2D Poisson equation with CG, Jacobi and ILU(0) preconditioning, tolerances and iteration limits, a nonsymmetric problem with BiCGSTAB and GMRES, and a matrix-free stencil operator |
+| [`09_direct_sparse_solvers.cpp`](09_direct_sparse_solvers.cpp) | Direct solvers for structured sparse matrices: the 1D heat equation with implicit time steps (tridiagonal), sparse arithmetic to build a 2D Laplacian, and the 2D Poisson equation by banded Cholesky, compared with CG |
 
 ## Building and running
 

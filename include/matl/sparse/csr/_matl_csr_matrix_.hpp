@@ -45,6 +45,12 @@ namespace matl
     template<class T, class I = index_t> class CSRMatrix;
     template<class T, class I = index_t> class SparseBuilder;
 
+    namespace expr
+    {
+        // transpose(S) of a sparse matrix (see _matl_sparse_product_.hpp)
+        template<class T, class I> class SparseTransposed;
+    }
+
     namespace detail
     {
         // Sparse matrix types
@@ -166,6 +172,10 @@ namespace matl
             detail::check_fits_index<I>(cols, "the number of columns");
             this->validate();
         }
+
+        // The transpose, formed explicitly: CSRMatrix<double> St = transpose(S);
+        // (defined in _matl_sparse_arithmetic_.hpp)
+        CSRMatrix(expr::SparseTransposed<T, I> const& transposed);
 
         /********************** Dimensions **********************/
 

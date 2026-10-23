@@ -326,6 +326,31 @@ matrices; for a symmetric matrix it is symmetric, so CG can use it). For the 2D 
 a 100 x 100 grid, CG takes 208 iterations, and 92 with ILU(0). Any type with a member
 `apply(r, z)` that sets `z = M⁻¹ r` can be passed as a preconditioner.
 
+### Sparse arithmetic
+
+`S + T`, `S - T` and `S * T` of sparse matrices give sparse matrices (the pattern of a sum is the
+union of the two patterns; entries that cancel are kept), and `CSRMatrix<double> St = transpose(S);`
+forms the transpose. Unlike dense expressions, these are computed when they are called, since a
+result's pattern must be known before its values are stored. `diagonal(S)` is the diagonal as a
+dense column. (`transpose(S)` alone is a lightweight reference for products, `transpose(S) * x`;
+convert it to a `CSRMatrix` to use it in sparse arithmetic.)
+
+### Direct solvers for tridiagonal and banded matrices
+
+| Function | Solves | Cost |
+| --- | --- | --- |
+| `solve_tridiagonal(lower, diagonal, upper, b)` | A tridiagonal system, by the Thomas algorithm (no pivoting: for diagonally dominant or SPD matrices) | O(n) |
+| `lu(B)`, `lu_solve(B, b)` | A `BandedMatrix` by LU with partial pivoting (LAPACK's `xGBTRF`) | O(n kl (kl + ku)) |
+| `cholesky(B)`, `cholesky_solve(B, b)` | A symmetric positive definite `BandedMatrix` (its lower band is read) | O(n kl²) |
+
+`BandedMatrix<T> B(n, kl, ku)` stores the kl subdiagonals and ku superdiagonals in LAPACK's band
+layout (`B.band()`); `B(i, j)` reads an element (0 outside the band) and `B.entry(i, j) = v` writes
+one. `banded(S)` converts a sparse (or dense) matrix, finding its bandwidths. The factorizations
+have the same interface as the dense ones (`solve`, `solve_inplace`, `rcond`, `determinant`). A
+banded solver is a direct solver for PDE matrices with a small bandwidth: the 5-point Laplacian on a
+k x k grid has bandwidth k, so its banded Cholesky factorization costs O(n k²) = O(n²) for n = k²
+unknowns (a 60 x 60 grid: about 10 ms), and the fill-in stays inside the band.
+
 ## Expressions, values and lifetimes
 
 An arithmetic expression on matrices produces an *expression object* (a formula), not a matrix.
