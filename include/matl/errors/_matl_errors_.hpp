@@ -9,7 +9,7 @@
  *       matl::dimension_error  (derived from std::invalid_argument)  incompatible dimensions
  *       matl::index_error      (derived from std::out_of_range)      element index out of range
  *       matl::singular_matrix_error        (derived from std::runtime_error)  a factorization or
- *                                          triangular solve met an exactly zero pivot
+ *                                          solve met an exactly zero pivot
  *       matl::not_positive_definite_error  (derived from std::runtime_error)  Cholesky
  *                                          factorization of a matrix that is not positive definite
  *       std::logic_error                                             misuse of the TemporaryArena
@@ -66,8 +66,9 @@ namespace matl
     * class singular_matrix_error
     *
     * Thrown when a matrix is found to be singular: an LU factorization meets a column with no
-    * nonzero pivot, or a triangular matrix has a zero on its diagonal. (A matrix that is only
-    * close to singular is factorized; see the rcond() of the factorizations.)
+    * nonzero pivot, a triangular matrix has a zero on its diagonal, or a QR least-squares solve
+    * meets a rank-deficient matrix (a zero on the diagonal of R). (A matrix that is only close to
+    * singular is factorized; see the rcond() of the factorizations.)
     ***********************************************************************************************/
     class singular_matrix_error : public std::runtime_error
     {

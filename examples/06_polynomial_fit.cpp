@@ -2,17 +2,16 @@
  * Example 6: fitting a polynomial (an application)
  *
  * Fits a quadratic y = c1 + c2 x + c3 x^2 to measured points by least squares, combining several
- * features: views to build the design matrix column by column, elementwise powers, matrix
- * products, a Cholesky solve, the condition estimate, and reductions.
+ * features: views to build the design matrix column by column, elementwise powers, the QR
+ * factorization, matrix products, a Cholesky solve, condition estimates and reductions.
  *
  * The least-squares coefficients c minimize ||V c - y||_2, where row i of the design matrix V is
- * (1, x_i, x_i^2). They solve the normal equations
+ * (1, x_i, x_i^2). There are two standard ways to compute them:
  *
- *     (V^T V) c = V^T y,
- *
- * whose matrix V^T V is symmetric positive definite (when the x_i are distinct), so Cholesky
- * applies. (The normal equations square the condition number of V; for badly conditioned fits a
- * QR factorization is the better tool.)
+ *   - QR: factorize V = Q R, then solve R c = (Q^T y)(1:3). This is what qr(V).solve(y) does.
+ *   - The normal equations (V^T V) c = V^T y. V^T V is symmetric positive definite (when the x_i
+ *     are distinct), so Cholesky applies. This is cheaper, but V^T V has the square of V's
+ *     condition number, so it loses twice as many digits.
  *
  * Build and run from the repository root:
  *
@@ -41,19 +40,31 @@ int main()
     for (index_t k = 1; k <= degree + 1; ++k)
         V(all, k) = pow(x, double(k - 1));
 
-    // Normal equations, solved by Cholesky
-    Matrix<double> VtV = transpose(V) * V;
-    Matrix<double> Vty = transpose(V) * y;
-    auto C = cholesky(VtV);
-    Matrix<double> c = C.solve(Vty);
+    /******************************** Least squares by QR ***************************************/
 
+    auto F = qr(V);
+    Matrix<double> c = F.solve(y);
     std::cout << "fitted coefficients (exact: 1, 2, -3):\n" << c << "\n\n";
-    std::cout << "rcond(V^T V) = " << C.rcond() << "\n";
 
     // How well does the fit match? The residual r = y - V c, and its root mean square
     Matrix<double> r = y - V * c;
     std::cout << "rms residual = " << std::sqrt(mean(times(r, r))) << "\n";
     std::cout << "largest residual = " << max(abs(r)) << "\n\n";
+
+    // At the least-squares solution, the residual is orthogonal to the columns of V
+    std::cout << "||V^T r|| = " << norm_fro(transpose(V) * r) << " (zero up to rounding)\n\n";
+
+    /******************************** The normal equations **************************************/
+
+    Matrix<double> VtV = transpose(V) * V;
+    auto C = cholesky(VtV);
+    Matrix<double> c_normal = C.solve(transpose(V) * y);
+    std::cout << "normal equations give the same fit here: max difference "
+              << max(abs(c_normal - c)) << "\n";
+
+    // The condition estimates show why QR is preferred: rcond of V^T V is about the square of
+    // that of V (R from the QR factorization has the condition number of V)
+    std::cout << "rcond(V) ~ rcond(R) = " << F.rcond() << ",  rcond(V^T V) = " << C.rcond() << "\n\n";
 
     // Evaluate the fitted polynomial between the measurements
     Matrix<double> t = {{0.25}, {0.5}, {0.75}};

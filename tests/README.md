@@ -46,6 +46,7 @@ the build.
 | `test_views.cpp` | Views with `range`, `all` and `last`: selecting and writing rows, columns, blocks and steps, views in expressions, products and reductions, views of views, column-major and fixed-size matrices, assignments that overlap what they read, views of temporaries, errors |
 | `test_expression_lifetime.cpp` | Stored expressions (`auto e = ...`): ownership of sub-expressions and temporaries, live references to named matrices, initializing matrices from expressions |
 | `test_products.cpp` | The cache-blocked product kernel at sizes around its block boundaries, element types, expression operands, aliasing and fixed-size operands |
+| `test_qr.cpp` | QR factorization and least squares: `Q R = A`, orthonormal `Q` and triangular `R` for tall, square and wide matrices (small and blocked, both storage orders), least-squares solutions (exact fits, normal-equation residuals, square systems against LU), products with `Q`, views, expressions, integer and `float` matrices, in place, condition estimates, rank deficiency and errors |
 | `test_temporary_arena.cpp` | TemporaryArena (stack order, growth, out-of-order release) and the exact temporaries each kind of assignment uses |
 | `test_heap_allocations.cpp` | Counts heap allocations: none during evaluation once the arena has grown. Replaces the global `operator new` for the test program (counting only inside an explicit window) |
 | `test_memory_manager.cpp` | Matrix memory ownership (heap and external buffers), `allocate`/`deallocate`, MemoryManager settings, per-thread arenas |

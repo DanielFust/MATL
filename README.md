@@ -193,6 +193,7 @@ choice, and its requirements, are explicit:
 | --- | --- | --- |
 | `lu(A)`, `lu_solve(A, B)` | `A X = B` by LU factorization with partial pivoting, `P A = L U` | `A` square |
 | `cholesky(A)`, `cholesky_solve(A, B)` | `A X = B` by Cholesky factorization, `A = L Lᵀ` | `A` symmetric positive definite (only its lower triangle is read) |
+| `qr(A)`, `qr_solve(A, B)` | `A X ≈ B` in the least-squares sense (minimizes `‖A X − B‖`) by Householder QR, `A = Q R`; for a square `A`, `A X = B` | `A` m x n with m ≥ n and full column rank (`qr(A)` itself accepts any shape) |
 | `solve_lower(L, B)`, `solve_upper(U, B)` | `L X = B`, `U X = B` by forward or back substitution | `L`, `U` triangular (only that triangle is read); `Diagonal::Unit` takes the diagonal to be 1 |
 
 ```cpp
@@ -206,6 +207,9 @@ double d = F.determinant();
 
 auto C = cholesky(S);              // S symmetric positive definite: half the work of LU
 C.solve_inplace(X);                // overwrites X (a matrix or a view) with the solution
+
+auto Q = qr(V);                    // V tall (more equations than unknowns), e.g. a data fit
+Matrix<double> c = Q.solve(y);     // least squares: c minimizes ||V c - y||
 ```
 
 A factorization object holds the factors packed in one matrix, as LAPACK does: for LU, `U` on and
@@ -213,9 +217,18 @@ above the diagonal and `L` below it (its unit diagonal is not stored), plus the 
 (`pivots()`). `F.L()`, `F.U()` and `F.P()` return the factors as separate matrices, with
 `P A = L U`. Matrices of integers are factorized in `double`; `float` stays `float`.
 
-**In place.** `lu_inplace(A)` and `cholesky_inplace(A)` factorize a matrix in its own memory
-instead of a copy: `A` then holds the factors (for Cholesky, `L` with zeros above the diagonal),
-and must outlive the factorization object, which uses its memory.
+**QR and least squares.** `qr(A)` writes `A` as `Q R`, with `Q` orthogonal (a product of
+Householder reflections) and `R` upper triangular. `F.Q()` and `F.R()` are the thin factors (`Q` is
+m x min(m, n), and `F.Q() * F.R()` is `A`), `F.full_Q()` is the m x m `Q`, and `F.Qt_times(B)` and
+`F.Q_times(B)` multiply by `Qᵀ` and `Q` without forming `Q`. For least squares, QR is the accurate
+choice: solving the normal equations `AᵀA x = Aᵀb` (e.g. with Cholesky) is cheaper, but squares the
+condition number of `A`. QR exists for every matrix, so `qr(A)` never fails; `solve` reports a matrix
+that is exactly rank deficient (a zero on the diagonal of `R`) as `matl::singular_matrix_error`,
+and `rcond()` estimates the condition number of `R`.
+
+**In place.** `lu_inplace(A)`, `cholesky_inplace(A)` and `qr_inplace(A)` factorize a matrix in
+its own memory instead of a copy: `A` then holds the factors (for Cholesky, `L` with zeros above
+the diagonal), and must outlive the factorization object, which uses its memory.
 
 **Singular and ill-conditioned matrices.** A pivot that is exactly zero means the matrix is
 singular, and is reported as `matl::singular_matrix_error` (`matl::not_positive_definite_error`
@@ -229,7 +242,9 @@ factorization.
 **Performance.** The factorizations are blocked: each panel of 64 columns is factorized column by
 column, and the rest of the matrix is updated with one matrix product through views, which runs on
 the product kernel. At n = 1024 (Intel i9-9880H, GCC 15 and Clang 21, `-O2 -march=native`), LU runs
-at about 11–17 GFLOP/s and Cholesky at about 10–12 GFLOP/s, against 25–29 GFLOP/s for the product.
+at about 11–17 GFLOP/s, Cholesky at about 10–12 GFLOP/s and QR at about 12–13 GFLOP/s, against
+25–29 GFLOP/s for the product. (QR's panels are combined into block reflectors, as LAPACK's
+`xGEQRF` does, so that its update is matrix products too.)
 
 ## Expressions, values and lifetimes
 
@@ -428,7 +443,7 @@ MATL reports the errors it detects by throwing an exception:
 | --- | --- | --- |
 | `matl::dimension_error` | `std::invalid_argument` | Operands, or an assignment target, have incompatible dimensions |
 | `matl::index_error` | `std::out_of_range` | An element index is out of range (indices are 1-based) |
-| `matl::singular_matrix_error` | `std::runtime_error` | A factorization or triangular solve meets an exactly zero pivot |
+| `matl::singular_matrix_error` | `std::runtime_error` | A factorization or solve meets an exactly zero pivot (a singular, or for QR rank-deficient, matrix) |
 | `matl::not_positive_definite_error` | `std::runtime_error` | A Cholesky factorization meets a pivot that is not positive |
 | `std::logic_error` | | The `TemporaryArena` is misused (e.g. releasing a block twice) |
 

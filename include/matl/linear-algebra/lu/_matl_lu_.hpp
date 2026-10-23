@@ -42,9 +42,6 @@ namespace matl
 {
     namespace detail
     {
-        // Columns per panel of the blocked factorizations
-        inline constexpr index_t FACTORIZATION_BLOCK = 64;
-
         // Applies the row interchanges of steps k0..k1 to columns c0..c1 of a. Row-major matrices
         // swap row segments; column-major ones apply all the interchanges to one column at a
         // time, so that each column is read once from memory (as LAPACK's xLASWP).

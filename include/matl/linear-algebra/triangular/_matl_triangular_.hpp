@@ -30,6 +30,9 @@ namespace matl
 
     namespace detail
     {
+        // Columns per panel of the blocked factorizations (LU, Cholesky, QR)
+        inline constexpr index_t FACTORIZATION_BLOCK = 64;
+
         // Floating-point element type in which a system with elements of type T is solved (double
         // for integers)
         template<typename T>
