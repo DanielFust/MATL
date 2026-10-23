@@ -12,6 +12,16 @@ a new major version may require changes to code written for the previous one.
   and `rcond`; `qr_solve(A, B)` and `qr_inplace(A)`. Example 6 now fits with QR and compares the
   normal equations.
 
+### Changed
+
+- **Faster factorizations:** LU (Toledo) and Cholesky are now recursive, and QR factorizes its
+  panels recursively (as LAPACK's `xGEQRT3`), so that almost all their arithmetic is matrix
+  products. Block updates subtract the product inside the product kernel, without a temporary.
+  At n = 1024: LU about 1.2–1.8× faster (15–17 GFLOP/s), Cholesky about 1.2–1.5× (11–12 GFLOP/s),
+  QR about 1.3× (13–15 GFLOP/s), and QR of tall matrices about 1.6–1.9× (4000 x 400: 9–11 GFLOP/s).
+- `norm_1` and `norm_inf` visit the elements in storage order (one running sum per column or row),
+  which is faster for row-major `norm_1` and column-major `norm_inf`.
+
 ## [2.0.0] - 2026-10-22
 
 Version 2.0.0 rewrites MATL's internals (expression evaluation, memory management, products) and

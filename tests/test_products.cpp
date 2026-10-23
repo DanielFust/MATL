@@ -111,3 +111,34 @@ TEST_CASE("Products: fixed-size and mixed fixed-size operands at blocked sizes")
     RowMajorMatrix<double> D = random_matrix<double>(20, 14), R(18, 14);
     R = F * D;                                   CHECK_MATRIX_EQ(R, Ref::from(F) * Ref::from(D));
 }
+
+TEST_CASE("Products: subtract_product subtracts a product in place, small and blocked")
+{
+    // detail::subtract_product (used by the factorizations): C -= A * B without a temporary
+    for (index_t n : {3, 70})
+    {
+        RowMajorMatrix<double> A(n, n + 2), B(n + 2, n + 1), C(n, n + 1);
+        matl_test::fill_random(A);
+        matl_test::fill_random(B);
+        matl_test::fill_random(C);
+        const Ref expected = Ref::from(C) - Ref::from(A) * Ref::from(B);
+
+        RowMajorMatrix<double> R = C;
+        detail::subtract_product(R, A, B);
+        CHECK_MATRIX_EQ(R, expected);
+
+        ColMajorMatrix<double> Cc = C;
+        detail::subtract_product(Cc, ColMajorMatrix<double>(A), transpose(transpose(B)));
+        CHECK_MATRIX_EQ(Cc, expected);
+
+        // A view as the target, and views as operands
+        RowMajorMatrix<double> big(n + 4, n + 5);
+        big = 0.0;
+        big(range(3, n + 2), range(2, n + 2)) = C;
+        auto target = big(range(3, n + 2), range(2, n + 2));
+        detail::subtract_product(target, A(all, all), B(all, all));
+        CHECK_MATRIX_EQ(target, expected);
+        CHECK_EQ(big(1, 1), 0.0);
+        CHECK_EQ(big(n + 4, n + 5), 0.0);
+    }
+}

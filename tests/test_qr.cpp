@@ -51,7 +51,8 @@ namespace
 
 TEST_CASE("QR: factors of tall, square and wide matrices, small and blocked, in either storage order")
 {
-    const std::pair<index_t, index_t> shapes[] = {{1, 1}, {5, 3}, {3, 5}, {4, 4}, {130, 70}, {70, 130}, {150, 150}};
+    const std::pair<index_t, index_t> shapes[] = {{1, 1}, {5, 3}, {3, 5}, {4, 4}, {17, 17}, {40, 33},
+                                                  {130, 70}, {70, 130}, {150, 150}, {300, 130}};
     for (auto [m, n] : shapes)
     {
         const double tol = 1e-12 * double(m + n);
