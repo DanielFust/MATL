@@ -1,10 +1,10 @@
 #ifndef MATL_HPP
 #define MATL_HPP
 
-// Version (MATL_VERSION is MAJOR * 10000 + MINOR * 100 + PATCH, e.g. 20100 for 2.1.0, so it can be
+// Version (MATL_VERSION is MAJOR * 10000 + MINOR * 100 + PATCH, e.g. 20200 for 2.2.0, so it can be
 // compared in #if). CMakeLists.txt reads the version from these lines.
 #define MATL_VERSION_MAJOR 2
-#define MATL_VERSION_MINOR 1
+#define MATL_VERSION_MINOR 2
 #define MATL_VERSION_PATCH 0
 #define MATL_VERSION (MATL_VERSION_MAJOR * 10000 + MATL_VERSION_MINOR * 100 + MATL_VERSION_PATCH)
 
