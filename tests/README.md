@@ -93,3 +93,24 @@ TEST_CASE("Expressions: my new case")
 Note that MATL only sizes a matrix automatically when it is empty: assigning a result of a
 different size to an already-allocated matrix is a dimension error, so use a separate matrix for
 each result size.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on pull requests, on pushes to `main`, and by hand: six compilers
+(GCC 10, 13 and 14, Clang 13 and 18, Apple Clang) with every mode above, the examples, the
+benchmarks, and the CMake build, install and `find_package`.
+
+When GitHub Actions minutes are limited (macOS runners count ten times; a full run costs about
+80-100 minutes), switch to the light CI, `.github/workflows/ci-light.yml`: two Linux jobs on the
+minimum compilers (GCC 10 and Clang 13), on pull requests only, with every mode (the sanitizers
+with Clang, OpenMP and CMake with GCC), about 15-20 minutes per run. The switch is a repository
+variable, so no workflow file changes:
+
+```sh
+gh variable set CI_LIGHT --body true      # light CI from now on (the full CI's jobs are skipped)
+gh variable delete CI_LIGHT               # back to the full CI
+gh workflow run ci.yml --ref <branch>     # the full CI by hand, in either mode
+```
+
+Pushing a branch without opening a pull request runs no CI.
+
