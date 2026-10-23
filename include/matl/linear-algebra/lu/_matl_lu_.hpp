@@ -23,13 +23,12 @@
  * singular, and is reported as matl::singular_matrix_error. A matrix that is only close to
  * singular is factorized; rcond() then tells how close (see CONDITION below).
  *
- * Algorithm: right-looking, blocked. Each panel of BLOCK columns is factorized column by column
- * (pivot search, row interchange within the panel, elimination within the panel), the panel's
- * row interchanges are applied to the other columns, the rows of U to its right are solved for,
- * and the rest of the matrix is updated with one matrix product,
- * A22 -= A21 * U12, which runs on the cache-blocked product kernel through views. For large
- * matrices this product is almost all the work, so the factorization runs close to the speed of
- * the product.
+ * Algorithm: recursive (Toledo). The columns are split in halves: the left half is factorized
+ * (recursively), its row interchanges are applied to the right half, the right half's rows of U
+ * are solved for (a recursive triangular solve), the rest of the right half is updated with one
+ * matrix product, A22 -= L21 * U12, and then factorized (recursively). Splitting all the way down
+ * to RECURSION_BASE columns turns almost all the arithmetic into matrix products of every size,
+ * which run on the cache-blocked product kernel through views.
  *
  * CONDITION: rcond() estimates 1 / (||A||_1 ||A^-1||_1) with a few triangular solves (see
  * detail::estimate_inverse_norm_1), not with the inverse. It is close to 1 for a well-conditioned
@@ -64,6 +63,130 @@ namespace matl
         }
 
        /*******************************************************************************************
+        * void lu_columns(a, pivots, j0, j1)
+        *
+        * Factorizes columns j0..j1 of a (rows j0..n) column by column: pivot search, row
+        * interchange within these columns, multipliers, and elimination within these columns.
+        * The base case of lu_recursive.
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        void lu_columns(DynamicMatrix<T, ORDER>& a, std::vector<index_t>& pivots, index_t j0, index_t j1)
+        {
+            const index_t n = a.rows();
+            for (index_t j = j0; j <= j1; ++j)
+            {
+                // Pivot: the largest element (in magnitude) of column j on or below the diagonal
+                index_t p = j;
+                T largest = std::abs(a(j,j));
+                for (index_t i = j + 1; i <= n; ++i)
+                    if (std::abs(a(i,j)) > largest) {largest = std::abs(a(i,j)); p = i;}
+                pivots[j - 1] = p;
+                if (largest == T(0))
+                    raise<singular_matrix_error>("lu: the matrix is singular (column " + std::to_string(j) +
+                                                 " has no nonzero pivot)");
+
+                // Interchange rows j and p within these columns (lu_recursive does the others)
+                if (p != j)
+                    for (index_t c = j0; c <= j1; ++c) std::swap(a(j,c), a(p,c));
+
+                // Multipliers: column j of L
+                const T reciprocal = T(1) / a(j,j);
+                for (index_t i = j + 1; i <= n; ++i) a(i,j) *= reciprocal;
+
+                // Eliminate: a(i,c) -= l(i,j) * u(j,c) for the columns right of j (in the storage
+                // order of a)
+                if constexpr (ORDER == StorageOrder::RowMajor)
+                {
+                    for (index_t i = j + 1; i <= n; ++i)
+                    {
+                        const T l = a(i,j);
+                        for (index_t c = j + 1; c <= j1; ++c) a(i,c) -= l * a(j,c);
+                    }
+                }
+                else
+                {
+                    for (index_t c = j + 1; c <= j1; ++c)
+                    {
+                        const T u = a(j,c);
+                        for (index_t i = j + 1; i <= n; ++i) a(i,c) -= a(i,j) * u;
+                    }
+                }
+            }
+        }
+
+       /*******************************************************************************************
+        * void solve_unit_lower(a, l0, l1, c0, c1)
+        *
+        * Solves L X = B in place, for the unit lower triangular L = a(l0:l1, l0:l1) and
+        * B = a(l0:l1, c0:c1) (rows of U right of a factorized block). L is split in halves:
+        * X1 = L11^-1 B1, B2 -= L21 X1 (a matrix product), X2 = L22^-1 B2, so that most of the work
+        * runs on the product kernel.
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        void solve_unit_lower(DynamicMatrix<T, ORDER>& a, index_t l0, index_t l1, index_t c0, index_t c1)
+        {
+            if (c0 > c1 || l0 >= l1) return;                  // nothing to solve, or L = 1
+            const index_t k = l1 - l0 + 1;
+            if (k <= RECURSION_BASE)
+            {
+                if constexpr (ORDER == StorageOrder::RowMajor)
+                {
+                    for (index_t i = l0 + 1; i <= l1; ++i)
+                        for (index_t p = l0; p < i; ++p)
+                        {
+                            const T l = a(i,p);
+                            for (index_t c = c0; c <= c1; ++c) a(i,c) -= l * a(p,c);
+                        }
+                }
+                else
+                {
+                    for (index_t c = c0; c <= c1; ++c)
+                        for (index_t i = l0 + 1; i <= l1; ++i)
+                        {
+                            T s = a(i,c);
+                            for (index_t p = l0; p < i; ++p) s -= a(i,p) * a(p,c);
+                            a(i,c) = s;
+                        }
+                }
+                return;
+            }
+            const index_t lm = l0 + k / 2;                    // first row of the second half
+            solve_unit_lower(a, l0, lm - 1, c0, c1);
+            auto B2 = a(range(lm, l1), range(c0, c1));
+            subtract_product(B2, a(range(lm, l1), range(l0, lm - 1)), a(range(l0, lm - 1), range(c0, c1)));
+            solve_unit_lower(a, lm, l1, c0, c1);
+        }
+
+       /*******************************************************************************************
+        * void lu_recursive(a, pivots, j0, j1)
+        *
+        * Factorizes columns j0..j1 of a (rows j0..n), applying their row interchanges within those
+        * columns (Toledo's recursive LU): factorize the left half of the columns, apply its
+        * interchanges to the right half, solve for the right half's rows of U, update the rest of
+        * the right half with one matrix product, factorize it, and apply its interchanges to the
+        * left half. Narrow column ranges are factorized column by column (lu_columns).
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        void lu_recursive(DynamicMatrix<T, ORDER>& a, std::vector<index_t>& pivots, index_t j0, index_t j1)
+        {
+            const index_t n = a.rows();
+            if (j1 - j0 + 1 <= RECURSION_BASE)
+            {
+                lu_columns(a, pivots, j0, j1);
+                return;
+            }
+            const index_t jm = j0 + (j1 - j0 + 1) / 2;       // first column of the right half
+
+            lu_recursive(a, pivots, j0, jm - 1);
+            interchange_rows(a, pivots, j0, jm - 1, jm, j1);
+            solve_unit_lower(a, j0, jm - 1, jm, j1);         // U12 = L11^-1 A12
+            auto A22 = a(range(jm, n), range(jm, j1));       // A22 -= L21 * U12
+            subtract_product(A22, a(range(jm, n), range(j0, jm - 1)), a(range(j0, jm - 1), range(jm, j1)));
+            lu_recursive(a, pivots, jm, j1);
+            interchange_rows(a, pivots, jm, j1, j0, jm - 1);
+        }
+
+       /*******************************************************************************************
         * void lu_factorize(DynamicMatrix<T, ORDER>& a, std::vector<index_t>& pivots)
         *
         * Overwrites the square matrix a with its LU factors (see the description above) and
@@ -72,86 +195,8 @@ namespace matl
         template<class T, StorageOrder ORDER>
         void lu_factorize(DynamicMatrix<T, ORDER>& a, std::vector<index_t>& pivots)
         {
-            const index_t n = a.rows();
-            pivots.resize(n);
-
-            for (index_t k0 = 1; k0 <= n; k0 += FACTORIZATION_BLOCK)
-            {
-                const index_t k1 = std::min(k0 + FACTORIZATION_BLOCK - 1, n);    // last column of the panel
-
-                // Panel: columns k0..k1, rows k0..n
-                for (index_t j = k0; j <= k1; ++j)
-                {
-                    // Pivot: the largest element (in magnitude) of column j on or below the diagonal
-                    index_t p = j;
-                    T largest = std::abs(a(j,j));
-                    for (index_t i = j + 1; i <= n; ++i)
-                        if (std::abs(a(i,j)) > largest) {largest = std::abs(a(i,j)); p = i;}
-                    pivots[j - 1] = p;
-                    if (largest == T(0))
-                        raise<singular_matrix_error>("lu: the matrix is singular (column " + std::to_string(j) +
-                                                     " has no nonzero pivot)");
-
-                    // Interchange rows j and p within the panel (the other columns follow below)
-                    if (p != j)
-                        for (index_t c = k0; c <= k1; ++c) std::swap(a(j,c), a(p,c));
-
-                    // Multipliers: column j of L
-                    const T reciprocal = T(1) / a(j,j);
-                    for (index_t i = j + 1; i <= n; ++i) a(i,j) *= reciprocal;
-
-                    // Eliminate within the panel: a(i,c) -= l(i,j) * u(j,c) for the panel's columns
-                    // right of j (in the storage order of a)
-                    if constexpr (ORDER == StorageOrder::RowMajor)
-                    {
-                        for (index_t i = j + 1; i <= n; ++i)
-                        {
-                            const T l = a(i,j);
-                            for (index_t c = j + 1; c <= k1; ++c) a(i,c) -= l * a(j,c);
-                        }
-                    }
-                    else
-                    {
-                        for (index_t c = j + 1; c <= k1; ++c)
-                        {
-                            const T u = a(j,c);
-                            for (index_t i = j + 1; i <= n; ++i) a(i,c) -= a(i,j) * u;
-                        }
-                    }
-                }
-
-                // The panel's row interchanges, in the columns left and right of it
-                interchange_rows(a, pivots, k0, k1, 1, k0 - 1);
-                interchange_rows(a, pivots, k0, k1, k1 + 1, n);
-
-                if (k1 == n) break;
-
-                // U12 = L11^-1 A12: rows k0..k1 of U right of the panel (L11 is unit lower
-                // triangular), along the rows or down the columns of A12
-                if constexpr (ORDER == StorageOrder::RowMajor)
-                {
-                    for (index_t i = k0 + 1; i <= k1; ++i)
-                        for (index_t p = k0; p < i; ++p)
-                        {
-                            const T l = a(i,p);
-                            for (index_t c = k1 + 1; c <= n; ++c) a(i,c) -= l * a(p,c);
-                        }
-                }
-                else
-                {
-                    for (index_t c = k1 + 1; c <= n; ++c)
-                        for (index_t i = k0 + 1; i <= k1; ++i)
-                        {
-                            T s = a(i,c);
-                            for (index_t p = k0; p < i; ++p) s -= a(i,p) * a(p,c);
-                            a(i,c) = s;
-                        }
-                }
-
-                // A22 -= L21 * U12 (the product kernel, through views)
-                a(range(k1 + 1, n), range(k1 + 1, n)) -= a(range(k1 + 1, n), range(k0, k1)) *
-                                                          a(range(k0, k1), range(k1 + 1, n));
-            }
+            pivots.resize(a.rows());
+            if (a.rows() > 0) lu_recursive(a, pivots, 1, a.rows());
         }
     }
 

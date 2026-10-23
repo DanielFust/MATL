@@ -208,18 +208,20 @@ namespace matl::detail
     }
 
    /***********************************************************************************************
-    * void blocked_product(target, lhs, rhs, M, N, K)
+    * void blocked_product<T, SUBTRACT>(target, lhs, rhs, M, N, K)
     *
-    * target = lhs * rhs, where lhs is M x K and rhs is K x N. The operands are read through
-    * operator()(i,j) (1-based) only while packing. T is the element type of the product and of
-    * the target, and must be an arithmetic type (the packing buffers are raw memory).
+    * target = lhs * rhs, or with SUBTRACT, target -= lhs * rhs (without a temporary: the packed
+    * blocks of lhs are negated, and the sums start from the target's elements). lhs is M x K and
+    * rhs is K x N. The operands are read through operator()(i,j) (1-based) only while packing. T is
+    * the element type of the product and of the target, and must be an arithmetic type (the
+    * packing buffers are raw memory).
     *
     * Parameters:
-    *     target       Target matrix (M x N; must not be read by the operands)
+    *     target       Target matrix (M x N; must not share elements with the operands)
     *     lhs, rhs     Operands (matrices or evaluated operands, see product_operand_t)
     *     M, N, K      Dimensions
     ***********************************************************************************************/
-    template<typename T, WritableMatrix MAT, typename LHS, typename RHS>
+    template<typename T, bool SUBTRACT = false, WritableMatrix MAT, typename LHS, typename RHS>
     void blocked_product(MAT& target, LHS const& lhs, RHS const& rhs, index_t M, index_t N, index_t K)
     {
         constexpr index_t MR = product_blocking<T>::MR;
@@ -247,6 +249,8 @@ namespace matl::detail
                 {
                     const index_t mc = std::min(MC, M - i0);
                     pack_lhs(packed_lhs, lhs, i0, mc, k0, kc);
+                    if constexpr (SUBTRACT)
+                        for (index_t p = 0; p < kc * round_up(mc, MR); ++p) packed_lhs[p] = -packed_lhs[p];
 
                     for (index_t jr = 0; jr < nc; jr += NR)
                     {
@@ -256,9 +260,10 @@ namespace matl::detail
                             const index_t mr = std::min(MR, mc - ir);
 
                             // Start from 0 for the first KC products, otherwise from the partial
-                            // sums stored in C (so the products are added in increasing k)
+                            // sums stored in C (so the products are added in increasing k); with
+                            // SUBTRACT, always from C
                             T acc[MR][NR] = {};
-                            if (k0 > 0)
+                            if (SUBTRACT || k0 > 0)
                                 for (index_t r = 0; r < mr; ++r)
                                     for (index_t c = 0; c < nr; ++c)
                                         acc[r][c] = target(i0 + ir + r + 1, j0 + jr + c + 1);

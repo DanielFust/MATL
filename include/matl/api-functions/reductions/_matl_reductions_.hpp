@@ -164,38 +164,66 @@ namespace matl
         return std::sqrt(s);
     }
 
-    // 1-norm: largest sum of absolute values of a column (0 for an empty matrix)
+    // 1-norm: largest sum of absolute values of a column (0 for an empty matrix). The elements are
+    // visited in storage order: a row-major matrix keeps one running sum per column.
     template<MatrixAlgebraObject MAO>
     detail::dtype_t<MAO> norm_1(MAO const& mao)
     {
         #ifdef MATL_DIMENSION_CHECK
         detail::check_dimensions(mao);
         #endif
+        typedef detail::dtype_t<MAO> dtype;
         const detail::evaluator<MAO> source(mao);
-        detail::dtype_t<MAO> largest = 0;
-        for (index_t j = 1; j <= mao.cols(); ++j)
+        const index_t M = mao.rows();
+        const index_t N = mao.cols();
+        dtype largest = 0;
+        if constexpr (detail::traits<MAO>::storage_order == StorageOrder::RowMajor)
         {
-            detail::dtype_t<MAO> s = 0;
-            for (index_t i = 1; i <= mao.rows(); ++i) s += detail::magnitude(source(i, j));
-            largest = std::max(largest, s);
+            std::vector<dtype> sums(N, dtype(0));
+            for (index_t i = 1; i <= M; ++i)
+                for (index_t j = 1; j <= N; ++j) sums[j - 1] += detail::magnitude(source(i, j));
+            for (dtype s : sums) largest = std::max(largest, s);
+        }
+        else
+        {
+            for (index_t j = 1; j <= N; ++j)
+            {
+                dtype s = 0;
+                for (index_t i = 1; i <= M; ++i) s += detail::magnitude(source(i, j));
+                largest = std::max(largest, s);
+            }
         }
         return largest;
     }
 
-    // Infinity norm: largest sum of absolute values of a row (0 for an empty matrix)
+    // Infinity norm: largest sum of absolute values of a row (0 for an empty matrix). The elements
+    // are visited in storage order: a column-major matrix keeps one running sum per row.
     template<MatrixAlgebraObject MAO>
     detail::dtype_t<MAO> norm_inf(MAO const& mao)
     {
         #ifdef MATL_DIMENSION_CHECK
         detail::check_dimensions(mao);
         #endif
+        typedef detail::dtype_t<MAO> dtype;
         const detail::evaluator<MAO> source(mao);
-        detail::dtype_t<MAO> largest = 0;
-        for (index_t i = 1; i <= mao.rows(); ++i)
+        const index_t M = mao.rows();
+        const index_t N = mao.cols();
+        dtype largest = 0;
+        if constexpr (detail::traits<MAO>::storage_order == StorageOrder::ColMajor)
         {
-            detail::dtype_t<MAO> s = 0;
-            for (index_t j = 1; j <= mao.cols(); ++j) s += detail::magnitude(source(i, j));
-            largest = std::max(largest, s);
+            std::vector<dtype> sums(M, dtype(0));
+            for (index_t j = 1; j <= N; ++j)
+                for (index_t i = 1; i <= M; ++i) sums[i - 1] += detail::magnitude(source(i, j));
+            for (dtype s : sums) largest = std::max(largest, s);
+        }
+        else
+        {
+            for (index_t i = 1; i <= M; ++i)
+            {
+                dtype s = 0;
+                for (index_t j = 1; j <= N; ++j) s += detail::magnitude(source(i, j));
+                largest = std::max(largest, s);
+            }
         }
         return largest;
     }

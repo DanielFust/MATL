@@ -239,12 +239,13 @@ solution loses about `log10(1 / rcond)` of the 16 significant digits of a `doubl
 dimensions are always checked (`matl::dimension_error`), since the check costs nothing next to the
 factorization.
 
-**Performance.** The factorizations are blocked: each panel of 64 columns is factorized column by
-column, and the rest of the matrix is updated with one matrix product through views, which runs on
-the product kernel. At n = 1024 (Intel i9-9880H, GCC 15 and Clang 21, `-O2 -march=native`), LU runs
-at about 11–17 GFLOP/s, Cholesky at about 10–12 GFLOP/s and QR at about 12–13 GFLOP/s, against
-25–29 GFLOP/s for the product. (QR's panels are combined into block reflectors, as LAPACK's
-`xGEQRF` does, so that its update is matrix products too.)
+**Performance.** The factorizations are recursive (Toledo's LU, a recursive Cholesky, and
+LAPACK's recursive QR panel, `xGEQRT3`, inside a blocked QR): they split the matrix in halves down
+to 16 columns, so that almost all the arithmetic is matrix products of every size, which run on
+the product kernel through views and subtract from the matrix without temporaries. At n = 1024
+(Intel i9-9880H, GCC 15 and Clang 21, `-O2 -march=native`), LU runs at about 15–17 GFLOP/s,
+Cholesky at about 11–12 GFLOP/s and QR at about 13–15 GFLOP/s (9–11 GFLOP/s for a 4000 x 400
+matrix), against 21–25 GFLOP/s for the product.
 
 ## Expressions, values and lifetimes
 

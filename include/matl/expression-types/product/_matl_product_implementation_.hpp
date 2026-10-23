@@ -61,6 +61,48 @@ namespace matl
         }
     }
 
+    namespace detail
+    {
+       /*******************************************************************************************
+        * void subtract_product(MAT& target, LHS const& lhs, RHS const& rhs)
+        *
+        * target -= lhs * rhs, without a temporary for the product (for the block updates of the
+        * factorizations, e.g. A22 -= L21 * U12). Matrix and view operands are read directly,
+        * expression operands are evaluated first.
+        *
+        * The caller ensures that the dimensions fit and that the target shares no elements with
+        * the operands (it is written while they are read).
+        *******************************************************************************************/
+        template<WritableMatrix MAT, typename LHS, typename RHS>
+        void subtract_product(MAT& target, LHS const& lhs, RHS const& rhs)
+        {
+            typedef dtype_t<MAT> dtype;
+            const product_operand_t<LHS> a(lhs);
+            const product_operand_t<RHS> b(rhs);
+            const index_t M = lhs.rows();
+            const index_t N = rhs.cols();
+            const index_t K = lhs.cols();
+
+            if constexpr (std::is_arithmetic_v<dtype> && std::is_same_v<promote_t<dtype_t<LHS>, dtype_t<RHS>>, dtype>)
+            {
+                if (M * N * K >= product_blocking<dtype>::MIN_BLOCKED_WORK)
+                {
+                    blocked_product<dtype, true>(target, a, b, M, N, K);
+                    return;
+                }
+            }
+
+            for (index_t i = 1; i <= M; i++)
+                for (index_t j = 1; j <= N; j++)
+                {
+                    dtype sum = target(i,j);
+                    for (index_t k = 1; k <= K; k++)
+                        sum -= a(i,k) * b(k,j);
+                    target(i,j) = sum;
+                }
+        }
+    }
+
     namespace expr
     {
        /*******************************************************************************************

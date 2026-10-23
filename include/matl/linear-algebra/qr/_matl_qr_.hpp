@@ -30,10 +30,11 @@
  * matl::singular_matrix_error, and rcond() shows how close R is to singular. (Column pivoting,
  * which reveals the rank, is not implemented.)
  *
- * Algorithm: blocked like LAPACK's xGEQRF. Each panel of BLOCK columns is factorized column by
- * column; its reflectors are then combined into one block reflector I - V T V^T (the "compact WY"
- * form), which is applied to the rest of the matrix with three matrix products on the product
- * kernel.
+ * Algorithm: blocked like LAPACK's xGEQRF. Each panel of BLOCK columns is factorized
+ * recursively (as xGEQRT3, see detail::qr_panel), which also gives the upper triangular T that
+ * combines the panel's reflectors into one block reflector I - V T V^T (the "compact WY" form);
+ * the block reflector is then applied to the rest of the matrix with three matrix products on the
+ * product kernel.
  **************************************************************************************************/
 #ifndef MATL_QR_HPP
 #define MATL_QR_HPP
@@ -118,6 +119,101 @@ namespace matl
         }
 
        /*******************************************************************************************
+        * DynamicMatrix<T, ORDER> reflector_block(a, r0, r1, c0, c1)
+        *
+        * The Householder vectors of columns c0..c1, as the rows r0..r1 of an explicit matrix V:
+        * 1 on the diagonal of each vector, zeros above it, and below it the elements stored in a
+        * (for the matrix products of the block reflector I - V T V^T).
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        DynamicMatrix<T, ORDER> reflector_block(DynamicMatrix<T, ORDER> const& a, index_t r0, index_t r1,
+                                                index_t c0, index_t c1)
+        {
+            DynamicMatrix<T, ORDER> v(r1 - r0 + 1, c1 - c0 + 1);
+            for (index_t i = 1; i <= v.rows(); ++i)
+                for (index_t c = 1; c <= v.cols(); ++c)
+                {
+                    const index_t r = r0 + i - 1, j = c0 + c - 1;
+                    v(i,c) = (r < j) ? T(0) : (r == j) ? T(1) : a(r,j);
+                }
+            return v;
+        }
+
+       /*******************************************************************************************
+        * void qr_panel(a, tau, j0, j1, t, k0)
+        *
+        * Factorizes columns j0..j1 of a (rows j0..m) into Householder reflections, and writes the
+        * upper triangular T of their block reflector I - V T V^T into rows and columns
+        * j0-k0+1 .. j1-k0+1 of t (the block of the panel that starts at column k0). Recursive, as
+        * LAPACK's xGEQRT3: the left half is factorized, its block reflector is applied to the
+        * right half with matrix products, the right half is factorized, and the two T are joined,
+        * T12 = -T11 (V1^T V2) T22. Narrow column ranges are factorized column by column.
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        void qr_panel(DynamicMatrix<T, ORDER>& a, std::vector<T>& tau, index_t j0, index_t j1,
+                      DynamicMatrix<T, ORDER>& t, index_t k0)
+        {
+            const index_t m  = a.rows();
+            const index_t nc = j1 - j0 + 1;
+            const index_t o  = j0 - k0;                         // offset of these columns in t
+
+            if (nc <= RECURSION_BASE)
+            {
+                // One reflector per column, each applied to the columns right of it
+                for (index_t j = j0; j <= j1; ++j)
+                {
+                    tau[j - 1] = householder(a, j);
+                    apply_householder(a, j, tau[j - 1], a, j + 1, j1);
+                }
+
+                // T column by column (LAPACK's xLARFT): T(1:c-1, c) = -tau_c T(1:c-1, 1:c-1) V(:, 1:c-1)^T v_c
+                const DynamicMatrix<T, ORDER> v = reflector_block(a, j0, m, j0, j1);
+                for (index_t c = 1; c <= nc; ++c)
+                {
+                    const T tc = tau[j0 + c - 2];
+                    t(o + c, o + c) = tc;
+                    for (index_t p = 1; p < c; ++p)
+                    {
+                        T sum = 0;
+                        for (index_t i = c; i <= v.rows(); ++i) sum += v(i,p) * v(i,c);
+                        t(o + p, o + c) = -tc * sum;
+                    }
+                    for (index_t p = 1; p < c; ++p)            // times the upper triangular T(1:c-1, 1:c-1)
+                    {
+                        T sum = 0;
+                        for (index_t q = p; q < c; ++q) sum += t(o + p, o + q) * t(o + q, o + c);
+                        t(o + p, o + c) = sum;
+                    }
+                }
+                return;
+            }
+
+            const index_t jm = j0 + nc / 2;                     // first column of the right half
+            const index_t n1 = jm - j0;
+            qr_panel(a, tau, j0, jm - 1, t, k0);
+
+            // Q1^T on the right half: A2 -= V1 T11^T (V1^T A2)
+            const DynamicMatrix<T, ORDER> v1 = reflector_block(a, j0, m, j0, jm - 1);
+            const auto t11 = t(range(o + 1, o + n1), range(o + 1, o + n1));
+            auto a2 = a(range(j0, m), range(jm, j1));
+            DynamicMatrix<T, ORDER> w(n1, j1 - jm + 1);
+            w = transpose(v1) * a2;
+            w = transpose(t11) * w;
+            subtract_product(a2, v1, w);
+
+            qr_panel(a, tau, jm, j1, t, k0);
+
+            // T12 = -T11 (V1^T V2) T22, where V2 has zeros above row jm
+            const DynamicMatrix<T, ORDER> v2 = reflector_block(a, jm, m, jm, j1);
+            const auto t22 = t(range(o + n1 + 1, o + nc), range(o + n1 + 1, o + nc));
+            DynamicMatrix<T, ORDER> x(n1, j1 - jm + 1);
+            x = transpose(v1(range(jm - j0 + 1, last), all)) * v2;
+            x = t11 * x;
+            x = x * t22;
+            t(range(o + 1, o + n1), range(o + n1 + 1, o + nc)) = -x;
+        }
+
+       /*******************************************************************************************
         * void qr_factorize(DynamicMatrix<T, ORDER>& a, std::vector<T>& tau)
         *
         * Overwrites a with its packed QR factors (see the description above) and fills in the
@@ -136,49 +232,20 @@ namespace matl
                 const index_t k1 = std::min(k0 + FACTORIZATION_BLOCK - 1, k);   // last column of the panel
                 const index_t kb = k1 - k0 + 1;
 
-                // Panel: one reflector per column, each applied to the panel's columns right of it
-                for (index_t j = k0; j <= k1; ++j)
-                {
-                    tau[j - 1] = householder(a, j);
-                    apply_householder(a, j, tau[j - 1], a, j + 1, k1);
-                }
+                // Panel: its reflectors, and the T of their block reflector I - V T V^T
+                DynamicMatrix<T, ORDER> Tb(kb, kb);
+                Tb = T(0);
+                qr_panel(a, tau, k0, k1, Tb, k0);
 
                 if (k1 == n) break;
-
-                // The panel's reflectors H_k0 ... H_k1 as one block reflector I - V T V^T:
-                // V (rows k0..m) holds the vectors (unit diagonal, zeros above it), and T is
-                // upper triangular (LAPACK's xLARFT)
-                const index_t mv = m - k0 + 1;
-                DynamicMatrix<T, ORDER> V(mv, kb), Tb(kb, kb);
-                for (index_t i = 1; i <= mv; ++i)
-                    for (index_t c = 1; c <= kb; ++c)
-                        V(i,c) = (i < c) ? T(0) : (i == c) ? T(1) : a(k0 + i - 1, k0 + c - 1);
-                Tb = T(0);
-                for (index_t c = 1; c <= kb; ++c)
-                {
-                    const T t = tau[k0 + c - 2];
-                    Tb(c,c) = t;
-                    // T(1:c-1, c) = -t T(1:c-1, 1:c-1) V(:, 1:c-1)^T v_c
-                    for (index_t p = 1; p < c; ++p)
-                    {
-                        T s = 0;
-                        for (index_t i = c; i <= mv; ++i) s += V(i,p) * V(i,c);
-                        Tb(p,c) = -t * s;
-                    }
-                    for (index_t p = 1; p < c; ++p)          // multiply by the upper triangular T(1:c-1, 1:c-1)
-                    {
-                        T s = 0;
-                        for (index_t q = p; q < c; ++q) s += Tb(p,q) * Tb(q,c);
-                        Tb(p,c) = s;
-                    }
-                }
+                const DynamicMatrix<T, ORDER> V = reflector_block(a, k0, m, k0, k1);
 
                 // Apply Q_panel^T = I - V T^T V^T to the trailing columns: A2 -= V (T^T (V^T A2))
                 auto A2 = a(range(k0, m), range(k1 + 1, n));
                 DynamicMatrix<T, ORDER> W(kb, n - k1);
                 W = transpose(V) * A2;
                 W = transpose(Tb) * W;
-                A2 -= V * W;
+                subtract_product(A2, V, W);
             }
         }
     }

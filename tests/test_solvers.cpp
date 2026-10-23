@@ -142,7 +142,7 @@ TEST_CASE("Solvers: LU of a matrix that needs pivoting")
 
 TEST_CASE("Solvers: LU solves random systems, small and blocked, in either storage order")
 {
-    for (index_t n : {1, 5, 63, 64, 65, 150})
+    for (index_t n : {1, 5, 15, 16, 17, 63, 64, 65, 150, 260})
     {
         M A = general_matrix<M>(n);
         M B = random_matrix<M>(n, 3);
@@ -273,7 +273,7 @@ TEST_CASE("Solvers: determinants")
 
 TEST_CASE("Solvers: Cholesky factors and solves, small and blocked, in either storage order")
 {
-    for (index_t n : {1, 7, 64, 65, 150})
+    for (index_t n : {1, 7, 16, 17, 64, 65, 150, 260})
     {
         M A = spd_matrix<M>(n);
         M B = random_matrix<M>(n, 2);

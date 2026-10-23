@@ -22,10 +22,11 @@
  * definite matrices: a pivot that is not positive means A is not positive definite (or is too
  * close to singular to tell), and is reported as matl::not_positive_definite_error.
  *
- * Algorithm: right-looking, blocked like the LU factorization (see _matl_lu_.hpp): each panel's
- * columns of L are computed column by column, and the rest of the matrix is updated with
- * A22 -= L21 * L21^T on the product kernel, one product per block column of the lower triangle
- * (the upper triangle is not needed, so this does half the arithmetic of the full update).
+ * Algorithm: recursive, like the LU factorization (see _matl_lu_.hpp): the matrix is split in
+ * halves, A11 = L11 L11^T (recursively), L21 = A21 L11^-T (a recursive triangular solve),
+ * A22 -= L21 L21^T on and below the diagonal (a recursive symmetric update, see
+ * detail::subtract_lower_gram), and A22 = L22 L22^T (recursively). Almost all the arithmetic is
+ * matrix products on the product kernel, which subtract from the matrix without temporaries.
  **************************************************************************************************/
 #ifndef MATL_CHOLESKY_HPP
 #define MATL_CHOLESKY_HPP
@@ -33,6 +34,117 @@ namespace matl
 {
     namespace detail
     {
+       /*******************************************************************************************
+        * void cholesky_columns(a, j0, j1)
+        *
+        * Factorizes the diagonal block a(j0:j1, j0:j1) column by column (its columns left of j0
+        * have already been subtracted): l(j,j) = sqrt(a(j,j) - sum l(j,p)^2) and
+        * l(i,j) = (a(i,j) - sum l(i,p) l(j,p)) / l(j,j) for the rows i of the block below j. The
+        * base case of cholesky_recursive.
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        void cholesky_columns(DynamicMatrix<T, ORDER>& a, index_t j0, index_t j1)
+        {
+            for (index_t j = j0; j <= j1; ++j)
+            {
+                T d = a(j,j);
+                for (index_t p = j0; p < j; ++p) d -= a(j,p) * a(j,p);
+                if (!(d > T(0)))
+                    raise<not_positive_definite_error>("cholesky: the matrix is not positive definite (pivot " +
+                                                       std::to_string(j) + " is not positive)");
+                const T l_jj = std::sqrt(d);
+                a(j,j) = l_jj;
+                for (index_t i = j + 1; i <= j1; ++i)
+                {
+                    T s = a(i,j);
+                    for (index_t p = j0; p < j; ++p) s -= a(i,p) * a(j,p);
+                    a(i,j) = s / l_jj;
+                }
+            }
+        }
+
+       /*******************************************************************************************
+        * void solve_lower_transposed_right(a, l0, l1, r0, r1)
+        *
+        * Solves X L^T = B in place for the lower triangular L = a(l0:l1, l0:l1) and
+        * B = a(r0:r1, l0:l1) (the rows of L below a factorized diagonal block). L is split in
+        * halves, X1 L11^T = B1, B2 -= X1 L21^T (a matrix product), X2 L22^T = B2, so that most of
+        * the work runs on the product kernel.
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        void solve_lower_transposed_right(DynamicMatrix<T, ORDER>& a, index_t l0, index_t l1, index_t r0, index_t r1)
+        {
+            if (r0 > r1) return;
+            const index_t k = l1 - l0 + 1;
+            if (k <= RECURSION_BASE)
+            {
+                // x(i,c) = (b(i,c) - sum_{p<c} x(i,p) l(c,p)) / l(c,c), row by row
+                for (index_t i = r0; i <= r1; ++i)
+                    for (index_t c = l0; c <= l1; ++c)
+                    {
+                        T s = a(i,c);
+                        for (index_t p = l0; p < c; ++p) s -= a(i,p) * a(c,p);
+                        a(i,c) = s / a(c,c);
+                    }
+                return;
+            }
+            const index_t lm = l0 + k / 2;                    // first column of the second half
+            solve_lower_transposed_right(a, l0, lm - 1, r0, r1);
+            auto B2 = a(range(r0, r1), range(lm, l1));
+            subtract_product(B2, a(range(r0, r1), range(l0, lm - 1)), transpose(a(range(lm, l1), range(l0, lm - 1))));
+            solve_lower_transposed_right(a, lm, l1, r0, r1);
+        }
+
+       /*******************************************************************************************
+        * void subtract_lower_gram(a, c0, c1, k0, k1)
+        *
+        * C -= X X^T on and below the diagonal of C = a(c0:c1, c0:c1), with X = a(c0:c1, k0:k1)
+        * (the symmetric update of the trailing matrix, as BLAS's xSYRK). C is split in halves:
+        * the two diagonal blocks recursively, and the block below them with one matrix product, so
+        * that the upper triangle costs no arithmetic except within small diagonal blocks.
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        void subtract_lower_gram(DynamicMatrix<T, ORDER>& a, index_t c0, index_t c1, index_t k0, index_t k1)
+        {
+            if (c0 > c1) return;
+            const index_t size = c1 - c0 + 1;
+            if (size <= FACTORIZATION_BLOCK)
+            {
+                // A small diagonal block: the whole block (its upper triangle is zeroed at the end)
+                auto C = a(range(c0, c1), range(c0, c1));
+                subtract_product(C, a(range(c0, c1), range(k0, k1)), transpose(a(range(c0, c1), range(k0, k1))));
+                return;
+            }
+            const index_t cm = c0 + size / 2;                 // first row and column of the second half
+            subtract_lower_gram(a, c0, cm - 1, k0, k1);
+            auto C21 = a(range(cm, c1), range(c0, cm - 1));
+            subtract_product(C21, a(range(cm, c1), range(k0, k1)), transpose(a(range(c0, cm - 1), range(k0, k1))));
+            subtract_lower_gram(a, cm, c1, k0, k1);
+        }
+
+       /*******************************************************************************************
+        * void cholesky_recursive(a, j0, j1)
+        *
+        * Factorizes the trailing block a(j0:j1, j0:j1) in halves: A11 = L11 L11^T (recursively),
+        * L21 = A21 L11^-T (a recursive triangular solve), A22 -= L21 L21^T (lower triangle only),
+        * and A22 = L22 L22^T (recursively). Small blocks are factorized column by column.
+        *******************************************************************************************/
+        template<class T, StorageOrder ORDER>
+        void cholesky_recursive(DynamicMatrix<T, ORDER>& a, index_t j0, index_t j1)
+        {
+            const index_t size = j1 - j0 + 1;
+            if (size <= RECURSION_BASE)
+            {
+                cholesky_columns(a, j0, j1);
+                return;
+            }
+            const index_t jm = j0 + size / 2;                 // first row and column of the second half
+            cholesky_recursive(a, j0, jm - 1);
+            solve_lower_transposed_right(a, j0, jm - 1, jm, j1);
+            subtract_lower_gram(a, jm, j1, j0, jm - 1);
+            cholesky_recursive(a, jm, j1);
+        }
+
        /*******************************************************************************************
         * void cholesky_factorize(DynamicMatrix<T, ORDER>& a)
         *
@@ -44,56 +156,10 @@ namespace matl
         void cholesky_factorize(DynamicMatrix<T, ORDER>& a)
         {
             const index_t n = a.rows();
+            if (n > 0) cholesky_recursive(a, 1, n);
 
-            for (index_t k0 = 1; k0 <= n; k0 += FACTORIZATION_BLOCK)
-            {
-                const index_t k1 = std::min(k0 + FACTORIZATION_BLOCK - 1, n);    // last column of the panel
-
-                // Columns k0..k1 of L (the diagonal block and the rows below it):
-                //     l(i,j) = (a(i,j) - sum_{p=k0}^{j-1} l(i,p) l(j,p)) / l(j,j)
-                // (columns left of the panel were already subtracted by the earlier panels'
-                // updates). Row-major matrices form each l(i,j) with a sum along rows i and j;
-                // column-major ones subtract whole columns, down column j.
-                for (index_t j = k0; j <= k1; ++j)
-                {
-                    if constexpr (ORDER == StorageOrder::ColMajor)
-                        for (index_t p = k0; p < j; ++p)
-                        {
-                            const T l = a(j,p);
-                            for (index_t i = j; i <= n; ++i) a(i,j) -= a(i,p) * l;
-                        }
-
-                    T d = a(j,j);
-                    if constexpr (ORDER == StorageOrder::RowMajor)
-                        for (index_t p = k0; p < j; ++p) d -= a(j,p) * a(j,p);
-                    if (!(d > T(0)))
-                        raise<not_positive_definite_error>("cholesky: the matrix is not positive definite (pivot " +
-                                                           std::to_string(j) + " is not positive)");
-                    const T l_jj = std::sqrt(d);
-                    a(j,j) = l_jj;
-
-                    for (index_t i = j + 1; i <= n; ++i)
-                    {
-                        T s = a(i,j);
-                        if constexpr (ORDER == StorageOrder::RowMajor)
-                            for (index_t p = k0; p < j; ++p) s -= a(i,p) * a(j,p);
-                        a(i,j) = s / l_jj;
-                    }
-                }
-
-                if (k1 == n) break;
-
-                // A22 -= L21 * L21^T, lower triangle only: one product per block column of A22
-                // (each block column from its diagonal block down), through views
-                for (index_t c0 = k1 + 1; c0 <= n; c0 += FACTORIZATION_BLOCK)
-                {
-                    const index_t c1 = std::min(c0 + FACTORIZATION_BLOCK - 1, n);
-                    a(range(c0, n), range(c0, c1)) -= a(range(c0, n), range(k0, k1)) *
-                                                      transpose(a(range(c0, c1), range(k0, k1)));
-                }
-            }
-
-            // Zeros above the diagonal (the upper triangle was not read, but the updates wrote it)
+            // Zeros above the diagonal (the upper triangle was not read, but the updates of small
+            // diagonal blocks wrote it)
             for (index_t i = 1; i <= n; ++i)
                 for (index_t j = i + 1; j <= n; ++j)
                     a(i,j) = T(0);

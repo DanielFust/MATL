@@ -30,8 +30,13 @@ namespace matl
 
     namespace detail
     {
-        // Columns per panel of the blocked factorizations (LU, Cholesky, QR)
+        // Columns per panel of the blocked QR factorization, and the size below which Cholesky's
+        // symmetric update stops splitting
         inline constexpr index_t FACTORIZATION_BLOCK = 64;
+
+        // Columns (or rows) at which the recursive factorizations and solves stop splitting and
+        // work column by column
+        inline constexpr index_t RECURSION_BASE = 16;
 
         // Floating-point element type in which a system with elements of type T is solved (double
         // for integers)
