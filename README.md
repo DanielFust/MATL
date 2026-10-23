@@ -181,6 +181,53 @@ temporary first. Assignments that read each element only where they write it, su
 a view's elements in the matrix's storage order, so a block of rows of a row-major matrix (or of
 columns of a column-major one) is read sequentially.
 
+## Linear systems
+
+Dense linear systems are solved with factorizations named for their algorithms, so that the
+choice, and its requirements, are explicit:
+
+| Function | Solves | Requires |
+| --- | --- | --- |
+| `lu(A)`, `lu_solve(A, B)` | `A X = B` by LU factorization with partial pivoting, `P A = L U` | `A` square |
+| `cholesky(A)`, `cholesky_solve(A, B)` | `A X = B` by Cholesky factorization, `A = L Lᵀ` | `A` symmetric positive definite (only its lower triangle is read) |
+| `solve_lower(L, B)`, `solve_upper(U, B)` | `L X = B`, `U X = B` by forward or back substitution | `L`, `U` triangular (only that triangle is read); `Diagonal::Unit` takes the diagonal to be 1 |
+
+```cpp
+auto F = lu(A);                    // factorize once ...
+Matrix<double> x = F.solve(b);     // ... and solve for as many right-hand sides as needed
+Matrix<double> X = F.solve(B);     // each column of B is one system
+
+if (F.rcond() < 1e-12)             // estimated reciprocal condition number
+    std::cerr << "A is nearly singular\n";
+double d = F.determinant();
+
+auto C = cholesky(S);              // S symmetric positive definite: half the work of LU
+C.solve_inplace(X);                // overwrites X (a matrix or a view) with the solution
+```
+
+A factorization object holds the factors packed in one matrix, as LAPACK does: for LU, `U` on and
+above the diagonal and `L` below it (its unit diagonal is not stored), plus the row interchanges
+(`pivots()`). `F.L()`, `F.U()` and `F.P()` return the factors as separate matrices, with
+`P A = L U`. Matrices of integers are factorized in `double`; `float` stays `float`.
+
+**In place.** `lu_inplace(A)` and `cholesky_inplace(A)` factorize a matrix in its own memory
+instead of a copy: `A` then holds the factors (for Cholesky, `L` with zeros above the diagonal),
+and must outlive the factorization object, which uses its memory.
+
+**Singular and ill-conditioned matrices.** A pivot that is exactly zero means the matrix is
+singular, and is reported as `matl::singular_matrix_error` (`matl::not_positive_definite_error`
+for a Cholesky pivot that is not positive). A matrix that is merely close to singular is
+factorized, and `rcond()` tells how close: it estimates `1 / (‖A‖₁ ‖A⁻¹‖₁)` from a few triangular
+solves (Hager and Higham's method, as in LAPACK). It is near 1 for a well-conditioned matrix, and a
+solution loses about `log10(1 / rcond)` of the 16 significant digits of a `double`. The
+dimensions are always checked (`matl::dimension_error`), since the check costs nothing next to the
+factorization.
+
+**Performance.** The factorizations are blocked: each panel of 64 columns is factorized column by
+column, and the rest of the matrix is updated with one matrix product through views, which runs on
+the product kernel. At n = 1024 (Intel i9-9880H, GCC 15 and Clang 21, `-O2 -march=native`), LU runs
+at about 11–17 GFLOP/s and Cholesky at about 10–12 GFLOP/s, against 25–29 GFLOP/s for the product.
+
 ## Expressions, values and lifetimes
 
 An arithmetic expression on matrices produces an *expression object* (a formula), not a matrix.
@@ -378,6 +425,8 @@ MATL reports the errors it detects by throwing an exception:
 | --- | --- | --- |
 | `matl::dimension_error` | `std::invalid_argument` | Operands, or an assignment target, have incompatible dimensions |
 | `matl::index_error` | `std::out_of_range` | An element index is out of range (indices are 1-based) |
+| `matl::singular_matrix_error` | `std::runtime_error` | A factorization or triangular solve meets an exactly zero pivot |
+| `matl::not_positive_definite_error` | `std::runtime_error` | A Cholesky factorization meets a pivot that is not positive |
 | `std::logic_error` | | The `TemporaryArena` is misused (e.g. releasing a block twice) |
 
 ```cpp
@@ -391,7 +440,9 @@ the faulty statement under a debugger. MATL also aborts when it is compiled with
 (e.g. `-fno-exceptions`). `MATL_THROWS_ON_ERROR` is `1` when errors throw and `0` when they abort.
 
 Most of these errors are found by the debug checks above, so they indicate a programming error;
-a program would normally catch them only to log context or shut down cleanly. A caught error
+a program would normally catch them only to log context or shut down cleanly. The errors of the
+linear solvers are always checked, and a singular or indefinite matrix may well be a property of
+the data rather than a bug, so these are worth catching where they can occur. A caught error
 leaves MATL in a usable state: the temporaries of the failed evaluation are released (the target
 of a failed assignment may be partly written).
 

@@ -95,4 +95,7 @@ namespace matl
 // Additional API
 #include "./matl/_matl_api_functions_.hpp"
 
+// Linear systems (triangular solves, LU and Cholesky factorizations)
+#include "./matl/linear-algebra/_matl_linear_algebra_.hpp"
+
 #endif

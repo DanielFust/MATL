@@ -15,6 +15,8 @@
  *                                   forked child process, so the test runner survives)
  *   CHECK_MATRIX_EQ(mat, ref)       Compares a MATL matrix element-by-element against a
  *                                   matl_test::Ref reference matrix
+ *   CHECK_MATRIX_NEAR(mat, ref, tol)  The same, with an absolute tolerance (for results of
+ *                                   floating-point algorithms such as the solvers)
  *
  * The matl_test::Ref type is a deliberately naive reference implementation of matrix
  * arithmetic used to check MATL results.
@@ -171,26 +173,32 @@ namespace matl_test
         return r;
     }
 
-    // Compare a MATL matrix against a reference. Small integers are used throughout the suite so
+    // Compare a MATL matrix, view or expression against a reference. Small integers are used throughout the suite so
     // results are exact, but a tolerance is applied to allow for division.
     template<typename MAT>
     bool matrix_matches(MAT const& mat, Ref const& ref, std::string& why, double tol = 1e-12)
     {
-        if (mat.rows() != ref.rows || mat.cols() != ref.cols)
+        // Expressions (other than views) have no element access: evaluate them first
+        if constexpr (matl::ExpressionType<MAT> && !matl::detail::is_view_v<MAT>)
+            return matrix_matches(matl::detail::result_matrix_t<MAT>(mat), ref, why, tol);
+        else
         {
-            why = "dimensions " + to_string(mat.rows()) + "x" + to_string(mat.cols())
-                + " != expected " + to_string(ref.rows) + "x" + to_string(ref.cols);
-            return false;
+            if (mat.rows() != ref.rows || mat.cols() != ref.cols)
+            {
+                why = "dimensions " + to_string(mat.rows()) + "x" + to_string(mat.cols())
+                    + " != expected " + to_string(ref.rows) + "x" + to_string(ref.cols);
+                return false;
+            }
+            for (matl::index_t i = 1; i <= ref.rows; ++i)
+                for (matl::index_t j = 1; j <= ref.cols; ++j)
+                    if (std::fabs(static_cast<double>(mat(i,j)) - ref(i,j)) > tol)
+                    {
+                        why = "element (" + to_string(i) + "," + to_string(j) + ") = "
+                            + to_string(static_cast<double>(mat(i,j))) + ", expected " + to_string(ref(i,j));
+                        return false;
+                    }
+            return true;
         }
-        for (matl::index_t i = 1; i <= ref.rows; ++i)
-            for (matl::index_t j = 1; j <= ref.cols; ++j)
-                if (std::fabs(static_cast<double>(mat(i,j)) - ref(i,j)) > tol)
-                {
-                    why = "element (" + to_string(i) + "," + to_string(j) + ") = "
-                        + to_string(static_cast<double>(mat(i,j))) + ", expected " + to_string(ref(i,j));
-                    return false;
-                }
-        return true;
     }
 
     /********************************** Data generation *************************************/
@@ -283,6 +291,13 @@ namespace matl_test
          if (!matl_test::matrix_matches((mat), (ref), matl_why_))                               \
              matl_test::report_failure(__FILE__, __LINE__,                                      \
                  "CHECK_MATRIX_EQ(" #mat ", " #ref "): " + matl_why_);                          \
+    } while (0)
+
+#define CHECK_MATRIX_NEAR(mat, ref, tol)                                                        \
+    do { std::string matl_why_;                                                                 \
+         if (!matl_test::matrix_matches((mat), (ref), matl_why_, (tol)))                        \
+             matl_test::report_failure(__FILE__, __LINE__,                                      \
+                 "CHECK_MATRIX_NEAR(" #mat ", " #ref ", " #tol "): " + matl_why_);              \
     } while (0)
 
 #endif

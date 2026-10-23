@@ -8,6 +8,10 @@
  *   - By default, MATL throws an exception:
  *       matl::dimension_error  (derived from std::invalid_argument)  incompatible dimensions
  *       matl::index_error      (derived from std::out_of_range)      element index out of range
+ *       matl::singular_matrix_error        (derived from std::runtime_error)  a factorization or
+ *                                          triangular solve met an exactly zero pivot
+ *       matl::not_positive_definite_error  (derived from std::runtime_error)  Cholesky
+ *                                          factorization of a matrix that is not positive definite
  *       std::logic_error                                             misuse of the TemporaryArena
  *   - If MATL_ABORT_ON_ERROR is defined, or exceptions are disabled (e.g. -fno-exceptions), MATL
  *     prints the message to stderr and calls std::abort(), which stops at the faulty statement
@@ -18,7 +22,9 @@
  * Most checks are debug checks (MATL_BOUNDS_CHECK, MATL_DIMENSION_CHECK, see matl.hpp); they
  * report programming errors, so a program would normally not catch them except to log context or
  * shut down cleanly. A few checks are always on (e.g. allocate() of a fixed-size matrix with other
- * dimensions, or an invalid TemporaryArena::release()).
+ * dimensions, or an invalid TemporaryArena::release()), and so are the checks of the linear
+ * solvers (dimensions, singular and non-positive-definite matrices), whose cost is negligible
+ * next to the factorization.
  *
  * An error detected inside a noexcept function (the move assignment of a matrix over external
  * memory) cannot propagate; the program terminates with the error message instead.
@@ -54,6 +60,31 @@ namespace matl
     {
       public:
         using std::out_of_range::out_of_range;
+    };
+
+   /***********************************************************************************************
+    * class singular_matrix_error
+    *
+    * Thrown when a matrix is found to be singular: an LU factorization meets a column with no
+    * nonzero pivot, or a triangular matrix has a zero on its diagonal. (A matrix that is only
+    * close to singular is factorized; see the rcond() of the factorizations.)
+    ***********************************************************************************************/
+    class singular_matrix_error : public std::runtime_error
+    {
+      public:
+        using std::runtime_error::runtime_error;
+    };
+
+   /***********************************************************************************************
+    * class not_positive_definite_error
+    *
+    * Thrown when a Cholesky factorization meets a matrix that is not positive definite (a pivot
+    * that is not positive).
+    ***********************************************************************************************/
+    class not_positive_definite_error : public std::runtime_error
+    {
+      public:
+        using std::runtime_error::runtime_error;
     };
 
     namespace detail
