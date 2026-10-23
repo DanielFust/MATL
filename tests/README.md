@@ -36,7 +36,7 @@ the build.
 | `matl_test.hpp` | Test framework (macros below) and the naive reference implementation `matl_test::Ref` |
 | `test_main.cpp` | Test runner |
 | `test_matrix.cpp` | Construction, indexing, copy/move, scalar and compound assignment, `eye` |
-| `test_parallel.cpp` | Thread parallelism: ranges cover every item once, exceptions inside parallel loops are rethrown, results are bit for bit the same on 1 and 4 threads (reductions, elementwise evaluation, sparse products, CG), and MATL runs serially inside a caller's parallel region |
+| `test_parallel.cpp` | Thread parallelism: ranges cover every item once, exceptions inside parallel loops are rethrown, results are bit for bit the same on 1 and 4 threads (reductions, elementwise evaluation, dense and sparse products, LU, Cholesky and QR factors, CG), MATL runs serially inside a caller's parallel region and in a `SerialScope` (also from `std::thread`), and a finite-element style element loop with per-thread builders assembles the same matrix as a serial loop |
 | `test_expressions.cpp` | Elementwise, scalar, product and transpose expressions; aliasing; fixed-size and mixed operands |
 | `test_evaluation.cpp` | Deferred evaluation: nested products read current operand values, no allocation until assignment, temporaries released afterwards, aliasing with deferred products |
 | `test_construction.cpp` | Initializer lists, `zeros` and `ones`, `operator<<` and `print` |

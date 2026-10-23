@@ -12,6 +12,14 @@ a new major version may require changes to code written for the previous one.
   65,000 elements of work, and never nested in a caller's parallel region). `MATL_NO_OPENMP` keeps
   MATL serial. Exceptions inside parallel loops are rethrown after them. `make check-openmp` and
   CTest (when OpenMP is found) run the test suite on 4 threads.
+- **Parallel dense products:** the product kernel divides the row blocks (or, for products with
+  few rows, the column panels) of large products (from about 2 million multiply-adds) among the
+  threads; results are the same on any number of threads. The factorizations' block updates use
+  it (1536 x 1536 on 8 threads: product 5.4x, LU 2.0x, Cholesky 1.5x, QR 2.4x).
+- **`SerialScope`:** keeps MATL serial in the current thread (for threads of other frameworks,
+  e.g. `std::thread` or TBB, which OpenMP cannot detect).
+- **Parallel assembly:** `SparseBuilder::build(builders)` merges per-thread builders; with
+  `schedule(static)` the result is the same as a serial assembly's.
 
 ### Changed
 

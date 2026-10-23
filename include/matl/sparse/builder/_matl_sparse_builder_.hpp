@@ -16,6 +16,9 @@
  *
  * Indices are 1-based and always checked (matl::index_error): an index outside the matrix would
  * otherwise corrupt the structure.
+ *
+ * A builder is not thread-safe: in a parallel assembly, give each thread its own builder and merge
+ * them with SparseBuilder::build(builders).
  **************************************************************************************************/
 #ifndef MATL_SPARSE_BUILDER_HPP
 #define MATL_SPARSE_BUILDER_HPP
@@ -79,21 +82,52 @@ namespace matl
         // The sparse matrix of the entries: sorted by row and column, duplicates summed. Takes
         // O(entries log(entries per row)) time; the builder is unchanged, so it can build again.
         CSRMatrix<T, I> build() const
+        {return build(std::span<const SparseBuilder>(this, 1));}
+
+       /*******************************************************************************************
+        * static CSRMatrix<T, I> build(builders)
+        *
+        * The sparse matrix of the entries of several builders with the same dimensions, e.g. one
+        * per thread of a parallel finite-element assembly:
+        *
+        *     std::vector<SparseBuilder<double>> local(threads, SparseBuilder<double>(n, n));
+        *     #pragma omp parallel for schedule(static)
+        *     for (each element e) local[omp_get_thread_num()].add(...);
+        *     CSRMatrix<double> K = SparseBuilder<double>::build(local);
+        *
+        * Duplicates are summed in the order of the builders, then of their entries. With
+        * schedule(static), thread t assembles the t-th contiguous range of elements, so that order
+        * is the order of the elements, and the matrix is the same as a serial assembly's (bit
+        * for bit), whatever the number of threads.
+        *******************************************************************************************/
+        static CSRMatrix<T, I> build(std::span<const SparseBuilder> builders)
         {
-            const index_t m = this->rows_;
-            const index_t count = this->value_.size();
+            if (builders.empty()) return CSRMatrix<T, I>();
+            const index_t m = builders[0].rows_;
+            const index_t n = builders[0].cols_;
+            index_t count = 0;
+            for (SparseBuilder const& b : builders)
+            {
+                if (b.rows_ != m || b.cols_ != n)
+                    detail::incompatible_dimensions("SparseBuilder::build (all builders must have the same dimensions)",
+                                                    m, n, b.rows_, b.cols_);
+                count += b.value_.size();
+            }
             detail::check_fits_index<I>(count, "the number of entries");
 
-            // Counting sort by row: start[i] is the first position of row i
+            // Counting sort by row (stable: builder by builder, entry by entry): start[i] is the
+            // first position of row i
             std::vector<index_t> start(m + 1, 0);
-            for (index_t k = 0; k < count; ++k) ++start[static_cast<index_t>(this->row_[k]) + 1];
+            for (SparseBuilder const& b : builders)
+                for (I r : b.row_) ++start[static_cast<index_t>(r) + 1];
             for (index_t i = 0; i < m; ++i) start[i + 1] += start[i];
 
             std::vector<std::pair<I, T>> by_row(count);
             {
                 std::vector<index_t> next(start.begin(), start.end() - 1);
-                for (index_t k = 0; k < count; ++k)
-                    by_row[next[static_cast<index_t>(this->row_[k])]++] = {this->col_[k], this->value_[k]};
+                for (SparseBuilder const& b : builders)
+                    for (index_t k = 0; k < b.value_.size(); ++k)
+                        by_row[next[static_cast<index_t>(b.row_[k])]++] = {b.col_[k], b.value_[k]};
             }
 
             // Within each row: sort by column (stable, so duplicates are summed in the order they
@@ -129,7 +163,7 @@ namespace matl
                 row_offsets[i + 1] = static_cast<I>(values.size());
             }
 
-            return CSRMatrix<T, I>(m, this->cols_, std::move(row_offsets), std::move(column_indices), std::move(values));
+            return CSRMatrix<T, I>(m, n, std::move(row_offsets), std::move(column_indices), std::move(values));
         }
     };
 }

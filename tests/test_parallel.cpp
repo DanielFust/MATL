@@ -3,13 +3,16 @@
  *
  * Description: Thread parallelism (OpenMP): parallel_ranges covers every item once, exceptions
  *              inside parallel loops are rethrown, results do not depend on the number of threads
- *              (bit for bit: reductions, elementwise evaluation, sparse products, and iterative
- *              solves), and MATL runs serially inside a caller's parallel region. Built without
+ *              (bit for bit: reductions, elementwise evaluation, dense and sparse products,
+ *              factorizations, and iterative solves), MATL runs serially inside a caller's
+ *              parallel region and in a SerialScope, and a finite-element style element loop
+ *              assembles with per-thread builders as a serial loop would. Built without
  *              OpenMP, the same tests check the serial code paths (make check-openmp runs them on
  *              4 threads).
  **************************************************************************************************/
 #include <cmath>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 #include "matl_test.hpp"
@@ -188,3 +191,128 @@ TEST_CASE("Parallel: MATL runs serially inside a caller's parallel region")
     #endif
     for (std::size_t t = 0; t < team; ++t) CHECK_EQ(results[t], expected);
 }
+
+TEST_CASE("Parallel: dense products and factorizations do not depend on the number of threads")
+{
+    using M = RowMajorMatrix<double>;
+    const auto random = [](index_t m, index_t n)
+    {
+        M A(m, n);
+        std::uniform_real_distribution<double> u(-1.0, 1.0);
+        for (index_t k = 1; k <= A.size(); ++k) A(k) = u(matl_test::rng());
+        return A;
+    };
+    const M A = random(300, 260), B = random(260, 280);           // 22M multiply-adds: threaded
+    const M T = random(64, 3000), U = random(3000, 64);           // one row block: panels threaded
+    M S = random(400, 400);
+    const M SPD = S * transpose(S) + 400.0 * eye<double>(400);
+    const M Q = random(500, 300);
+
+    M p1, p4, t1, t4, lu1, lu4, ch1, ch4, qr1, qr4;
+    with_threads(1, [&] {p1 = A * B; t1 = T * U; lu1 = lu(S).factors(); ch1 = cholesky(SPD).factor(); qr1 = qr(Q).factors();});
+    with_threads(4, [&] {p4 = A * B; t4 = T * U; lu4 = lu(S).factors(); ch4 = cholesky(SPD).factor(); qr4 = qr(Q).factors();});
+    CHECK_MATRIX_NEAR(p4, Ref::from(p1), 0.0);
+    CHECK_MATRIX_NEAR(t4, Ref::from(t1), 0.0);
+    CHECK_MATRIX_NEAR(lu4, Ref::from(lu1), 0.0);
+    CHECK_MATRIX_NEAR(ch4, Ref::from(ch1), 0.0);
+    CHECK_MATRIX_NEAR(qr4, Ref::from(qr1), 0.0);
+    CHECK_MATRIX_NEAR(p1, Ref::from(A) * Ref::from(B), 1e-11);
+}
+
+TEST_CASE("Parallel: a finite-element style element loop with per-thread assembly")
+{
+    // Small dense element computations in the caller's parallel loop (MATL stays serial inside
+    // it), assembled into one builder per thread and merged
+    const index_t nodes = 600, elements = 4000;
+    const auto element_nodes = [](index_t e, index_t a) {return 1 + (e * 7 + a * 131) % 600;};
+    const auto element_matrix = [](index_t e)
+    {
+        Matrix<double, 3, 4> Bm;
+        for (index_t i = 1; i <= 3; ++i)
+            for (index_t j = 1; j <= 4; ++j) Bm(i, j) = std::sin(double(e * 12 + i * 4 + j));
+        const Matrix<double, 3, 3> D = {{2, 0.5, 0}, {0.5, 2, 0}, {0, 0, 1}};
+        Matrix<double, 4, 4> Ke = transpose(Bm) * D * Bm + 1e-3 * eye<double>(4);
+        // A small factorization per element too (e.g. a local solve)
+        const Matrix<double> f = lu(Ke).solve(ones<double>(4, 1));
+        Ke(1, 1) += 1e-12 * f(1);
+        return Ke;
+    };
+    const auto assemble = [&](SparseBuilder<double>& builder, index_t e)
+    {
+        const Matrix<double, 4, 4> Ke = element_matrix(e);
+        for (index_t a = 1; a <= 4; ++a)
+            for (index_t b = 1; b <= 4; ++b) builder.add(element_nodes(e, a), element_nodes(e, b), Ke(a, b));
+    };
+
+    // Serial assembly, element by element
+    SparseBuilder<double> serial(nodes, nodes);
+    for (index_t e = 0; e < elements; ++e) assemble(serial, e);
+    const CSRMatrix<double> K_serial = serial.build();
+
+    // Parallel assembly: thread t assembles a contiguous range of elements (schedule(static))
+    #if MATL_OPENMP
+    const std::size_t threads = static_cast<std::size_t>(omp_get_max_threads());
+    #else
+    const std::size_t threads = 1;
+    #endif
+    std::vector<SparseBuilder<double>> local(threads, SparseBuilder<double>(nodes, nodes));
+    #if MATL_OPENMP
+    #pragma omp parallel for schedule(static)
+    #endif
+    for (std::ptrdiff_t e = 0; e < static_cast<std::ptrdiff_t>(elements); ++e)
+    {
+        #if MATL_OPENMP
+        const std::size_t t = static_cast<std::size_t>(omp_get_thread_num());
+        #else
+        const std::size_t t = 0;
+        #endif
+        assemble(local[t], static_cast<index_t>(e));
+    }
+    const CSRMatrix<double> K_parallel = SparseBuilder<double>::build(local);
+
+    CHECK_EQ(K_parallel.nnz(), K_serial.nnz());
+    bool same = (K_parallel.nnz() == K_serial.nnz());
+    for (index_t p = 0; same && p < K_serial.nnz(); ++p)
+        same = (K_parallel.values()[p] == K_serial.values()[p]) && (K_parallel.column_indices()[p] == K_serial.column_indices()[p]);
+    CHECK(same);                                                    // bit for bit
+
+    CHECK_MATL_ERROR(dimension_error, (void)SparseBuilder<double>::build(
+        std::vector<SparseBuilder<double>>{SparseBuilder<double>(2, 2), SparseBuilder<double>(2, 3)}));
+    CHECK_EQ(SparseBuilder<double>::build(std::vector<SparseBuilder<double>>{}).nnz(), 0ul);
+}
+
+TEST_CASE("Parallel: SerialScope keeps MATL serial in its thread")
+{
+    const index_t big = 4 * detail::PRODUCT_PARALLEL_THRESHOLD;
+    const bool threads_available = detail::use_threads(big);       // false without OpenMP
+    {
+        SerialScope serial;
+        CHECK(!detail::use_threads(big));
+        {
+            SerialScope nested;
+            CHECK(!detail::use_threads(big));
+        }
+        CHECK(!detail::use_threads(big));                          // still inside the outer scope
+
+        // The scope belongs to this thread: another thread is not affected
+        bool other = false;
+        std::thread([&] {other = detail::use_threads(big);}).join();
+        CHECK_EQ(other, threads_available);
+    }
+    CHECK_EQ(detail::use_threads(big), threads_available);
+
+    // Threads of another framework, each serial in its own scope, computing at the same time
+    const V a = large_vector(2 * detail::PARALLEL_THRESHOLD);
+    const double expected = sum(times(a, a));
+    std::vector<double> results(4, 0.0);
+    std::vector<std::thread> workers;
+    for (std::size_t t = 0; t < results.size(); ++t)
+        workers.emplace_back([&, t]
+        {
+            SerialScope serial;
+            results[t] = sum(times(a, a));
+        });
+    for (std::thread& w : workers) w.join();
+    for (double r : results) CHECK_EQ(r, expected);
+}
+
