@@ -18,6 +18,12 @@ a new major version may require changes to code written for the previous one.
   the tolerance, iteration limit and GMRES restart, and a result reporting convergence, iterations
   and the residual. Preconditioners: `JacobiPreconditioner` and `ILU0Preconditioner`. Example 8
   solves the 2D Poisson equation.
+- **Sparse arithmetic:** `S + T`, `S - T`, `S * T` (Gustavson's algorithm), the explicit transpose
+  (`CSRMatrix<double> St = transpose(S);`), and `diagonal(S)`.
+- **Structured direct solvers:** `solve_tridiagonal` (Thomas algorithm), and `BandedMatrix` with
+  banded LU (partial pivoting) and Cholesky factorizations (`lu(B)`, `cholesky(B)`, with `solve`,
+  `rcond` and `determinant`), `banded(S)` conversion, and products. Example 9 steps the 1D heat
+  equation and solves the 2D Poisson equation directly.
 
 ## [2.1.0] - 2026-10-22
 
