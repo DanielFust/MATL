@@ -56,8 +56,8 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo sysctl vm.mmap_rnd_bits=28
 
-      - name: Build examples
-        run: make examples CXX=${{ matrix.cxx }}
+      - name: Build and run examples
+        run: make run-examples CXX=${{ matrix.cxx }}
 
       - name: Test suite
         run: make check CXX=${{ matrix.cxx }}

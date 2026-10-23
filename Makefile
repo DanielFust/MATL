@@ -1,6 +1,4 @@
 CXX      := g++
-CPPFLAGS := -std=c++20 -O0 -Wall -Wextra -g3
-#CPPFLAGS := -std=c++20 -O0 -w -g3
 INC      := -I ./include
 
 # Test suite settings
@@ -15,17 +13,26 @@ SAN_FLAGS   := -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno
 BENCH_SRC   := $(wildcard benchmarks/*.cpp)
 BENCH_FLAGS := -std=c++20 -O2 -Wall -Wextra -Werror -DNDEBUG
 
-.PHONY: test clean examples tests check check-sanitize check-nodebug check-abort check-noexceptions benchmarks bench
+# Example programs (examples/*.cpp, built into build/examples/<name>, with MATL's debug checks on)
+EXAMPLE_SRC   := $(wildcard examples/*.cpp)
+EXAMPLE_BIN   := $(patsubst examples/%.cpp,$(BUILD)/examples/%,$(EXAMPLE_SRC))
+EXAMPLE_FLAGS := -std=c++20 -O1 -g -Wall -Wextra -Werror
 
-# Build the example program (same as 'make examples'; the program is build/examples/test)
-test: examples
+.PHONY: test clean examples run-examples tests check check-sanitize check-nodebug check-abort check-noexceptions benchmarks bench
 
-# Build the example program into the build directory
-examples: $(BUILD)/examples/test
+# Run the test suite (same as 'make check')
+test: check
 
-$(BUILD)/examples/test: examples/test.cpp $(HEADERS)
+# Build the example programs
+examples: $(EXAMPLE_BIN)
+
+$(BUILD)/examples/%: examples/%.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CPPFLAGS) $< $(INC) -o $@
+	$(CXX) $(EXAMPLE_FLAGS) $< $(INC) -o $@
+
+# Build and run the example programs (their output is discarded; a failing example stops the run)
+run-examples: examples
+	@for e in $(EXAMPLE_BIN); do ./$$e > /dev/null && echo "ok      $$e" || { echo "FAILED  $$e"; exit 1; }; done
 
 # Build the test suite
 tests: $(BUILD)/matl_tests
