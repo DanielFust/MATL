@@ -23,6 +23,9 @@ int main()
 }
 ```
 
+The [`examples/`](examples) folder has short, annotated programs for each feature, from the basics
+to linear systems; `make run-examples` builds and runs them.
+
 ## Using MATL in your project
 
 MATL is header-only: add its `include/` directory to your include path and compile with
@@ -483,6 +486,7 @@ See [tests/README.md](tests/README.md). In short, from the repository root, with
 
 ```sh
 make check            # build and run the test suite
+make run-examples     # build and run the example programs
 make check-sanitize   # with AddressSanitizer and UndefinedBehaviorSanitizer
 make check-nodebug    # with MATL_NO_DEBUG
 make bench            # benchmarks
