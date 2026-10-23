@@ -83,7 +83,7 @@ if(MATL_INSTALL)
 
     install(TARGETS matl EXPORT matlTargets)
     install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    install(FILES LICENSE CITATION.cff DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/matl")
+    install(FILES LICENSE CITATION.cff CHANGELOG.md DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/matl")
     install(EXPORT matlTargets NAMESPACE matl:: DESTINATION "${MATL_CMAKE_DIR}")
 
     configure_package_config_file(cmake/matlConfig.cmake.in
