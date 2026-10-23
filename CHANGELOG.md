@@ -13,6 +13,11 @@ a new major version may require changes to code written for the previous one.
   dense matrices and vectors (`S * X`, `transpose(S) * X`, as expressions), scaling, `dense` and
   `sparse` conversions, and output. Dense factorizations reject sparse matrices with a compile-time
   message. Example 7 assembles 1D finite-element matrices.
+- **Iterative solvers:** `cg` (symmetric positive definite), `bicgstab` and restarted `gmres`
+  (general), for sparse matrices, dense matrices, or operator functions `op(in, out)`; options for
+  the tolerance, iteration limit and GMRES restart, and a result reporting convergence, iterations
+  and the residual. Preconditioners: `JacobiPreconditioner` and `ILU0Preconditioner`. Example 8
+  solves the 2D Poisson equation.
 
 ## [2.1.0] - 2026-10-22
 
