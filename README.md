@@ -247,6 +247,55 @@ the product kernel through views and subtract from the matrix without temporarie
 Cholesky at about 11–12 GFLOP/s and QR at about 13–15 GFLOP/s (9–11 GFLOP/s for a 4000 x 400
 matrix), against 21–25 GFLOP/s for the product.
 
+## Sparse matrices
+
+`CSRMatrix<T>` stores only the nonzero entries of a matrix, in compressed sparse row (CSR) format,
+for the large, mostly-zero matrices of PDE discretizations (stiffness and mass matrices, graph
+Laplacians). Matrices are assembled with a `SparseBuilder`, which accepts entries in any order and
+sums duplicates, as element-by-element assembly needs:
+
+```cpp
+SparseBuilder<double> B(n, n);
+for (each element e)
+    for (each pair of local nodes (a, b))
+        B.add(node(e, a), node(e, b), k_e(a, b));     // overlapping entries are summed
+CSRMatrix<double> K = B.build();
+
+Matrix<double> y = K * x;              // sparse times dense: a dense result
+Matrix<double> r = b - K * x;          // products nest in expressions like dense products
+Matrix<double> z = transpose(K) * x;   // without forming the transpose
+double k22 = K(2, 2);                  // element access (0 for an entry that is not stored)
+K.entry(2, 2) += 1.0;                  // change a stored value
+```
+
+| Operation | |
+| --- | --- |
+| `SparseBuilder<T>(m, n)`, `add(i, j, v)`, `build()` | Assembly; duplicates are summed, explicit zeros are kept |
+| `CSRMatrix<T>(m, n, row_offsets, column_indices, values)` | From the three CSR arrays (checked) |
+| `S(i, j)`, `S.is_stored(i, j)`, `S.entry(i, j)` | Read an element; test for a stored entry; a reference to a stored entry |
+| `S.rows()`, `S.cols()`, `S.nnz()` | Dimensions and the number of stored entries |
+| `S.row_offsets()`, `S.column_indices()`, `S.values()` | The CSR arrays (`std::span`; the values can be changed) |
+| `S * X`, `transpose(S) * X` | Products with dense matrices and vectors (expressions with dense results) |
+| `S * s`, `s * S`, `S / s`, `-S`, `S *= s`, `S /= s` | Scaling (the pattern is unchanged) |
+| `dense(S)`, `sparse(D)` | Conversions (`sparse` stores the nonzero elements of a dense matrix or expression) |
+
+**Indices.** Element access is 1-based, like the rest of MATL. The CSR arrays are 0-based, as in
+SciPy, MKL, PETSc and SuiteSparse, so they can be exchanged with those libraries without
+conversion. The index type of the arrays is a template parameter: `CSRMatrix<double, std::int32_t>`
+uses a third less memory than the default 64-bit `index_t` and makes products faster, for matrices
+with fewer than 2³¹ stored entries.
+
+**The sparsity pattern is fixed** once a matrix is built: values can be changed (`entry`,
+`values()`), e.g. to re-assemble with new coefficients or to form `M + dt K`, but adding an entry
+means building a new matrix. Indices given to the builder and the dimensions of sparse products are
+always checked.
+
+**Dense algorithms do not accept sparse matrices.** A sparse matrix is not a `MatrixType`, so it
+cannot be added to dense matrices or passed to dense functions by mistake, and `lu(S)`,
+`cholesky(S)` and `qr(S)` are compile errors that say why: a dense factorization fills in a sparse
+matrix and costs O(n³). For a small matrix, convert explicitly with `dense(S)`. (Iterative solvers
+for sparse systems are planned.)
+
 ## Expressions, values and lifetimes
 
 An arithmetic expression on matrices produces an *expression object* (a formula), not a matrix.

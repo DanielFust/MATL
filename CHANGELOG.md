@@ -3,6 +3,17 @@
 Notable changes to MATL, newest first. Version numbers follow [semantic versioning](https://semver.org):
 a new major version may require changes to code written for the previous one.
 
+## [Unreleased]
+
+### Added
+
+- **Sparse matrices:** `CSRMatrix<T, I>` (compressed sparse row, index type `I`), assembled with
+  `SparseBuilder` (entries in any order, duplicates summed) or from the CSR arrays (0-based, as in
+  SciPy, MKL and PETSc); element access, a fixed pattern with changeable values, products with
+  dense matrices and vectors (`S * X`, `transpose(S) * X`, as expressions), scaling, `dense` and
+  `sparse` conversions, and output. Dense factorizations reject sparse matrices with a compile-time
+  message. Example 7 assembles 1D finite-element matrices.
+
 ## [2.1.0] - 2026-10-22
 
 Adds the QR factorization and least squares, and makes the factorizations faster. Code written for
@@ -107,6 +118,7 @@ adds most of the library's features. Code written for 1.0.0 mostly compiles unch
 
 The original version, kept as the git tag `v1.0.0-backup`.
 
+[Unreleased]: https://github.com/DanielFust/MATL/compare/v2.1.0...HEAD
 [2.1.0]: https://github.com/DanielFust/MATL/releases/tag/v2.1.0
 [2.0.0]: https://github.com/DanielFust/MATL/releases/tag/v2.0.0
 [1.0.0]: https://github.com/DanielFust/MATL/tree/v1.0.0-backup

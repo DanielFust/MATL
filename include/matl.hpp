@@ -46,6 +46,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>
+#include <limits>
+#include <span>
 #include <sstream>
 #include <string>
 
@@ -97,5 +99,8 @@ namespace matl
 
 // Linear systems (triangular solves, LU, Cholesky and QR factorizations, least squares)
 #include "./matl/linear-algebra/_matl_linear_algebra_.hpp"
+
+// Sparse matrices (CSR format, assembly, products with dense matrices)
+#include "./matl/sparse/_matl_sparse_.hpp"
 
 #endif

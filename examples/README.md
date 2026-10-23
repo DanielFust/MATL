@@ -11,6 +11,7 @@ they are best read in order:
 | [`04_storage_and_memory.cpp`](04_storage_and_memory.cpp) | Row-major and column-major matrices, matrices over memory you own (a buffer, a Fortran array), passing elements to C or Fortran code with `data()`, fixed-size matrices |
 | [`05_errors_and_checks.cpp`](05_errors_and_checks.cpp) | Compile-time dimension checks, the debug checks (`MATL_DIMENSION_CHECK`, `MATL_BOUNDS_CHECK`) and when they run, the checks that always run, and catching MATL's exceptions |
 | [`06_polynomial_fit.cpp`](06_polynomial_fit.cpp) | An application: a least-squares polynomial fit with QR, compared with the normal equations (Cholesky), combining views, elementwise powers, products, condition estimates and reductions |
+| [`07_sparse_matrices.cpp`](07_sparse_matrices.cpp) | Sparse matrices: assembling 1D finite-element stiffness and mass matrices element by element, products with vectors, changing values in a fixed pattern, the CSR arrays, 32-bit indices |
 
 ## Building and running
 
