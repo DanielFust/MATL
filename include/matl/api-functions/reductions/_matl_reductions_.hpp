@@ -247,10 +247,13 @@ namespace matl
         dtype largest = 0;
         if constexpr (detail::traits<MAO>::storage_order == StorageOrder::RowMajor)
         {
-            std::vector<dtype> sums(N, dtype(0));
+            // The running sums are kept in the temporary arena (no heap allocations)
+            detail::TemporaryBlock storage(N * sizeof(dtype));
+            dtype* const sums = reinterpret_cast<dtype*>(storage.data());
+            std::fill(sums, sums + N, dtype(0));
             for (index_t i = 1; i <= M; ++i)
                 for (index_t j = 1; j <= N; ++j) sums[j - 1] += detail::magnitude(source(i, j));
-            for (dtype s : sums) largest = std::max(largest, s);
+            for (index_t j = 0; j < N; ++j) largest = std::max(largest, sums[j]);
         }
         else
         {
@@ -279,10 +282,13 @@ namespace matl
         dtype largest = 0;
         if constexpr (detail::traits<MAO>::storage_order == StorageOrder::ColMajor)
         {
-            std::vector<dtype> sums(M, dtype(0));
+            // The running sums are kept in the temporary arena (no heap allocations)
+            detail::TemporaryBlock storage(M * sizeof(dtype));
+            dtype* const sums = reinterpret_cast<dtype*>(storage.data());
+            std::fill(sums, sums + M, dtype(0));
             for (index_t j = 1; j <= N; ++j)
                 for (index_t i = 1; i <= M; ++i) sums[i - 1] += detail::magnitude(source(i, j));
-            for (dtype s : sums) largest = std::max(largest, s);
+            for (index_t i = 0; i < M; ++i) largest = std::max(largest, sums[i]);
         }
         else
         {

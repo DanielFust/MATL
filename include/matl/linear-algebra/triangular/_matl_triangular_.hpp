@@ -49,6 +49,33 @@ namespace matl
         inline constexpr StorageOrder solution_order_v =
             (traits<B>::storage_order == StorageOrder::ColMajor) ? StorageOrder::ColMajor : StorageOrder::RowMajor;
 
+        // Storage of a factorization's factors: an n x n dynamic matrix, or a fixed-size N x N one
+        // (whose factorization then needs no heap memory: its pivots are a std::array)
+        template<class MAT> struct factor_storage;
+
+        template<class T, StorageOrder ORDER>
+        struct factor_storage< DynamicMatrix<T, ORDER> >
+        {
+            typedef T                    dtype;
+            typedef std::vector<index_t> pivots;
+            static DynamicMatrix<T, ORDER> square(index_t n) {return DynamicMatrix<T, ORDER>(n, n);}
+        };
+
+        template<class T, index_t N, StorageOrder ORDER>
+        struct factor_storage< FixedSizeMatrix<T, N, N, ORDER> >
+        {
+            typedef T                       dtype;
+            typedef std::array<index_t, N>  pivots;
+            static FixedSizeMatrix<T, N, N, ORDER> square(index_t) {return FixedSizeMatrix<T, N, N, ORDER>{};}
+        };
+
+        // Type of the solution of a system with right-hand side B, in element type R: fixed-size if
+        // B's dimensions are known at compile time, dynamic otherwise; the storage order of B
+        template<typename R, typename B>
+        using solution_t = std::conditional_t< traits<B>::fixed_size,
+                                               FixedSizeMatrix<R, traits<B>::rows, traits<B>::cols, solution_order_v<B>>,
+                                               DynamicMatrix<R, solution_order_v<B>> >;
+
         // Reports a matrix that is not square
         inline void check_square(char const* operation, index_t rows, index_t cols)
         {
@@ -140,12 +167,12 @@ namespace matl
             else                            triangular_solve<LOWER, false>(coef, tri.rows(), x, operation);
         }
 
-        // Solution of a triangular system with right-hand side b (a new matrix)
+        // Solution of a triangular system with right-hand side b (a new matrix, fixed-size if b is)
         template<bool LOWER, MatrixAlgebraObject TRI, MatrixAlgebraObject B>
         auto solve_triangle_copy(TRI const& tri, B const& b, Diagonal diagonal, char const* operation)
         {
             typedef solver_t<promote_t<dtype_t<TRI>, dtype_t<B>>> T;
-            DynamicMatrix<T, solution_order_v<B>> x(b);
+            solution_t<T, B> x(b);
             solve_triangle<LOWER>(tri, x, diagonal, operation);
             return x;
         }

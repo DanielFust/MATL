@@ -35,6 +35,7 @@
 #include <type_traits>
 #include <concepts>
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <stdexcept>
 #include <complex>

@@ -44,11 +44,10 @@ namespace matl
         // Applies the row interchanges of steps k0..k1 to columns c0..c1 of a. Row-major matrices
         // swap row segments; column-major ones apply all the interchanges to one column at a
         // time, so that each column is read once from memory (as LAPACK's xLASWP).
-        template<class T, StorageOrder ORDER>
-        void interchange_rows(DynamicMatrix<T, ORDER>& a, std::vector<index_t> const& pivots,
-                              index_t k0, index_t k1, index_t c0, index_t c1)
+        template<class MAT, class PIVOTS>
+        void interchange_rows(MAT& a, PIVOTS const& pivots, index_t k0, index_t k1, index_t c0, index_t c1)
         {
-            if constexpr (ORDER == StorageOrder::RowMajor)
+            if constexpr (traits<MAT>::storage_order == StorageOrder::RowMajor)
             {
                 for (index_t k = k0; k <= k1; ++k)
                     if (pivots[k - 1] != k)
@@ -69,9 +68,11 @@ namespace matl
         * interchange within these columns, multipliers, and elimination within these columns.
         * The base case of lu_recursive.
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void lu_columns(DynamicMatrix<T, ORDER>& a, std::vector<index_t>& pivots, index_t j0, index_t j1)
+        template<class MAT, class PIVOTS>
+        void lu_columns(MAT& a, PIVOTS& pivots, index_t j0, index_t j1)
         {
+            typedef dtype_t<MAT> T;
+            constexpr StorageOrder ORDER = traits<MAT>::storage_order;
             const index_t n = a.rows();
             for (index_t j = j0; j <= j1; ++j)
             {
@@ -122,9 +123,11 @@ namespace matl
         * X1 = L11^-1 B1, B2 -= L21 X1 (a matrix product), X2 = L22^-1 B2, so that most of the work
         * runs on the product kernel.
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void solve_unit_lower(DynamicMatrix<T, ORDER>& a, index_t l0, index_t l1, index_t c0, index_t c1)
+        template<class MAT>
+        void solve_unit_lower(MAT& a, index_t l0, index_t l1, index_t c0, index_t c1)
         {
+            typedef dtype_t<MAT> T;
+            constexpr StorageOrder ORDER = traits<MAT>::storage_order;
             if (c0 > c1 || l0 >= l1) return;                  // nothing to solve, or L = 1
             const index_t k = l1 - l0 + 1;
             if (k <= RECURSION_BASE)
@@ -166,8 +169,8 @@ namespace matl
         * the right half with one matrix product, factorize it, and apply its interchanges to the
         * left half. Narrow column ranges are factorized column by column (lu_columns).
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void lu_recursive(DynamicMatrix<T, ORDER>& a, std::vector<index_t>& pivots, index_t j0, index_t j1)
+        template<class MAT, class PIVOTS>
+        void lu_recursive(MAT& a, PIVOTS& pivots, index_t j0, index_t j1)
         {
             const index_t n = a.rows();
             if (j1 - j0 + 1 <= RECURSION_BASE)
@@ -187,39 +190,51 @@ namespace matl
         }
 
        /*******************************************************************************************
-        * void lu_factorize(DynamicMatrix<T, ORDER>& a, std::vector<index_t>& pivots)
+        * void lu_factorize(MAT& a, PIVOTS& pivots)
         *
-        * Overwrites the square matrix a with its LU factors (see the description above) and
-        * fills in the row interchanges. Reports matl::singular_matrix_error for a zero pivot.
+        * Overwrites the square matrix a (dynamic or fixed-size) with its LU factors (see the
+        * description above) and fills in the row interchanges (a std::vector, or a std::array of
+        * a fixed size). Reports matl::singular_matrix_error for a zero pivot.
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void lu_factorize(DynamicMatrix<T, ORDER>& a, std::vector<index_t>& pivots)
+        template<class MAT, class PIVOTS>
+        void lu_factorize(MAT& a, PIVOTS& pivots)
         {
-            pivots.resize(a.rows());
+            if constexpr (requires {pivots.resize(a.rows());}) pivots.resize(a.rows());
             if (a.rows() > 0) lu_recursive(a, pivots, 1, a.rows());
         }
     }
 
 
    /***********************************************************************************************
-    * class LUFactorization<T, ORDER>
+    * class BasicLUFactorization<MAT>
     *
-    * LU factorization with partial pivoting, P A = L U (see the description above). Made by lu
-    * and lu_inplace.
+    * LU factorization with partial pivoting, P A = L U (see the description above), with the
+    * factors in a matrix of type MAT. Made by lu and lu_inplace, and usually named through:
+    *
+    *     LUFactorization<T, ORDER>          dynamic factors (any n)
+    *     FixedLUFactorization<T, N, ORDER>  N x N fixed-size factors and a std::array of pivots:
+    *                                        no heap memory (lu of a fixed-size matrix, e.g. an
+    *                                        element matrix); solving a fixed-size right-hand side
+    *                                        gives a fixed-size solution
     *
     * Template Parameters:
-    *     T         Floating-point element type
-    *     ORDER     Storage order of the factors
+    *     MAT       Matrix of the factors: DynamicMatrix<T, ORDER> or FixedSizeMatrix<T, N, N, ORDER>
+    *               (T a floating-point type)
     ***********************************************************************************************/
-    template<class T, StorageOrder ORDER>
-    class LUFactorization
+    template<class MAT>
+    class BasicLUFactorization
     {
+        typedef detail::factor_storage<MAT> storage;
+        typedef typename storage::dtype     T;
         static_assert(std::is_floating_point_v<T>, "LUFactorization: the element type must be a floating-point type");
 
+      public:
+        typedef T dtype;
+
       private:
-        DynamicMatrix<T, ORDER> lu_;        // U on and above the diagonal, L below it
-        std::vector<index_t>    pivots_;    // row k was interchanged with row pivots_[k-1]
-        T                       norm_1_;    // 1-norm of A (for rcond)
+        MAT                         lu_;        // U on and above the diagonal, L below it
+        typename storage::pivots    pivots_;    // row k was interchanged with row pivots_[k-1]
+        T                           norm_1_;    // 1-norm of A (for rcond)
 
         // Applies the row interchanges to x (P x), or undoes them (P^T x)
         template<typename X>
@@ -237,7 +252,7 @@ namespace matl
 
       public:
         // Factorizes the square matrix a (its memory may be a matrix's, see lu_inplace)
-        explicit LUFactorization(DynamicMatrix<T, ORDER> a) : lu_(std::move(a)), pivots_(), norm_1_(0)
+        explicit BasicLUFactorization(MAT a) : lu_(std::move(a)), pivots_(), norm_1_(0)
         {
             detail::check_square("lu", this->lu_.rows(), this->lu_.cols());
             this->norm_1_ = norm_1(this->lu_);
@@ -248,16 +263,16 @@ namespace matl
         index_t size() const {return this->lu_.rows();}
 
         // Packed factors: U on and above the diagonal, L (unit diagonal not stored) below it
-        DynamicMatrix<T, ORDER> const& factors() const {return this->lu_;}
+        MAT const& factors() const {return this->lu_;}
 
         // Row interchanges: row k was interchanged with row pivots()[k-1] at step k (1-based)
-        std::vector<index_t> const& pivots() const {return this->pivots_;}
+        typename storage::pivots const& pivots() const {return this->pivots_;}
 
         // Unit lower triangular factor L
-        DynamicMatrix<T, ORDER> L() const
+        MAT L() const
         {
             const index_t n = this->size();
-            DynamicMatrix<T, ORDER> l(n, n);
+            MAT l = storage::square(n);
             for (index_t i = 1; i <= n; ++i)
                 for (index_t j = 1; j <= n; ++j)
                     l(i,j) = (i > j) ? this->lu_(i,j) : (i == j) ? T(1) : T(0);
@@ -265,10 +280,10 @@ namespace matl
         }
 
         // Upper triangular factor U
-        DynamicMatrix<T, ORDER> U() const
+        MAT U() const
         {
             const index_t n = this->size();
-            DynamicMatrix<T, ORDER> u(n, n);
+            MAT u = storage::square(n);
             for (index_t i = 1; i <= n; ++i)
                 for (index_t j = 1; j <= n; ++j)
                     u(i,j) = (i <= j) ? this->lu_(i,j) : T(0);
@@ -276,9 +291,11 @@ namespace matl
         }
 
         // Permutation matrix P, with P A = L U
-        DynamicMatrix<T, ORDER> P() const
+        MAT P() const
         {
-            DynamicMatrix<T, ORDER> p = eye<T>(this->size());
+            MAT p = storage::square(this->size());
+            p = T(0);
+            for (index_t k = 1; k <= this->size(); ++k) p(k,k) = T(1);
             this->permute(p, false);
             return p;
         }
@@ -296,11 +313,12 @@ namespace matl
             detail::triangular_solve<false, false>(this->lu_, this->size(), x, "lu solve");
         }
 
-        // Solution of A X = B (B: matrix, view or expression; one system per column)
+        // Solution of A X = B (B: matrix, view or expression; one system per column). The
+        // solution is fixed-size if B is.
         template<MatrixAlgebraObject B>
         auto solve(B const& b) const
         {
-            DynamicMatrix<detail::solver_t<detail::promote_t<T, detail::dtype_t<B>>>, detail::solution_order_v<B>> x(b);
+            detail::solution_t<detail::solver_t<detail::promote_t<T, detail::dtype_t<B>>>, B> x(b);
             this->solve_inplace(x);
             return x;
         }
@@ -338,14 +356,31 @@ namespace matl
     };
 
 
+    // LU factorization with dynamic factors
+    template<class T, StorageOrder ORDER>
+    using LUFactorization = BasicLUFactorization< DynamicMatrix<T, ORDER> >;
+
+    // LU factorization of an N x N fixed-size matrix: fixed-size factors, no heap memory
+    template<class T, index_t N, StorageOrder ORDER>
+    using FixedLUFactorization = BasicLUFactorization< FixedSizeMatrix<T, N, N, ORDER> >;
+
+
     // LU factorization of a copy of a (a square matrix, view or expression), in a floating-point
-    // type (double for integer matrices) and the storage order of a
+    // type (double for integer matrices) and the storage order of a. The factors are fixed-size
+    // (and the factorization uses no heap memory) if a's dimensions are known at compile time.
     template<MatrixAlgebraObject A>
     auto lu(A const& a)
     {
         typedef detail::solver_t<detail::dtype_t<A>> T;
         constexpr StorageOrder order = detail::solution_order_v<A>;
-        return LUFactorization<T, order>(DynamicMatrix<T, order>(a));
+        if constexpr (detail::traits<A>::fixed_size)
+        {
+            constexpr index_t N = detail::traits<A>::rows;
+            static_assert(detail::traits<A>::cols == N, "lu: the matrix must be square");
+            return FixedLUFactorization<T, N, order>(FixedSizeMatrix<T, N, N, order>(a));
+        }
+        else
+            return LUFactorization<T, order>(DynamicMatrix<T, order>(a));
     }
 
     // LU factorization in the memory of a (a square matrix of a floating-point type): a then holds

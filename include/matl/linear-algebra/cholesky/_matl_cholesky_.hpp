@@ -42,9 +42,11 @@ namespace matl
         * l(i,j) = (a(i,j) - sum l(i,p) l(j,p)) / l(j,j) for the rows i of the block below j. The
         * base case of cholesky_recursive.
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void cholesky_columns(DynamicMatrix<T, ORDER>& a, index_t j0, index_t j1)
+        template<class MAT>
+        void cholesky_columns(MAT& a, index_t j0, index_t j1)
         {
+            typedef dtype_t<MAT> T;
+            [[maybe_unused]] constexpr StorageOrder ORDER = traits<MAT>::storage_order;
             for (index_t j = j0; j <= j1; ++j)
             {
                 T d = a(j,j);
@@ -71,9 +73,11 @@ namespace matl
         * halves, X1 L11^T = B1, B2 -= X1 L21^T (a matrix product), X2 L22^T = B2, so that most of
         * the work runs on the product kernel.
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void solve_lower_transposed_right(DynamicMatrix<T, ORDER>& a, index_t l0, index_t l1, index_t r0, index_t r1)
+        template<class MAT>
+        void solve_lower_transposed_right(MAT& a, index_t l0, index_t l1, index_t r0, index_t r1)
         {
+            typedef dtype_t<MAT> T;
+            [[maybe_unused]] constexpr StorageOrder ORDER = traits<MAT>::storage_order;
             if (r0 > r1) return;
             const index_t k = l1 - l0 + 1;
             if (k <= RECURSION_BASE)
@@ -103,9 +107,10 @@ namespace matl
         * the two diagonal blocks recursively, and the block below them with one matrix product, so
         * that the upper triangle costs no arithmetic except within small diagonal blocks.
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void subtract_lower_gram(DynamicMatrix<T, ORDER>& a, index_t c0, index_t c1, index_t k0, index_t k1)
+        template<class MAT>
+        void subtract_lower_gram(MAT& a, index_t c0, index_t c1, index_t k0, index_t k1)
         {
+            [[maybe_unused]] constexpr StorageOrder ORDER = traits<MAT>::storage_order;
             if (c0 > c1) return;
             const index_t size = c1 - c0 + 1;
             if (size <= FACTORIZATION_BLOCK)
@@ -129,9 +134,10 @@ namespace matl
         * L21 = A21 L11^-T (a recursive triangular solve), A22 -= L21 L21^T (lower triangle only),
         * and A22 = L22 L22^T (recursively). Small blocks are factorized column by column.
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void cholesky_recursive(DynamicMatrix<T, ORDER>& a, index_t j0, index_t j1)
+        template<class MAT>
+        void cholesky_recursive(MAT& a, index_t j0, index_t j1)
         {
+            [[maybe_unused]] constexpr StorageOrder ORDER = traits<MAT>::storage_order;
             const index_t size = j1 - j0 + 1;
             if (size <= RECURSION_BASE)
             {
@@ -146,15 +152,18 @@ namespace matl
         }
 
        /*******************************************************************************************
-        * void cholesky_factorize(DynamicMatrix<T, ORDER>& a)
+        * void cholesky_factorize(MAT& a)
         *
-        * Overwrites the square matrix a with its Cholesky factor L (zeros above the diagonal),
+        * Overwrites the square matrix a (dynamic or fixed-size) with its Cholesky factor L (zeros
+        * above the diagonal),
         * reading only the lower triangle of a. Reports matl::not_positive_definite_error for a
         * pivot that is not positive.
         *******************************************************************************************/
-        template<class T, StorageOrder ORDER>
-        void cholesky_factorize(DynamicMatrix<T, ORDER>& a)
+        template<class MAT>
+        void cholesky_factorize(MAT& a)
         {
+            typedef dtype_t<MAT> T;
+            [[maybe_unused]] constexpr StorageOrder ORDER = traits<MAT>::storage_order;
             const index_t n = a.rows();
             if (n > 0) cholesky_recursive(a, 1, n);
 
@@ -168,26 +177,37 @@ namespace matl
 
 
    /***********************************************************************************************
-    * class CholeskyFactorization<T, ORDER>
+    * class BasicCholeskyFactorization<MAT>
     *
     * Cholesky factorization A = L L^T of a symmetric positive definite matrix (see the description
-    * above). Made by cholesky and cholesky_inplace.
+    * above), with the factor in a matrix of type MAT. Made by cholesky and cholesky_inplace, and
+    * usually named through:
+    *
+    *     CholeskyFactorization<T, ORDER>          a dynamic factor (any n)
+    *     FixedCholeskyFactorization<T, N, ORDER>  an N x N fixed-size factor: no heap memory
+    *                                              (cholesky of a fixed-size matrix); solving a
+    *                                              fixed-size right-hand side gives a fixed-size
+    *                                              solution
     *
     * Template Parameters:
-    *     T         Floating-point element type
-    *     ORDER     Storage order of the factor
+    *     MAT       Matrix of the factor: DynamicMatrix<T, ORDER> or FixedSizeMatrix<T, N, N, ORDER>
+    *               (T a floating-point type)
     ***********************************************************************************************/
-    template<class T, StorageOrder ORDER>
-    class CholeskyFactorization
+    template<class MAT>
+    class BasicCholeskyFactorization
     {
+        typedef typename detail::factor_storage<MAT>::dtype T;
         static_assert(std::is_floating_point_v<T>, "CholeskyFactorization: the element type must be a floating-point type");
 
+      public:
+        typedef T dtype;
+
       private:
-        DynamicMatrix<T, ORDER> l_;         // L, with zeros above the diagonal
-        T                       norm_1_;    // 1-norm of A (for rcond)
+        MAT l_;          // L, with zeros above the diagonal
+        T   norm_1_;     // 1-norm of A (for rcond)
 
         // 1-norm of the symmetric matrix whose lower triangle a holds
-        static T symmetric_norm_1(DynamicMatrix<T, ORDER> const& a)
+        static T symmetric_norm_1(MAT const& a)
         {
             const index_t n = a.rows();
             T largest = 0;
@@ -203,7 +223,7 @@ namespace matl
 
       public:
         // Factorizes the square matrix a (its memory may be a matrix's, see cholesky_inplace)
-        explicit CholeskyFactorization(DynamicMatrix<T, ORDER> a) : l_(std::move(a)), norm_1_(0)
+        explicit BasicCholeskyFactorization(MAT a) : l_(std::move(a)), norm_1_(0)
         {
             detail::check_square("cholesky", this->l_.rows(), this->l_.cols());
             this->norm_1_ = symmetric_norm_1(this->l_);
@@ -214,10 +234,10 @@ namespace matl
         index_t size() const {return this->l_.rows();}
 
         // The stored factor L (zeros above the diagonal)
-        DynamicMatrix<T, ORDER> const& factor() const {return this->l_;}
+        MAT const& factor() const {return this->l_;}
 
         // A copy of the factor L
-        DynamicMatrix<T, ORDER> L() const {return this->l_;}
+        MAT L() const {return this->l_;}
 
         // Overwrites x (a matrix or view holding B, one system per column) with the solution of
         // A X = B: L Y = B, then L^T X = Y
@@ -232,11 +252,12 @@ namespace matl
             detail::triangular_solve<false, false>(lt, this->size(), x, "cholesky solve");
         }
 
-        // Solution of A X = B (B: matrix, view or expression; one system per column)
+        // Solution of A X = B (B: matrix, view or expression; one system per column). The
+        // solution is fixed-size if B is.
         template<MatrixAlgebraObject B>
         auto solve(B const& b) const
         {
-            DynamicMatrix<detail::solver_t<detail::promote_t<T, detail::dtype_t<B>>>, detail::solution_order_v<B>> x(b);
+            detail::solution_t<detail::solver_t<detail::promote_t<T, detail::dtype_t<B>>>, B> x(b);
             this->solve_inplace(x);
             return x;
         }
@@ -261,15 +282,32 @@ namespace matl
     };
 
 
+    // Cholesky factorization with a dynamic factor
+    template<class T, StorageOrder ORDER>
+    using CholeskyFactorization = BasicCholeskyFactorization< DynamicMatrix<T, ORDER> >;
+
+    // Cholesky factorization of an N x N fixed-size matrix: a fixed-size factor, no heap memory
+    template<class T, index_t N, StorageOrder ORDER>
+    using FixedCholeskyFactorization = BasicCholeskyFactorization< FixedSizeMatrix<T, N, N, ORDER> >;
+
+
     // Cholesky factorization of a copy of a (a symmetric positive definite matrix, view or
     // expression; only its lower triangle is read), in a floating-point type (double for integer
-    // matrices) and the storage order of a
+    // matrices) and the storage order of a. The factor is fixed-size (and the factorization uses
+    // no heap memory) if a's dimensions are known at compile time.
     template<MatrixAlgebraObject A>
     auto cholesky(A const& a)
     {
         typedef detail::solver_t<detail::dtype_t<A>> T;
         constexpr StorageOrder order = detail::solution_order_v<A>;
-        return CholeskyFactorization<T, order>(DynamicMatrix<T, order>(a));
+        if constexpr (detail::traits<A>::fixed_size)
+        {
+            constexpr index_t N = detail::traits<A>::rows;
+            static_assert(detail::traits<A>::cols == N, "cholesky: the matrix must be square");
+            return FixedCholeskyFactorization<T, N, order>(FixedSizeMatrix<T, N, N, order>(a));
+        }
+        else
+            return CholeskyFactorization<T, order>(DynamicMatrix<T, order>(a));
     }
 
     // Cholesky factorization in the memory of a (a square matrix of a floating-point type): a then
