@@ -14,6 +14,7 @@ they are best read in order:
 | [`07_sparse_matrices.cpp`](07_sparse_matrices.cpp) | Sparse matrices: assembling 1D finite-element stiffness and mass matrices element by element, products with vectors, changing values in a fixed pattern, the CSR arrays, 32-bit indices |
 | [`08_iterative_solvers.cpp`](08_iterative_solvers.cpp) | Iterative solvers: the 2D Poisson equation with CG, Jacobi and ILU(0) preconditioning, tolerances and iteration limits, a nonsymmetric problem with BiCGSTAB and GMRES, and a matrix-free stencil operator |
 | [`09_direct_sparse_solvers.cpp`](09_direct_sparse_solvers.cpp) | Direct solvers for structured sparse matrices: the 1D heat equation with implicit time steps (tridiagonal), sparse arithmetic to build a 2D Laplacian, and the 2D Poisson equation by banded Cholesky, compared with CG |
+| [`10_eigenvalues_and_svd.cpp`](10_eigenvalues_and_svd.cpp) | `det` and `inv` of an element Jacobian, principal stresses with `eig_sym`, natural frequencies of a spring-mass chain, and a rank-deficient least-squares fit with `svd`, `rank` and `pinv` |
 
 ## Building and running
 

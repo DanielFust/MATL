@@ -191,3 +191,43 @@ TEST_CASE("Heap allocations: fixed-size factorizations and solves make none")
     CHECK_EQ(allocations_made, 0l);
     CHECK_EQ(result, warm);
 }
+
+TEST_CASE("Heap allocations: fixed-size det, inv, eig_sym and svd make none")
+{
+    // Element-level work: Jacobians (det, inv), principal stresses (eig_sym), and pseudo-inverses
+    const Matrix<double, 3, 3> J = {{2, 1, 0}, {0, 3, 1}, {1, 0, 4}};
+    const Matrix<double, 3, 3> sigma = {{50, 30, 20}, {30, -20, -10}, {20, -10, 10}};
+    Matrix<double, 6, 6> K;
+    Matrix<double, 6, 4> B;
+    for (index_t i = 1; i <= 6; ++i)
+    {
+        for (index_t j = 1; j <= 6; ++j) K(i, j) = (i == j) ? 8.0 : 1.0 / double(i + j);
+        for (index_t j = 1; j <= 4; ++j) B(i, j) = double(i * j % 5) - 2.0;
+    }
+    const Matrix<double, 6, 1> b = ones<double, 6, 1>();
+
+    const auto work = [&]
+    {
+        const Matrix<double, 3, 3> Ji = inv(J);
+        const Matrix<double, 6, 6> Ki = inv(K);
+        const auto P = eig_sym(sigma);
+        const auto E = eig_sym(K);
+        const auto S = svd(B);
+        const Matrix<double, 4, 6> Bp = S.pinv();
+        const Matrix<double, 4, 1> x = S.solve(b);
+        const Matrix<double, 4, 6> Bt = transpose(B);
+        const Matrix<double, 4, 1> wide = singular_values(Bt);              // a wide matrix
+        return det(J) + det(K) + Ji(1, 1) + Ki(1, 1) + P.values()(1) + E.vectors()(1, 1) + Bp(1, 1) + x(1) +
+               wide(1) + double(S.rank());
+    };
+    const double warm = work();
+    long allocations_made = 0;
+    double result = 0;
+    {
+        CountAllocations counter;
+        result = work();
+        allocations_made = counter.count();
+    }
+    CHECK_EQ(allocations_made, 0l);
+    CHECK_EQ(result, warm);
+}

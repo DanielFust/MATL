@@ -76,6 +76,21 @@ namespace matl
                                                FixedSizeMatrix<R, traits<B>::rows, traits<B>::cols, solution_order_v<B>>,
                                                DynamicMatrix<R, solution_order_v<B>> >;
 
+        // A matrix of ROWS x COLS elements: fixed-size if both are known at compile time (> 0),
+        // dynamic otherwise (0 stands for a dimension known only at run time)
+        template<class T, index_t ROWS, index_t COLS, StorageOrder ORDER>
+        using sized_matrix_t = std::conditional_t< (ROWS > 0 && COLS > 0),
+                                                   FixedSizeMatrix<T, (ROWS > 0 ? ROWS : 1), (COLS > 0 ? COLS : 1), ORDER>,
+                                                   DynamicMatrix<T, ORDER> >;
+
+        // A matrix of type MAT (see sized_matrix_t) with the given dimensions, elements uninitialized
+        template<class MAT>
+        MAT make_sized(index_t rows, index_t cols)
+        {
+            if constexpr (traits<MAT>::fixed_size) return MAT{};
+            else                                   return MAT(rows, cols);
+        }
+
         // Reports a matrix that is not square
         inline void check_square(char const* operation, index_t rows, index_t cols)
         {
