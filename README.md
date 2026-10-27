@@ -230,7 +230,8 @@ and `rcond()` estimates the condition number of `R`.
 fixed-size factorizations, `FixedLUFactorization<T, N>` and `FixedCholeskyFactorization<T, N>`:
 the factors live in the object itself and the pivots in a `std::array`, so factorizing and
 solving use no heap memory, e.g. for the element matrices of a finite-element program. The
-algorithm is the same as for dynamic matrices, with the same results bit for bit. A fixed-size
+algorithm is the same as for dynamic matrices, with the same results (the compiler may round the
+last bit differently where it fuses multiply-adds). A fixed-size
 right-hand side gives a fixed-size solution (for LU and Cholesky, and for `solve_lower` and
 `solve_upper`; QR and banded solves stay dynamic), and a fixed-size matrix can also be initialized from a dynamic matrix of the same
 dimensions (checked at run time):

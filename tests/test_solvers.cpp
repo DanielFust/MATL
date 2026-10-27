@@ -352,19 +352,22 @@ namespace
         static_assert(std::is_same_v<decltype(solve_lower(lf.L(), bf)), FixedSizeMatrix<double, N, 2, ORDER>>);
         CHECK_MATRIX_NEAR(solve_upper(lf.U(), solve_lower(lf.L(), lf.P() * bf, Diagonal::Unit)), Ref::from(ld.solve(b)), 1e-12);
 
-        // The same algorithm as the dynamic factorization: the same factors, bit for bit
+        // The same algorithm as the dynamic factorization: the same factors, bit for bit. The
+        // solves and estimates may differ in the last bit: the compiler can fuse multiply-adds
+        // differently in the fixed-size code (seen with Apple Clang -O3 on ARM).
+        const auto close = [](double x, double y) {return std::abs(x - y) <= 1e-13 * std::abs(y);};
         CHECK_MATRIX_EQ(lf.factors(), Ref::from(ld.factors()));
-        CHECK_MATRIX_NEAR(lf.solve(bf), Ref::from(ld.solve(b)), 0.0);
+        CHECK_MATRIX_NEAR(lf.solve(bf), Ref::from(ld.solve(b)), 1e-13);
         CHECK_MATRIX_NEAR(lf.L() * lf.U(), Ref::from(M(lf.P() * D)), 1e-12);
-        CHECK_EQ(lf.determinant(), ld.determinant());
-        CHECK_EQ(lf.rcond(), ld.rcond());
+        CHECK(close(lf.determinant(), ld.determinant()));
+        CHECK(close(lf.rcond(), ld.rcond()));
 
         auto cf = cholesky(fixed<N, ORDER>(S));
         static_assert(std::is_same_v<decltype(cf), FixedCholeskyFactorization<double, N, ORDER>>);
         auto cd = cholesky(DynamicMatrix<double, ORDER>(S));
         CHECK_MATRIX_EQ(cf.factor(), Ref::from(cd.factor()));
-        CHECK_MATRIX_NEAR(cf.solve(bf), Ref::from(cd.solve(b)), 0.0);
-        CHECK_EQ(cf.rcond(), cd.rcond());
+        CHECK_MATRIX_NEAR(cf.solve(bf), Ref::from(cd.solve(b)), 1e-13);
+        CHECK(close(cf.rcond(), cd.rcond()));
     }
 }
 
