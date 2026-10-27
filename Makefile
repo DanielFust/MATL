@@ -83,9 +83,10 @@ check-noexceptions: $(BUILD)/no_exceptions
 	./$(BUILD)/no_exceptions
 
 # Run the test suite with AddressSanitizer and UndefinedBehaviorSanitizer (and the MATL_DEBUG
-# trace enabled, so that the trace code is compiled and exercised; its output goes to a log file)
+# trace enabled, so that the trace code is compiled and exercised; its output goes to a log file).
+# alloc_dealloc_mismatch is on by default on Linux but not on macOS, so it is set here.
 check-sanitize: $(BUILD)/matl_tests_sanitize
-	./$(BUILD)/matl_tests_sanitize $(FILTER) > $(BUILD)/matl_tests_sanitize.stdout.log
+	ASAN_OPTIONS=alloc_dealloc_mismatch=1 ./$(BUILD)/matl_tests_sanitize $(FILTER) > $(BUILD)/matl_tests_sanitize.stdout.log
 
 # Build the benchmarks
 benchmarks: $(patsubst benchmarks/%.cpp,$(BUILD)/benchmarks/%,$(BENCH_SRC))

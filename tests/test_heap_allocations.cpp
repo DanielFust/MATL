@@ -31,6 +31,13 @@ namespace
         throw std::bad_alloc();
     }
 
+    // As counted_allocate, but returns null instead of throwing
+    [[gnu::noinline]] void* counted_allocate_nothrow(std::size_t bytes) noexcept
+    {
+        if (counting) ++allocations;
+        return std::malloc(bytes == 0 ? 1 : bytes);
+    }
+
     // Counts heap allocations made by this thread while the object is alive
     struct CountAllocations
     {
@@ -48,12 +55,18 @@ namespace
     };
 }
 
+// All the unaligned forms are replaced, the nothrow ones too (std::stable_sort's buffer comes from
+// operator new(n, std::nothrow)), so that no block is freed by a different allocator than made it
 void* operator new  (std::size_t bytes) {return counted_allocate(bytes);}
 void* operator new[](std::size_t bytes) {return counted_allocate(bytes);}
-void  operator delete  (void* p) noexcept              {std::free(p);}
-void  operator delete[](void* p) noexcept              {std::free(p);}
-void  operator delete  (void* p, std::size_t) noexcept {std::free(p);}
-void  operator delete[](void* p, std::size_t) noexcept {std::free(p);}
+void* operator new  (std::size_t bytes, std::nothrow_t const&) noexcept {return counted_allocate_nothrow(bytes);}
+void* operator new[](std::size_t bytes, std::nothrow_t const&) noexcept {return counted_allocate_nothrow(bytes);}
+void  operator delete  (void* p) noexcept                        {std::free(p);}
+void  operator delete[](void* p) noexcept                        {std::free(p);}
+void  operator delete  (void* p, std::size_t) noexcept           {std::free(p);}
+void  operator delete[](void* p, std::size_t) noexcept           {std::free(p);}
+void  operator delete  (void* p, std::nothrow_t const&) noexcept {std::free(p);}
+void  operator delete[](void* p, std::nothrow_t const&) noexcept {std::free(p);}
 
 TEST_CASE("Heap allocations: the counter works")
 {
