@@ -9,10 +9,12 @@
  * MATL uses OpenMP and 0 otherwise.
  *
  * What runs in parallel: the elementwise evaluation of expressions (e.g. the vector updates of
- * the iterative solvers), reductions (sum, dot, norm_fro, ...), sparse matrix times dense
- * products S * X, and the Jacobi preconditioner. A loop runs serially when its work is below
+ * the iterative solvers), reductions (sum, dot, norm_fro, ...), dense matrix products (and with
+ * them the factorizations' block updates), sparse matrix times dense products S * X, and the
+ * Jacobi preconditioner. A loop runs serially when its work is below
  * PARALLEL_THRESHOLD (threads cost more than they save on small problems) and inside a parallel
- * region of the caller (e.g. one matrix per thread), so MATL never nests parallelism.
+ * region of the caller (e.g. one matrix per thread), so MATL never nests parallelism; in threads of
+ * other frameworks (std::thread, TBB), a SerialScope does the same.
  *
  * Reproducibility: reductions add their elements in blocks of REDUCTION_BLOCK elements, and add
  * the blocks' results in order, whatever the number of threads (and without OpenMP). A result is
@@ -48,11 +50,33 @@ namespace matl::detail
     // Elements per block of a reduction (see the description above)
     inline constexpr index_t REDUCTION_BLOCK = 4096;
 
-    // 'true' if a loop with the given work should use several threads
-    inline bool use_threads([[maybe_unused]] index_t work)
+    // Multiply-adds (M N K) below which a dense matrix product runs serially: products of small
+    // matrices (e.g. finite-element element matrices) are never threaded
+    inline constexpr index_t PRODUCT_PARALLEL_THRESHOLD = index_t(1) << 21;
+
+    // Nesting depth of SerialScope objects in this thread
+    inline int& serial_depth() noexcept
+    {
+        thread_local int depth = 0;
+        return depth;
+    }
+
+    // Number of threads a parallel loop would use (1 without OpenMP)
+    inline index_t thread_count()
     {
         #if MATL_OPENMP
-        return work >= PARALLEL_THRESHOLD && !omp_in_parallel() && omp_get_max_threads() > 1;
+        return static_cast<index_t>(omp_get_max_threads());
+        #else
+        return 1;
+        #endif
+    }
+
+    // 'true' if a loop with the given work should use several threads: with OpenMP, enough work,
+    // not inside a parallel region of the caller, and not inside a SerialScope of this thread
+    inline bool use_threads([[maybe_unused]] index_t work, [[maybe_unused]] index_t threshold = PARALLEL_THRESHOLD)
+    {
+        #if MATL_OPENMP
+        return work >= threshold && serial_depth() == 0 && !omp_in_parallel() && omp_get_max_threads() > 1;
         #else
         return false;
         #endif
@@ -78,11 +102,12 @@ namespace matl::detail
         index_t operator() (index_t t, index_t threads) const {return n / threads * t + std::min(t, n % threads);}
     };
 
+    // As parallel_ranges, with the decision to use threads made by the caller
     template<typename F, typename SPLIT>
-    void parallel_ranges(index_t n, [[maybe_unused]] index_t work, F&& f, [[maybe_unused]] SPLIT const& split)
+    void parallel_ranges_if([[maybe_unused]] bool parallel, index_t n, F&& f, [[maybe_unused]] SPLIT const& split)
     {
         #if MATL_OPENMP
-        if (n > 1 && use_threads(work))
+        if (parallel && n > 1)
         {
             #if MATL_PARALLEL_EXCEPTIONS
             std::exception_ptr error = nullptr;
@@ -116,9 +141,39 @@ namespace matl::detail
         if (n > 0) f(index_t(0), n);
     }
 
+    template<typename F, typename SPLIT>
+    void parallel_ranges(index_t n, index_t work, F&& f, SPLIT const& split)
+    {parallel_ranges_if(use_threads(work), n, std::forward<F>(f), split);}
+
     template<typename F>
     void parallel_ranges(index_t n, index_t work, F&& f)
-    {parallel_ranges(n, work, std::forward<F>(f), equal_split{n});}
+    {parallel_ranges_if(use_threads(work), n, std::forward<F>(f), equal_split{n});}
 
+}
+
+namespace matl
+{
+   /***********************************************************************************************
+    * class SerialScope
+    *
+    * While a SerialScope object exists, MATL runs serially in the thread that created it (scopes
+    * nest). MATL already runs serially inside an OpenMP parallel region; a SerialScope does the
+    * same for threads of other frameworks (std::thread, TBB, ...), which OpenMP cannot detect:
+    *
+    *     std::thread worker([&] {
+    *         matl::SerialScope serial;          // no OpenMP threads started from this thread
+    *         ...
+    *     });
+    *
+    * Without OpenMP it has no effect.
+    ***********************************************************************************************/
+    class SerialScope
+    {
+      public:
+        SerialScope() noexcept  {++detail::serial_depth();}
+        ~SerialScope()          {--detail::serial_depth();}
+        SerialScope(SerialScope const&) = delete;
+        SerialScope& operator=(SerialScope const&) = delete;
+    };
 }
 #endif

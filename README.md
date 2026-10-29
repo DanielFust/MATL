@@ -578,14 +578,36 @@ runs its large loops on several threads:
 | --- | --- |
 | Elementwise evaluation of expressions (e.g. the vector updates of the iterative solvers) | `transpose(S) * x` (form `CSRMatrix St = transpose(S)` for a parallel `St * x`) |
 | Reductions: `sum`, `prod`, `mean`, `min`, `max`, `dot`, `norm_fro` | The ILU(0) preconditioner (each row depends on the rows before it) |
-| Sparse matrix times dense products `S * X` | Factorizations, dense matrix products, assembly |
+| Dense matrix products, and with them the block updates of the LU, Cholesky and QR factorizations | The factorizations' narrow base cases and row interchanges |
+| Sparse matrix times dense products `S * X` | Assembly into one `SparseBuilder` (use one per thread, see below) |
 | The Jacobi preconditioner | |
 
 The number of threads is OpenMP's (`OMP_NUM_THREADS`, `omp_set_num_threads`). Define
 `MATL_NO_OPENMP` to keep MATL serial in a program that uses OpenMP itself; `MATL_OPENMP` is `1` when
 MATL uses OpenMP. Loops with less work than about 65,000 elements (or stored entries) stay serial,
-since starting the threads would cost more than they save, and so does MATL inside a parallel
-region of your own (e.g. one matrix per thread): MATL never nests parallelism.
+since starting the threads would cost more than they save; dense products stay serial below about
+2 million multiply-adds (a 128 x 128 product), so products of small matrices, such as element
+matrices, are never threaded. MATL also runs serially inside a parallel region of your own: it never
+nests parallelism. That covers element-level parallelism in a finite-element code, where each thread
+computes element matrices with small dense operations:
+
+```cpp
+std::vector<SparseBuilder<double>> local(omp_get_max_threads(), SparseBuilder<double>(n, n));
+#pragma omp parallel for schedule(static)
+for (index_t e = 0; e < elements; ++e)
+{
+    Matrix<double, 4, 4> Ke = transpose(B(e)) * D * B(e);       // serial inside the loop
+    for (index_t a = 1; a <= 4; ++a)
+        for (index_t b = 1; b <= 4; ++b)
+            local[omp_get_thread_num()].add(node(e, a), node(e, b), Ke(a, b));
+}
+CSRMatrix<double> K = SparseBuilder<double>::build(local);     // merges the per-thread entries
+```
+
+A `SparseBuilder` is not thread-safe, so each thread adds to its own, and `SparseBuilder::build`
+merges them. With `schedule(static)`, the merged matrix is the same, bit for bit, as a serial
+assembly's. OpenMP cannot detect threads of other frameworks (`std::thread`, TBB): in such a thread,
+a `matl::SerialScope` object keeps MATL serial until it goes out of scope.
 
 **Reproducible results.** Reductions add their elements in fixed blocks of 4096 and add the blocks
 in order, so a result is the same, bit for bit, on any number of threads and without OpenMP; an
@@ -593,10 +615,12 @@ iterative solver takes the same iterations on 1 thread or 16. Elementwise result
 the number of threads. An exception thrown inside a parallel loop (e.g. by a bounds check) is
 rethrown after the loop.
 
-**Speedups** are limited by memory bandwidth, since these operations do little arithmetic per byte.
-On an 8-core laptop (Intel i9-9880H, two memory channels), 8 threads ran a dot product 2.3x and a
-sparse product with a million rows 2.2x faster, and CG on a 300 x 300 grid 2.6x faster; nodes with
-more memory channels scale further.
+**Speedups.** On an 8-core laptop (Intel i9-9880H, GCC 15), 8 threads ran a 1536 x 1536 dense
+product 5.4x faster (109 GFLOP/s), and the LU, Cholesky and QR factorizations 2.0x, 1.5x and 2.4x
+faster (their serial parts limit them). The vector and sparse operations are limited by memory
+bandwidth, since they do little arithmetic per byte: a dot product ran 2.3x and a sparse product with
+a million rows 2.2x faster, and CG on a 300 x 300 grid 2.6x faster; nodes with more memory channels
+scale further.
 
 ## Performance
 

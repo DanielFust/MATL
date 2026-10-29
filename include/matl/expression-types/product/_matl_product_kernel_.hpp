@@ -14,7 +14,11 @@
  *           micro-kernel: accumulate the tile in registers over the KC products
  *
  * Packing copies the blocks into contiguous buffers, in the order the micro-kernel reads them, so
- * the innermost loops read memory sequentially from cache. The packed block of A stays in the L2
+ * the innermost loops read memory sequentially from cache. With OpenMP, large products run on
+ * several threads: the row blocks of C are divided among them (each packs its own blocks of A,
+ * and all share the packed block of B), or, when there are fewer row blocks than threads, the
+ * column panels of each block. Each element of C is computed by one thread in the same order, so
+ * the result does not depend on the number of threads. The packed block of A stays in the L2
  * cache while it is multiplied with every micro-panel of B, and each micro-panel of B stays in the
  * L1 cache while it is multiplied with every micro-panel of A. The packing buffers are evaluation
  * temporaries (see TemporaryBlock), so they are recycled and make no heap allocations.
@@ -230,50 +234,94 @@ namespace matl::detail
         constexpr index_t KC = product_blocking<T>::KC;
         constexpr index_t NC = product_blocking<T>::NC;
 
-        // Packing buffers, sized for the largest blocks of this product
+        // Several threads for large products (see _matl_parallel_.hpp); every element of the
+        // target is computed by one thread, in the same order as serially
+        const bool parallel = use_threads(M * N * K, PRODUCT_PARALLEL_THRESHOLD);
+        const index_t row_blocks = (M + MC - 1) / MC;
+
+        // Packing buffers, sized for the largest blocks of this product (each thread that packs
+        // blocks of lhs has its own)
         const index_t kc_max = std::min(K, KC);
+        const index_t lhs_block_bytes = kc_max * round_up(std::min(M, MC), MR) * sizeof(T);
         TemporaryBlock packed_rhs_block(kc_max * round_up(std::min(N, NC), NR) * sizeof(T));
-        TemporaryBlock packed_lhs_block(kc_max * round_up(std::min(M, MC), MR) * sizeof(T));
+        TemporaryBlock packed_lhs_block(lhs_block_bytes);
         T* const packed_rhs = reinterpret_cast<T*>(packed_rhs_block.data());
         T* const packed_lhs = reinterpret_cast<T*>(packed_lhs_block.data());
+
+        // Packs the block of lhs at rows i0.., columns k0.. (negated with SUBTRACT)
+        const auto pack_block = [&lhs](T* packed, index_t i0, index_t mc, index_t k0, index_t kc)
+        {
+            pack_lhs(packed, lhs, i0, mc, k0, kc);
+            if constexpr (SUBTRACT)
+                for (index_t p = 0; p < kc * round_up(mc, MR); ++p) packed[p] = -packed[p];
+        };
+
+        // The micro-tiles of target rows i0..i0+mc-1, in the column panels [jr_first, jr_last)
+        // (in units of NR) of the column block starting at j0
+        const auto compute = [&](T const* packed, index_t i0, index_t mc, index_t j0, index_t nc, index_t k0,
+                                 index_t kc, index_t jr_first, index_t jr_last)
+        {
+            for (index_t jr = jr_first * NR; jr < std::min(nc, jr_last * NR); jr += NR)
+            {
+                const index_t nr = std::min(NR, nc - jr);
+                for (index_t ir = 0; ir < mc; ir += MR)
+                {
+                    const index_t mr = std::min(MR, mc - ir);
+
+                    // Start from 0 for the first KC products, otherwise from the partial sums
+                    // stored in C (so the products are added in increasing k); with SUBTRACT,
+                    // always from C
+                    T acc[MR][NR] = {};
+                    if (SUBTRACT || k0 > 0)
+                        for (index_t r = 0; r < mr; ++r)
+                            for (index_t c = 0; c < nr; ++c)
+                                acc[r][c] = target(i0 + ir + r + 1, j0 + jr + c + 1);
+
+                    micro_kernel(kc, packed + ir * kc, packed_rhs + jr * kc, acc);
+
+                    for (index_t r = 0; r < mr; ++r)
+                        for (index_t c = 0; c < nr; ++c)
+                            target(i0 + ir + r + 1, j0 + jr + c + 1) = acc[r][c];
+                }
+            }
+        };
 
         for (index_t j0 = 0; j0 < N; j0 += NC)
         {
             const index_t nc = std::min(NC, N - j0);
+            const index_t panels = (nc + NR - 1) / NR;
             for (index_t k0 = 0; k0 < K; k0 += KC)
             {
                 const index_t kc = std::min(KC, K - k0);
                 pack_rhs(packed_rhs, rhs, k0, kc, j0, nc);
 
-                for (index_t i0 = 0; i0 < M; i0 += MC)
+                if (parallel && row_blocks >= thread_count())
                 {
-                    const index_t mc = std::min(MC, M - i0);
-                    pack_lhs(packed_lhs, lhs, i0, mc, k0, kc);
-                    if constexpr (SUBTRACT)
-                        for (index_t p = 0; p < kc * round_up(mc, MR); ++p) packed_lhs[p] = -packed_lhs[p];
-
-                    for (index_t jr = 0; jr < nc; jr += NR)
+                    // Enough row blocks: each thread packs and computes its own row blocks
+                    parallel_ranges_if(true, row_blocks, [&](index_t first, index_t last)
                     {
-                        const index_t nr = std::min(NR, nc - jr);
-                        for (index_t ir = 0; ir < mc; ir += MR)
+                        TemporaryBlock own_block(lhs_block_bytes);
+                        T* const own = reinterpret_cast<T*>(own_block.data());
+                        for (index_t b = first; b < last; ++b)
                         {
-                            const index_t mr = std::min(MR, mc - ir);
-
-                            // Start from 0 for the first KC products, otherwise from the partial
-                            // sums stored in C (so the products are added in increasing k); with
-                            // SUBTRACT, always from C
-                            T acc[MR][NR] = {};
-                            if (SUBTRACT || k0 > 0)
-                                for (index_t r = 0; r < mr; ++r)
-                                    for (index_t c = 0; c < nr; ++c)
-                                        acc[r][c] = target(i0 + ir + r + 1, j0 + jr + c + 1);
-
-                            micro_kernel(kc, packed_lhs + ir * kc, packed_rhs + jr * kc, acc);
-
-                            for (index_t r = 0; r < mr; ++r)
-                                for (index_t c = 0; c < nr; ++c)
-                                    target(i0 + ir + r + 1, j0 + jr + c + 1) = acc[r][c];
+                            const index_t i0 = b * MC, mc = std::min(MC, M - i0);
+                            pack_block(own, i0, mc, k0, kc);
+                            compute(own, i0, mc, j0, nc, k0, kc, 0, panels);
                         }
+                    }, equal_split{row_blocks});
+                }
+                else
+                {
+                    // Few row blocks (e.g. a 64-row product): the threads share each packed row
+                    // block, and divide its column panels
+                    for (index_t i0 = 0; i0 < M; i0 += MC)
+                    {
+                        const index_t mc = std::min(MC, M - i0);
+                        pack_block(packed_lhs, i0, mc, k0, kc);
+                        parallel_ranges_if(parallel, panels, [&](index_t first, index_t last)
+                        {
+                            compute(packed_lhs, i0, mc, j0, nc, k0, kc, first, last);
+                        }, equal_split{panels});
                     }
                 }
             }
