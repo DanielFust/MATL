@@ -127,3 +127,22 @@ TEST_CASE("Heap allocations: building and copying expressions allocates nothing"
     (void)f;
     CHECK_EQ(counter.count(), 0l);
 }
+
+TEST_CASE("Heap allocations: large reductions make none once the arena has grown")
+{
+    // Reductions over many blocks keep the blocks' results in the temporary arena (they run on
+    // several threads with OpenMP; this counts the calling thread's allocations)
+    ColMajorMatrix<double> a(50000, 1), b(50000, 1);
+    a = 1.5;
+    b = 2.0;
+    const double warm = sum(a) + dot(a, b) + norm_fro(a - b) + max(a);
+    long allocations_made = 0;
+    double result = 0;
+    {
+        CountAllocations counter;
+        result = sum(a) + dot(a, b) + norm_fro(a - b) + max(a);
+        allocations_made = counter.count();
+    }
+    CHECK_EQ(allocations_made, 0l);
+    CHECK_EQ(result, warm);
+}
