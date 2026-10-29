@@ -159,3 +159,35 @@ TEST_CASE("Heap allocations: large reductions make none once the arena has grown
     CHECK_EQ(allocations_made, 0l);
     CHECK_EQ(result, warm);
 }
+
+TEST_CASE("Heap allocations: fixed-size factorizations and solves make none")
+{
+    // Element-level linear algebra: factorize and solve small fixed-size systems (also beyond the
+    // recursion base, where views and products run on the temporary arena)
+    Matrix<double, 6, 6> A6;
+    Matrix<double, 24, 24> A24;
+    for (index_t i = 1; i <= 6; ++i)
+        for (index_t j = 1; j <= 6; ++j) A6(i, j) = (i == j) ? 8.0 : 1.0 / double(i + j);
+    for (index_t i = 1; i <= 24; ++i)
+        for (index_t j = 1; j <= 24; ++j) A24(i, j) = (i == j) ? 30.0 : 1.0 / double(i + j);
+    const Matrix<double, 6, 1> b6 = ones<double, 6, 1>();
+    const Matrix<double, 24, 1> b24 = ones<double, 24, 1>();
+
+    const auto work = [&]
+    {
+        const Matrix<double, 6, 1>  x6  = lu(A6).solve(b6);
+        const Matrix<double, 24, 1> x24 = lu(A24).solve(b24);
+        const Matrix<double, 24, 1> y24 = cholesky(A24).solve(b24);
+        return x6(1) + x24(1) + y24(1);
+    };
+    const double warm = work();                       // the arena grows to fit, once
+    long allocations_made = 0;
+    double result = 0;
+    {
+        CountAllocations counter;
+        result = work();
+        allocations_made = counter.count();
+    }
+    CHECK_EQ(allocations_made, 0l);
+    CHECK_EQ(result, warm);
+}

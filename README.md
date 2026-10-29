@@ -226,6 +226,23 @@ condition number of `A`. QR exists for every matrix, so `qr(A)` never fails; `so
 that is exactly rank deficient (a zero on the diagonal of `R`) as `matl::singular_matrix_error`,
 and `rcond()` estimates the condition number of `R`.
 
+**Fixed-size matrices.** `lu(A)` and `cholesky(A)` of a fixed-size matrix (or expression) return
+fixed-size factorizations, `FixedLUFactorization<T, N>` and `FixedCholeskyFactorization<T, N>`:
+the factors live in the object itself and the pivots in a `std::array`, so factorizing and
+solving use no heap memory, e.g. for the element matrices of a finite-element program. The
+algorithm is the same as for dynamic matrices, with the same results (the compiler may round the
+last bit differently where it fuses multiply-adds). A fixed-size
+right-hand side gives a fixed-size solution (for LU and Cholesky, and for `solve_lower` and
+`solve_upper`; QR and banded solves stay dynamic), and a fixed-size matrix can also be initialized from a dynamic matrix of the same
+dimensions (checked at run time):
+
+```cpp
+Matrix<double, 4, 4> Ke = element_stiffness(e);   // dimensions known at compile time
+Matrix<double, 4, 1> fe = element_load(e);
+Matrix<double, 4, 1> ue = lu(Ke).solve(fe);       // no heap memory
+Matrix<double, 4, 1> u2 = lu(Matrix<double>(Ke)).solve(Matrix<double>(fe));  // dynamic, copied
+```
+
 **In place.** `lu_inplace(A)`, `cholesky_inplace(A)` and `qr_inplace(A)` factorize a matrix in
 its own memory instead of a copy: `A` then holds the factors (for Cholesky, `L` with zeros above
 the diagonal), and must outlive the factorization object, which uses its memory.

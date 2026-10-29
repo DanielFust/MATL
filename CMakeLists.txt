@@ -55,6 +55,10 @@ if(MSVC)
     target_compile_options(matl_warnings INTERFACE /W4 $<$<BOOL:${MATL_WARNINGS_AS_ERRORS}>:/WX>)
 else()
     target_compile_options(matl_warnings INTERFACE -Wall -Wextra $<$<BOOL:${MATL_WARNINGS_AS_ERRORS}>:-Werror>)
+    # GCC 10 reports false positives of -Wmaybe-uninitialized at -O3 for fixed-size matrices
+    # whose every element is written (in the fixed-size LU tests); later versions do not
+    target_compile_options(matl_warnings INTERFACE
+        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,11>>:-Wno-maybe-uninitialized>)
 endif()
 
 if(MATL_BUILD_TESTS)

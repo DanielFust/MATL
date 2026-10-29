@@ -326,3 +326,67 @@ TEST_CASE("Solvers: Cholesky in place, and matrices that are not positive defini
     CHECK_EQ(message, std::string("cholesky: the matrix is not positive definite (pivot 2 is not positive)"));
     #endif
 }
+
+/***************************************** Fixed-size ********************************************/
+
+namespace
+{
+    // A fixed-size matrix with the elements of a dynamic one (the same dimensions)
+    template<index_t N, StorageOrder ORDER = StorageOrder::RowMajor>
+    FixedSizeMatrix<double, N, N, ORDER> fixed(M const& d) {return FixedSizeMatrix<double, N, N, ORDER>(d);}
+
+    template<index_t N, StorageOrder ORDER>
+    void check_fixed_lu()
+    {
+        const M D = general_matrix<M>(N), S = spd_matrix<M>(N), b = random_matrix<M>(N, 2);
+        const auto F = fixed<N, ORDER>(D);
+        const FixedSizeMatrix<double, N, 2, ORDER> bf = b;
+
+        auto lf = lu(F);
+        auto ld = lu(DynamicMatrix<double, ORDER>(D));
+        static_assert(std::is_same_v<decltype(lf), FixedLUFactorization<double, N, ORDER>>);
+        static_assert(std::is_same_v<std::remove_cvref_t<decltype(lf.pivots())>, std::array<index_t, N>>);
+        static_assert(std::is_same_v<decltype(lf.solve(bf)), FixedSizeMatrix<double, N, 2, ORDER>>, "fixed in, fixed out");
+        static_assert(std::is_same_v<decltype(lf.solve(b)), M>, "a dynamic right-hand side gives a dynamic solution");
+        static_assert(std::is_same_v<decltype(lf.L()), FixedSizeMatrix<double, N, N, ORDER>>);
+        static_assert(std::is_same_v<decltype(solve_lower(lf.L(), bf)), FixedSizeMatrix<double, N, 2, ORDER>>);
+        CHECK_MATRIX_NEAR(solve_upper(lf.U(), solve_lower(lf.L(), lf.P() * bf, Diagonal::Unit)), Ref::from(ld.solve(b)), 1e-12);
+
+        // The same algorithm as the dynamic factorization: the same factors, bit for bit. The
+        // solves and estimates may differ in the last bit: the compiler can fuse multiply-adds
+        // differently in the fixed-size code (seen with Apple Clang -O3 on ARM).
+        const auto close = [](double x, double y) {return std::abs(x - y) <= 1e-13 * std::abs(y);};
+        CHECK_MATRIX_EQ(lf.factors(), Ref::from(ld.factors()));
+        CHECK_MATRIX_NEAR(lf.solve(bf), Ref::from(ld.solve(b)), 1e-13);
+        CHECK_MATRIX_NEAR(lf.L() * lf.U(), Ref::from(M(lf.P() * D)), 1e-12);
+        CHECK(close(lf.determinant(), ld.determinant()));
+        CHECK(close(lf.rcond(), ld.rcond()));
+
+        auto cf = cholesky(fixed<N, ORDER>(S));
+        static_assert(std::is_same_v<decltype(cf), FixedCholeskyFactorization<double, N, ORDER>>);
+        auto cd = cholesky(DynamicMatrix<double, ORDER>(S));
+        CHECK_MATRIX_EQ(cf.factor(), Ref::from(cd.factor()));
+        CHECK_MATRIX_NEAR(cf.solve(bf), Ref::from(cd.solve(b)), 1e-13);
+        CHECK(close(cf.rcond(), cd.rcond()));
+    }
+}
+
+TEST_CASE("Solvers: fixed-size LU and Cholesky factorizations")
+{
+    check_fixed_lu<4, StorageOrder::RowMajor>();
+    check_fixed_lu<4, StorageOrder::ColMajor>();
+    check_fixed_lu<16, StorageOrder::RowMajor>();
+    check_fixed_lu<17, StorageOrder::RowMajor>();     // beyond the recursion base: views and products
+    check_fixed_lu<24, StorageOrder::ColMajor>();
+
+    // Fixed-size expressions are factorized as fixed-size matrices
+    const Matrix<double, 3, 3> F = {{4, 1, 0}, {1, 3, 1}, {0, 1, 2}};
+    static_assert(std::is_same_v<decltype(lu(transpose(F) + F)), FixedLUFactorization<double, 3, StorageOrder::RowMajor>>);
+    static_assert(std::is_same_v<decltype(cholesky(F * 1.0)), FixedCholeskyFactorization<double, 3, StorageOrder::RowMajor>>);
+
+    // A fixed-size matrix from a dynamic result
+    const Matrix<double, 3, 1> x = lu(M(F)).solve(M{{5}, {5}, {3}});
+    CHECK_MATRIX_NEAR(F * x, Ref::from(M{{5}, {5}, {3}}), 1e-14);
+    CHECK_MATL_ERROR(singular_matrix_error, (void)lu(Matrix<double, 2, 2>{{1, 2}, {2, 4}}));
+    CHECK_MATL_ERROR(not_positive_definite_error, (void)cholesky(Matrix<double, 2, 2>{{1, 2}, {2, 1}}));
+}

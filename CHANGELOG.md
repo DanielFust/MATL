@@ -20,6 +20,11 @@ a new major version may require changes to code written for the previous one.
   e.g. `std::thread` or TBB, which OpenMP cannot detect).
 - **Parallel assembly:** `SparseBuilder::build(builders)` merges per-thread builders; with
   `schedule(static)` the result is the same as a serial assembly's.
+- **Fixed-size factorizations:** `lu(A)` and `cholesky(A)` of a fixed-size matrix or expression
+  return `FixedLUFactorization<T, N>` and `FixedCholeskyFactorization<T, N>`, which keep their
+  factors in the object (pivots in a `std::array`) and factorize and solve without heap memory.
+- **Fixed-size matrices from dynamic ones:** `Matrix<double, 4, 1> f = lu(K).solve(b);` copies a
+  dynamic matrix into a fixed-size one (the dimensions are checked at run time).
 
 ### Changed
 
@@ -27,6 +32,10 @@ a new major version may require changes to code written for the previous one.
   their elements in fixed blocks of 4096, combined in order, so results are the same for any number
   of threads. For more than 4096 elements, sums round slightly differently than in 2.2.0. Large
   reductions keep their partial results in the temporary arena (no heap allocations).
+- **Fixed-size solutions:** `solve` of LU and Cholesky factorizations, `lu_solve`, `cholesky_solve`,
+  `solve_lower` and `solve_upper` return a fixed-size matrix when the right-hand side is fixed-size
+  (before, a dynamic one). `norm_1` and `norm_inf` keep their column or row sums in the temporary
+  arena instead of a `std::vector`.
 
 ## [2.2.0] - 2026-10-23
 

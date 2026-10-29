@@ -88,6 +88,12 @@ namespace matl
         template<ExpressionType EXPR> requires SizesMatch<FixedSizeMatrix, EXPR>
         FixedSizeMatrix(EXPR const& expr) {this->assign_expression(expr);}
 
+        // Matrix constructor: a copy of another matrix with dimensions M x N (a dynamic matrix's
+        // are checked at run time with MATL_DIMENSION_CHECK); implicit, so that e.g.
+        // 'Matrix<double,4,1> f = lu(K).solve(b);' copies a dynamic result into a fixed-size matrix
+        template<MatrixType MAT> requires SizesMatch<FixedSizeMatrix, MAT>
+        FixedSizeMatrix(MAT const& mat) {this->copy_matrix(mat);}
+
         /**************** Assignment & Copying *****************/
         
         // Matrix copy (general)
