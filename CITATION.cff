@@ -13,8 +13,8 @@ authors:
   - family-names: Fust
     given-names: Daniel
     orcid: "https://orcid.org/0009-0008-9950-5047"
-version: 2.2.0
-date-released: 2026-10-23
+version: 2.3.0
+date-released: 2026-10-29
 license: BSD-3-Clause
 repository-code: "https://github.com/DanielFust/MATL"
 keywords:
