@@ -1,5 +1,10 @@
 name: CI
 
+# The full CI: six compilers (two of them the minimum supported versions) and every test mode.
+# When GitHub Actions minutes are limited, set the repository variable CI_LIGHT to 'true' to run
+# the cheaper ci-light.yml instead (see tests/README.md); a manual run of this workflow
+# (gh workflow run ci.yml) always runs in full.
+
 on:
   push:
     branches: [main]
@@ -12,6 +17,8 @@ concurrency:
 
 jobs:
   test:
+    # Skipped (no minutes used) while CI_LIGHT is 'true', except when run manually
+    if: vars.CI_LIGHT != 'true' || github.event_name == 'workflow_dispatch'
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:

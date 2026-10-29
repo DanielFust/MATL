@@ -1,0 +1,92 @@
+name: CI (light)
+
+# A cheaper CI for when GitHub Actions minutes are limited (macOS runners count ten times, and the
+# full CI in ci.yml costs about 80-100 minutes per run). It runs instead of ci.yml while the
+# repository variable CI_LIGHT is 'true':
+#
+#     gh variable set CI_LIGHT --body true     # switch to the light CI
+#     gh variable delete CI_LIGHT              # back to the full CI
+#
+# Two Linux jobs on the minimum supported compilers (which catch most portability problems), on
+# pull requests only (not again on the merge to main). Each runs every test mode; the sanitizers
+# run with Clang, and OpenMP and CMake with GCC. About 15-20 minutes per run. Test macOS (Apple
+# Clang) locally, or run the full CI by hand: gh workflow run ci.yml --ref <branch>.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-light-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: vars.CI_LIGHT == 'true' || github.event_name == 'workflow_dispatch'
+    name: ${{ matrix.name }} (light)
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux GCC 10 (minimum)
+            cxx: g++-10
+            install: g++-10
+          - name: Linux Clang 13 (minimum)
+            cxx: clang++-13
+            install: clang-13
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install compiler
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.install }}
+
+      - name: Compiler version
+        run: ${{ matrix.cxx }} --version
+
+      - name: Build and run examples
+        run: make run-examples CXX=${{ matrix.cxx }}
+
+      - name: Test suite
+        run: make check CXX=${{ matrix.cxx }}
+
+      - name: Test suite (MATL_NO_DEBUG)
+        run: make check-nodebug CXX=${{ matrix.cxx }}
+
+      - name: Test suite (MATL_ABORT_ON_ERROR)
+        run: make check-abort CXX=${{ matrix.cxx }}
+
+      - name: Build without exceptions (-fno-exceptions)
+        run: make check-noexceptions CXX=${{ matrix.cxx }}
+
+      # Some Linux runner kernels use more ASLR entropy than older sanitizer runtimes support
+      - name: Test suite (AddressSanitizer + UndefinedBehaviorSanitizer)
+        if: startsWith(matrix.cxx, 'clang')
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+          make check-sanitize CXX=${{ matrix.cxx }}
+
+      - name: Test suite (OpenMP, 4 threads)
+        if: startsWith(matrix.cxx, 'g++')
+        run: make check-openmp CXX=${{ matrix.cxx }}
+
+      - name: CMake build, test, install and find_package
+        if: startsWith(matrix.cxx, 'g++')
+        run: |
+          cmake -S . -B build/cmake -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DMATL_WARNINGS_AS_ERRORS=ON
+          cmake --build build/cmake --parallel 4
+          (cd build/cmake && ctest --output-on-failure)
+          cmake --install build/cmake --prefix "$PWD/build/install"
+          cmake -S tests/install -B build/install-test -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+                -DCMAKE_PREFIX_PATH="$PWD/build/install"
+          cmake --build build/install-test
+          ./build/install-test/matl_install_test
+
+      - name: Upload MATL debug output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matl-test-logs-light-${{ matrix.cxx }}
+          path: build/*.log
+          if-no-files-found: ignore

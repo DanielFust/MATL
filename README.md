@@ -631,7 +631,8 @@ Rows, columns and blocks are selected with views (see [Views](#views)).
 
 ## Tests
 
-See [tests/README.md](tests/README.md). In short, from the repository root, with Make:
+See [tests/README.md](tests/README.md), which also describes the CI and its cheaper "light" mode
+for when GitHub Actions minutes are limited. In short, from the repository root, with Make:
 
 ```sh
 make check            # build and run the test suite
