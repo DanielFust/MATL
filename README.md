@@ -5,7 +5,7 @@ syntax close to the mathematics: `C = A*B + transpose(D) - 2.0*E;`. Expressions 
 lazily with expression templates, matrix products use a cache-blocked SIMD kernel, and
 temporaries are recycled so that repeated evaluations make no heap allocations.
 
-Version 2.2.0; see [CHANGELOG.md](CHANGELOG.md) for what changed.
+Version 2.3.0; see [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ```cpp
 #include <matl.hpp>
@@ -42,7 +42,7 @@ target_link_libraries(my_program PRIVATE matl::matl)
 ```
 
 The `matl::matl` target adds the include directory and requires C++20. In a version check,
-`MATL_VERSION` is `MAJOR * 10000 + MINOR * 100 + PATCH` (`20200` for 2.2.0).
+`MATL_VERSION` is `MAJOR * 10000 + MINOR * 100 + PATCH` (`20300` for 2.3.0).
 
 ## Requirements
 

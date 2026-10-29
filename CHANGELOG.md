@@ -3,7 +3,12 @@
 Notable changes to MATL, newest first. Version numbers follow [semantic versioning](https://semver.org):
 a new major version may require changes to code written for the previous one.
 
-## [Unreleased]
+## [2.3.0] - 2026-10-29
+
+Adds multithreading with OpenMP, parallel finite-element assembly, fixed-size factorizations
+without heap memory, determinants and inverses, symmetric eigenvalues, and the singular value
+decomposition with the pseudo-inverse. Most code written for 2.2.0 compiles unchanged; see
+Changed for fixed-size solutions and the rounding of large sums.
 
 ### Added
 
@@ -177,7 +182,7 @@ adds most of the library's features. Code written for 1.0.0 mostly compiles unch
 
 The original version, kept as the git tag `v1.0.0-backup`.
 
-[Unreleased]: https://github.com/DanielFust/MATL/compare/v2.2.0...HEAD
+[2.3.0]: https://github.com/DanielFust/MATL/releases/tag/v2.3.0
 [2.2.0]: https://github.com/DanielFust/MATL/releases/tag/v2.2.0
 [2.1.0]: https://github.com/DanielFust/MATL/releases/tag/v2.1.0
 [2.0.0]: https://github.com/DanielFust/MATL/releases/tag/v2.0.0
