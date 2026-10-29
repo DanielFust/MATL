@@ -23,6 +23,16 @@ a new major version may require changes to code written for the previous one.
 - **Fixed-size factorizations:** `lu(A)` and `cholesky(A)` of a fixed-size matrix or expression
   return `FixedLUFactorization<T, N>` and `FixedCholeskyFactorization<T, N>`, which keep their
   factors in the object (pivots in a `std::array`) and factorize and solve without heap memory.
+- **Determinants and inverses:** `det(A)` (0 for a singular matrix) and `inv(A)`, with closed
+  forms for fixed-size matrices of order 1 to 3 (e.g. element Jacobians) and LU otherwise.
+- **Symmetric eigenvalues:** `eig_sym(A)` (eigenvalues in ascending order and orthonormal
+  eigenvectors, by cyclic Jacobi) and `eigenvalues_sym(A)`.
+- **Singular value decomposition:** `svd(A)` for any shape (one-sided Jacobi), with `U()`,
+  `singular_values()`, `V()`, `S()`, `rank()`, `cond()`, `pinv()` and the minimum-norm
+  least-squares `solve`; `singular_values(A)`, `pinv(A)` and `rank(A)`, with an optional
+  tolerance. Example 10 shows all of these on problems from mechanics and data fitting.
+- Fixed-size matrices give fixed-size results without heap memory for `det`, `inv`, `eig_sym` and
+  `svd`.
 - **Fixed-size matrices from dynamic ones:** `Matrix<double, 4, 1> f = lu(K).solve(b);` copies a
   dynamic matrix into a fixed-size one (the dimensions are checked at run time).
 

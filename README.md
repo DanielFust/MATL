@@ -243,6 +243,18 @@ Matrix<double, 4, 1> ue = lu(Ke).solve(fe);       // no heap memory
 Matrix<double, 4, 1> u2 = lu(Matrix<double>(Ke)).solve(Matrix<double>(fe));  // dynamic, copied
 ```
 
+**Determinants and inverses.** `det(A)` is the determinant (0 for a singular matrix) and `inv(A)`
+the inverse (`matl::singular_matrix_error` for a singular matrix). Fixed-size matrices of order 1,
+2 and 3 use closed forms, e.g. for the Jacobian at each integration point of a finite element;
+other matrices use LU. To solve a system, `lu(A).solve(B)` is cheaper and more accurate than
+`inv(A) * B`.
+
+```cpp
+Matrix<double, 2, 2> J = transpose(nodes) * dN_dxi;
+double detJ = det(J);                        // closed form, no heap memory
+Matrix<double, 4, 2> dN_dx = dN_dxi * inv(J);
+```
+
 **In place.** `lu_inplace(A)`, `cholesky_inplace(A)` and `qr_inplace(A)` factorize a matrix in
 its own memory instead of a copy: `A` then holds the factors (for Cholesky, `L` with zeros above
 the diagonal), and must outlive the factorization object, which uses its memory.
@@ -263,6 +275,43 @@ the product kernel through views and subtract from the matrix without temporarie
 (Intel i9-9880H, GCC 15 and Clang 21, `-O2 -march=native`), LU runs at about 15–17 GFLOP/s,
 Cholesky at about 11–12 GFLOP/s and QR at about 13–15 GFLOP/s (9–11 GFLOP/s for a 4000 x 400
 matrix), against 21–25 GFLOP/s for the product.
+
+## Eigenvalues and singular values
+
+| Function | Computes | Requires |
+| --- | --- | --- |
+| `eig_sym(A)`, `eigenvalues_sym(A)` | `A = V diag(λ) Vᵀ`: real eigenvalues in ascending order (`values()`), orthonormal eigenvectors (`vectors()`, column k for eigenvalue k) | `A` symmetric (only its lower triangle is read) |
+| `svd(A)`, `singular_values(A)` | `A = U diag(σ) Vᵀ`: singular values in descending order, `U` (m x k) and `V` (n x k) with orthonormal columns, k = min(m, n) | any m x n `A` |
+| `pinv(A)`, `rank(A)` | the pseudo-inverse `A⁺` (n x m) and the numerical rank | any m x n `A` |
+
+```cpp
+auto P = eig_sym(sigma);                   // a 3 x 3 stress tensor
+double s1 = P.values()(3);                 // the largest principal stress (values ascend)
+auto n1 = P.vectors()(all, 3);             // its direction
+
+auto S = svd(A);
+S.singular_values();  S.U();  S.V();       // S.U() * S.S() * transpose(S.V()) is A
+index_t r = S.rank();                      // singular values above the tolerance
+Matrix<double> x = S.solve(b);             // minimum-norm least squares, x = pinv(A) * b
+Matrix<double> X = pinv(A, 1e-8);          // treat singular values <= 1e-8 as zero
+```
+
+**Pseudo-inverse and rank.** Singular values at or below a tolerance count as zero. The default,
+as in MATLAB, is `max(m, n) · eps · σ₁`, so that singular values that are only rounding errors do
+not count; a larger tolerance truncates small singular values on purpose (regularization).
+`A⁺ b` minimizes `‖A x − b‖`, and among the minimizers (for an underdetermined or rank-deficient
+system) it is the one of smallest norm. For a matrix of full column rank, QR gives the same least
+squares solution with less work.
+
+**Fixed sizes.** For a fixed-size matrix, the results are fixed-size and no heap memory is used,
+e.g. for the principal stresses at each integration point of a finite-element model.
+
+**Algorithms.** Both use Jacobi rotations: cyclic Jacobi for `eig_sym`, and one-sided Jacobi for
+`svd` (on `A`, or `Aᵀ` for a wide matrix). These are simple, robust and accurate, also for small
+eigenvalues and singular values relative to their size, but they cost several times the work of
+LAPACK's methods: they suit matrices up to a few hundred rows (on an Intel i9-9880H, `eig_sym` or
+`svd` of a 100 x 100 matrix takes about 10 ms, and of a 400 x 400 one about 1 s). Eigenvalues of
+nonsymmetric matrices, which can be complex, are not implemented.
 
 ## Sparse matrices
 

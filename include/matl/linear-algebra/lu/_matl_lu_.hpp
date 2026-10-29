@@ -66,10 +66,12 @@ namespace matl
         *
         * Factorizes columns j0..j1 of a (rows j0..n) column by column: pivot search, row
         * interchange within these columns, multipliers, and elimination within these columns.
-        * The base case of lu_recursive.
+        * The base case of lu_recursive. A zero pivot is reported as matl::singular_matrix_error,
+        * or, if zero_pivot is given, recorded there (the first one) and skipped (as LAPACK's
+        * xGETRF: the factors are then complete, with a zero on U's diagonal).
         *******************************************************************************************/
         template<class MAT, class PIVOTS>
-        void lu_columns(MAT& a, PIVOTS& pivots, index_t j0, index_t j1)
+        void lu_columns(MAT& a, PIVOTS& pivots, index_t j0, index_t j1, index_t* zero_pivot)
         {
             typedef dtype_t<MAT> T;
             constexpr StorageOrder ORDER = traits<MAT>::storage_order;
@@ -82,6 +84,11 @@ namespace matl
                 for (index_t i = j + 1; i <= n; ++i)
                     if (std::abs(a(i,j)) > largest) {largest = std::abs(a(i,j)); p = i;}
                 pivots[j - 1] = p;
+                if (largest == T(0) && zero_pivot)
+                {
+                    if (*zero_pivot == 0) *zero_pivot = j;
+                    continue;                                 // column j of L is zero: nothing to eliminate
+                }
                 if (largest == T(0))
                     raise<singular_matrix_error>("lu: the matrix is singular (column " + std::to_string(j) +
                                                  " has no nonzero pivot)");
@@ -170,22 +177,22 @@ namespace matl
         * left half. Narrow column ranges are factorized column by column (lu_columns).
         *******************************************************************************************/
         template<class MAT, class PIVOTS>
-        void lu_recursive(MAT& a, PIVOTS& pivots, index_t j0, index_t j1)
+        void lu_recursive(MAT& a, PIVOTS& pivots, index_t j0, index_t j1, index_t* zero_pivot)
         {
             const index_t n = a.rows();
             if (j1 - j0 + 1 <= RECURSION_BASE)
             {
-                lu_columns(a, pivots, j0, j1);
+                lu_columns(a, pivots, j0, j1, zero_pivot);
                 return;
             }
             const index_t jm = j0 + (j1 - j0 + 1) / 2;       // first column of the right half
 
-            lu_recursive(a, pivots, j0, jm - 1);
+            lu_recursive(a, pivots, j0, jm - 1, zero_pivot);
             interchange_rows(a, pivots, j0, jm - 1, jm, j1);
             solve_unit_lower(a, j0, jm - 1, jm, j1);         // U12 = L11^-1 A12
             auto A22 = a(range(jm, n), range(jm, j1));       // A22 -= L21 * U12
             subtract_product(A22, a(range(jm, n), range(j0, jm - 1)), a(range(j0, jm - 1), range(jm, j1)));
-            lu_recursive(a, pivots, jm, j1);
+            lu_recursive(a, pivots, jm, j1, zero_pivot);
             interchange_rows(a, pivots, jm, j1, j0, jm - 1);
         }
 
@@ -194,13 +201,15 @@ namespace matl
         *
         * Overwrites the square matrix a (dynamic or fixed-size) with its LU factors (see the
         * description above) and fills in the row interchanges (a std::vector, or a std::array of
-        * a fixed size). Reports matl::singular_matrix_error for a zero pivot.
+        * a fixed size). Reports matl::singular_matrix_error for a zero pivot, or, if zero_pivot is
+        * given, sets it to the first zero pivot's column (0 if none) and completes the factors.
         *******************************************************************************************/
         template<class MAT, class PIVOTS>
-        void lu_factorize(MAT& a, PIVOTS& pivots)
+        void lu_factorize(MAT& a, PIVOTS& pivots, index_t* zero_pivot = nullptr)
         {
             if constexpr (requires {pivots.resize(a.rows());}) pivots.resize(a.rows());
-            if (a.rows() > 0) lu_recursive(a, pivots, 1, a.rows());
+            if (zero_pivot) *zero_pivot = 0;
+            if (a.rows() > 0) lu_recursive(a, pivots, 1, a.rows(), zero_pivot);
         }
     }
 
